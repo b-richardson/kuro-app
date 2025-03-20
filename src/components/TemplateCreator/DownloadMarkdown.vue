@@ -166,10 +166,27 @@ const downloadMarkdown = () => {
   .download-markdown {
     flex-direction: column;
     align-items: stretch;
+    gap: 0.75rem;
   }
   
   .download-markdown__button {
     align-self: flex-end;
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 480px) {
+  .download-markdown__label {
+    display: none;
+  }
+  
+  .download-markdown__filename {
+    flex-wrap: nowrap;
+  }
+  
+  .download-markdown__input {
+    min-width: 0;
   }
 }
 </style>

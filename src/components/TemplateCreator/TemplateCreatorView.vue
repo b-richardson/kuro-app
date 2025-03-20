@@ -100,12 +100,15 @@ const deleteSection = (sectionId: string) => {
 
 .template-creator__content {
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
+  grid-template-columns: minmax(250px, 1fr) minmax(350px, 1.5fr) minmax(300px, 1.5fr);
   gap: 1.5rem;
   flex: 1;
   padding: 1.5rem;
   overflow: hidden;
   height: calc(100vh - 80px);
+  max-width: 1800px;
+  margin: 0 auto;
+  width: 100%;
 }
 
 .template-creator__sidebar,
@@ -126,7 +129,8 @@ const deleteSection = (sectionId: string) => {
 /* Responsive adjustments */
 @media (max-width: 1200px) {
   .template-creator__content {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: minmax(220px, 1fr) minmax(300px, 2fr);
+    gap: 1rem;
   }
   
   .template-creator__preview {
@@ -134,10 +138,19 @@ const deleteSection = (sectionId: string) => {
   }
 }
 
-@media (max-width: 768px) {
+@media (max-width: 900px) {
   .template-creator__content {
     grid-template-columns: 1fr;
     padding: 1rem;
+    height: calc(100vh - 70px);
+    overflow-y: auto;
+  }
+  
+  .template-creator__sidebar,
+  .template-creator__editor,
+  .template-creator__preview {
+    max-height: 500px;
+    overflow-y: auto;
   }
   
   .template-creator__preview {
@@ -145,9 +158,31 @@ const deleteSection = (sectionId: string) => {
   }
   
   .template-creator__header {
+    padding: 0.75rem 1rem;
+  }
+}
+
+@media (max-width: 640px) {
+  .template-creator__header {
     flex-direction: column;
-    gap: 1rem;
-    padding: 1rem;
+    gap: 0.75rem;
+    padding: 0.75rem;
+  }
+  
+  .template-creator__title {
+    font-size: 1.25rem;
+  }
+  
+  .template-creator__content {
+    gap: 0.75rem;
+    padding: 0.75rem;
+    height: calc(100vh - 110px);
+  }
+  
+  .template-creator__sidebar,
+  .template-creator__editor,
+  .template-creator__preview {
+    max-height: none;
   }
 }
 </style>

@@ -107,6 +107,7 @@ const renderedMarkdown = computed(() => {
   gap: 0.325rem;
   color: #64748b;
   transition: all 0.2s;
+  white-space: nowrap;
 }
 
 .markdown-preview__toggle-btn:hover {
@@ -291,5 +292,47 @@ const renderedMarkdown = computed(() => {
   width: 16px;
   height: 16px;
   accent-color: #4f46e5;
+}
+
+/* Mobile responsive styles */
+@media (max-width: 768px) {
+  .markdown-preview__header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+  
+  .markdown-preview__toggle {
+    align-self: flex-end;
+  }
+  
+  .markdown-preview__content {
+    padding: 1rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .markdown-preview__toggle-btn {
+    padding: 0.5rem 0.625rem;
+    font-size: 0.75rem;
+  }
+  
+  .markdown-preview__toggle-btn i {
+    margin-right: 0.25rem;
+  }
+  
+  .markdown-preview__rendered :deep(h1) {
+    font-size: 1.5rem;
+  }
+  
+  .markdown-preview__rendered :deep(h2) {
+    font-size: 1.25rem;
+  }
+  
+  .markdown-preview__rendered :deep(table) {
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
 }
 </style>
