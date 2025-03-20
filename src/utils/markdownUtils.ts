@@ -10,10 +10,21 @@ import { ExportProfileId } from '@/components/TemplateCreator/ExportProfileSelec
 export function generateMarkdown(sections: TemplateSection[], exportProfile: ExportProfileId = 'full'): string {
   if (!sections.length) return '';
   
-  return sections.map(section => {
-    // Process each section based on the export profile
-    return processSection(section, exportProfile);
-  }).join('\n\n');
+  // First look for YAML front matter to place at the beginning
+  const yamlSection = sections.find(section => section.type === 'yaml');
+  
+  // Process all other sections (excluding YAML if present)
+  const processedSections = sections
+    .filter(section => yamlSection ? section !== yamlSection : true)
+    .map(section => processSection(section, exportProfile));
+  
+  // If there's a YAML section, add it at the beginning
+  if (yamlSection) {
+    return processSection(yamlSection, exportProfile) + '\n\n' + processedSections.join('\n\n');
+  }
+  
+  // Otherwise just join all sections
+  return processedSections.join('\n\n');
 }
 
 /**
@@ -24,8 +35,28 @@ export function generateMarkdown(sections: TemplateSection[], exportProfile: Exp
  */
 function processSection(section: TemplateSection, exportProfile: ExportProfileId): string {
   // Handle basic sections (no export profile adjustments needed)
-  if (['header', 'checklist', 'table', 'text', 'yaml'].includes(section.type)) {
+  if (['header', 'checklist', 'table', 'text'].includes(section.type)) {
     return section.content.join(section.type === 'text' ? '\n\n' : '\n');
+  }
+  
+  // Special handling for YAML to ensure it has proper --- delimiters
+  if (section.type === 'yaml') {
+    const content = [...section.content];
+    
+    // Make sure the content starts and ends with ---
+    if (content.length > 0 && content[0].trim() !== '---') {
+      content.unshift('---');
+    }
+    if (content.length > 0 && content[content.length - 1].trim() !== '---') {
+      content.push('---');
+    }
+    
+    // If it's empty or only has delimiters, add a placeholder
+    if (content.length <= 2) {
+      content.splice(1, 0, 'title: Untitled');
+    }
+    
+    return content.join('\n');
   }
 
   // Handle plugin-specific sections
@@ -51,13 +82,16 @@ function processSection(section: TemplateSection, exportProfile: ExportProfileId
  * @returns Processed markdown content
  */
 function processTemplaterField(section: TemplateSection, exportProfile: ExportProfileId): string {
-  // Only keep Templater syntax for 'templater' and 'full' profiles
+  // Always keep the original Templater syntax
+  // The display formatting will be handled by MarkdownPreview component
   if (exportProfile === 'templater' || exportProfile === 'full') {
     return section.content.join('\n');
   }
 
   // For 'plain' and 'dataview' profiles, convert to plain text placeholder
   return section.content.map(line => {
+    // Add comments to help the MarkdownPreview component process the field
+    
     // Extract any descriptive comments from the Templater field
     const descriptionMatch = line.match(/<%.*?\/\/\s*(.*?)\s*%>/);
     if (descriptionMatch && descriptionMatch[1]) {
@@ -75,6 +109,18 @@ function processTemplaterField(section: TemplateSection, exportProfile: ExportPr
       return `[Random quote]`;
     } else if (line.includes('tp.file.cursor')) {
       return ``;  // Cursor position becomes empty in plain markdown
+    } else if (line.includes('tp.system.prompt')) {
+      return `[User input]`;
+    } else if (line.startsWith('<%*')) {
+      return `[JavaScript code]`;
+    }
+    
+    // For other Templater functions, try to extract the function name
+    const funcMatch = line.match(/tp\.(\w+)\.(\w+)/);
+    if (funcMatch) {
+      const category = funcMatch[1];
+      const func = funcMatch[2];
+      return `[${category}: ${func}]`;
     }
     
     // Default placeholder

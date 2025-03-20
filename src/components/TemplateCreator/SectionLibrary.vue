@@ -30,6 +30,30 @@
       </div>
     </div>
 
+    <!-- YAML Frontmatter Presets -->
+    <div class="section-library__category">
+      <h3 class="section-library__category-title">YAML Frontmatter Presets</h3>
+      <div class="section-library__items">
+        <div
+          v-for="preset in yamlPresets"
+          :key="preset.id"
+          class="section-library__item section-library__item--yaml-preset"
+          @click="addYamlPreset(preset.id)"
+          draggable="true"
+        >
+          <div class="section-library__item-icon">
+            <i class="fas fa-code"></i>
+          </div>
+          <div class="section-library__item-content">
+            <h3 class="section-library__item-title">{{ preset.name }}</h3>
+            <p class="section-library__item-description">
+              {{ preset.description }}
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Plugin Sections -->
     <div class="section-library__category">
       <h3 class="section-library__category-title">Plugin-Aware Sections</h3>
@@ -133,6 +157,7 @@ import {
   getSectionIcon,
   generateDefaultContent,
 } from "@/utils/pluginTemplates";
+import { yamlPresets, getPresetById, yamlObjectToLines } from "@/utils/yamlUtils";
 
 // Define emits
 const emit = defineEmits<{
@@ -242,6 +267,29 @@ const addSection = (type: SectionType, pluginType: PluginType) => {
     pluginType,
   };
 
+  // Emit the add-section event
+  emit("add-section", newSection);
+};
+
+/**
+ * Adds a YAML section with content from a preset
+ * @param presetId The ID of the preset to use
+ */
+const addYamlPreset = (presetId: string) => {
+  const preset = getPresetById(presetId);
+  if (!preset) return;
+  
+  // Convert the preset frontmatter to YAML lines
+  const yamlLines = yamlObjectToLines(preset.frontmatter);
+  
+  // Create a new section with a unique ID
+  const newSection: TemplateSection = {
+    id: uuidv4(),
+    type: "yaml",
+    content: yamlLines,
+    pluginType: null,
+  };
+  
   // Emit the add-section event
   emit("add-section", newSection);
 };
@@ -358,6 +406,10 @@ const addSection = (type: SectionType, pluginType: PluginType) => {
 
 .section-library__item--yaml .section-library__item-icon {
   background: linear-gradient(135deg, #475569 0%, #64748b 100%);
+}
+
+.section-library__item--yaml-preset .section-library__item-icon {
+  background: linear-gradient(135deg, #334155 0%, #475569 100%);
 }
 
 /* Plugin section icons */
