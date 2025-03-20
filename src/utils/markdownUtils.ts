@@ -2,29 +2,73 @@ import { TemplateSection } from '@/types/TemplateSection';
 import { ExportProfileId } from '@/components/TemplateCreator/ExportProfileSelector.vue';
 
 /**
+ * Error class for markdown generation errors
+ */
+export class MarkdownGenerationError extends Error {
+  constructor(message: string, public sectionType?: string, public details?: string) {
+    super(message);
+    this.name = 'MarkdownGenerationError';
+  }
+}
+
+/**
  * Generates markdown text from an array of template sections with optional export profile
  * @param sections Array of template sections
  * @param exportProfile Export profile to use for generation
  * @returns Markdown string
+ * @throws {MarkdownGenerationError} When there's an error generating markdown
  */
 export function generateMarkdown(sections: TemplateSection[], exportProfile: ExportProfileId = 'full'): string {
-  if (!sections.length) return '';
+  if (!sections || !sections.length) return '';
   
-  // First look for YAML front matter to place at the beginning
-  const yamlSection = sections.find(section => section.type === 'yaml');
-  
-  // Process all other sections (excluding YAML if present)
-  const processedSections = sections
-    .filter(section => yamlSection ? section !== yamlSection : true)
-    .map(section => processSection(section, exportProfile));
-  
-  // If there's a YAML section, add it at the beginning
-  if (yamlSection) {
-    return processSection(yamlSection, exportProfile) + '\n\n' + processedSections.join('\n\n');
+  try {
+    // First look for YAML front matter to place at the beginning
+    const yamlSection = sections.find(section => section.type === 'yaml');
+    
+    // Process all other sections (excluding YAML if present)
+    const processedSections = sections
+      .filter(section => yamlSection ? section !== yamlSection : true)
+      .map((section, index) => {
+        try {
+          return processSection(section, exportProfile);
+        } catch (error) {
+          // Add context about which section failed
+          throw new MarkdownGenerationError(
+            `Error processing ${section.type} section at position ${index + 1}`,
+            section.type,
+            error instanceof Error ? error.message : String(error)
+          );
+        }
+      });
+    
+    // If there's a YAML section, add it at the beginning
+    if (yamlSection) {
+      try {
+        return processSection(yamlSection, exportProfile) + '\n\n' + processedSections.join('\n\n');
+      } catch (error) {
+        throw new MarkdownGenerationError(
+          'Error processing YAML frontmatter section',
+          'yaml',
+          error instanceof Error ? error.message : String(error)
+        );
+      }
+    }
+    
+    // Otherwise just join all sections
+    return processedSections.join('\n\n');
+  } catch (error) {
+    // Re-throw MarkdownGenerationError as is
+    if (error instanceof MarkdownGenerationError) {
+      throw error;
+    }
+    
+    // Otherwise wrap in our error class
+    throw new MarkdownGenerationError(
+      'Failed to generate markdown',
+      'unknown',
+      error instanceof Error ? error.message : String(error)
+    );
   }
-  
-  // Otherwise just join all sections
-  return processedSections.join('\n\n');
 }
 
 /**

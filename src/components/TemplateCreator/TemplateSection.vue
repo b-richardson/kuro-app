@@ -3,34 +3,47 @@
     class="template-section" 
     :class="[
       `template-section--${section.type}`, 
-      section.pluginType ? `template-section--plugin-${section.pluginType}` : ''
+      section.pluginType ? `template-section--plugin-${section.pluginType}` : '',
+      { 'template-section--selected': isSelected },
+      { 'template-section--editing': isEditing }
     ]"
+    @click="handleSectionClick"
+    @keydown="handleKeyboardShortcut"
+    tabindex="0"
+    ref="sectionRef"
   >
     <!-- Section header with drag handle and actions -->
-    <div class="template-section__header">
-      <div class="template-section__handle section-handle">
+    <div class="template-section-header">
+      <div class="template-section-handle section-handle">
         <i class="fas fa-grip-vertical"></i>
       </div>
-      <div class="template-section__type">
+      <div class="template-section-type">
         <i :class="sectionIcon"></i>
         <span>{{ sectionTypeLabel }}</span>
-        <span v-if="section.pluginType" class="template-section__plugin-tag">
+        <span v-if="section.pluginType" class="template-section-plugin-tag">
           <i :class="pluginIcon"></i>
           {{ pluginTypeLabel }}
         </span>
       </div>
-      <div class="template-section__actions">
+      <div class="template-section-actions">
         <button 
-          class="template-section__action" 
-          title="Add line"
-          @click="addContentLine"
+          class="template-section-action" 
+          title="Add line (Alt+A)"
+          @click.stop="addContentLine"
         >
           <i class="fas fa-plus"></i>
         </button>
         <button 
-          class="template-section__action" 
-          title="Delete section"
-          @click="$emit('delete')"
+          class="template-section-action template-section-action--duplicate" 
+          title="Duplicate section (Alt+D)"
+          @click.stop="$emit('duplicate')"
+        >
+          <i class="fas fa-copy"></i>
+        </button>
+        <button 
+          class="template-section-action template-section-action--delete" 
+          title="Delete section (Alt+Delete)"
+          @click.stop="confirmDeleteSection"
         >
           <i class="fas fa-trash"></i>
         </button>
@@ -38,25 +51,28 @@
     </div>
     
     <!-- Validation error alert -->
-    <div v-if="validationError" class="template-section__validation-error">
+    <div v-if="validationError" class="template-section-validation-error">
       <i class="fas fa-exclamation-triangle"></i>
       {{ validationError }}
     </div>
     
     <!-- Section content based on type -->
-    <div class="template-section__content">
+    <div class="template-section-content">
       <!-- Header section -->
       <template v-if="section.type === 'header'">
         <div 
           v-for="(line, index) in section.content" 
           :key="index"
-          class="template-section__line"
+          class="template-section-line"
         >
-          <div class="template-section__input-group">
+          <div class="template-section-input-group">
             <select 
-              class="template-section__select"
+              class="template-section-select"
               :value="getHeaderLevel(line)"
-              @change="updateHeaderLevel(index, $event.target.value)"
+              @change="debouncedUpdateHeaderLevel(index, $event.target.value)"
+              @focus="setEditing(true)"
+              @blur="setEditing(false)"
+              :ref="el => { if (index === 0 && autoFocus) setInputRef(el) }"
             >
               <option value="1">H1</option>
               <option value="2">H2</option>
@@ -67,16 +83,18 @@
             </select>
             <input
               type="text"
-              class="template-section__input"
+              class="template-section-input"
               :value="getHeaderText(line)"
-              @input="updateHeaderText(index, $event.target.value)"
+              @input="debouncedUpdateHeaderText(index, $event.target.value)"
+              @focus="setEditing(true)"
+              @blur="setEditing(false)"
               placeholder="Header text"
             />
             <button 
               v-if="section.content.length > 1"
-              class="template-section__line-action" 
+              class="template-section-line-action" 
               title="Delete line"
-              @click="deleteContentLine(index)"
+              @click.stop="deleteContentLine(index)"
             >
               <i class="fas fa-times"></i>
             </button>
@@ -89,28 +107,33 @@
         <div 
           v-for="(line, index) in section.content" 
           :key="index"
-          class="template-section__line"
+          class="template-section-line"
         >
-          <div class="template-section__input-group">
-            <div class="template-section__checkbox">
+          <div class="template-section-input-group">
+            <div class="template-section-checkbox">
               <input
                 type="checkbox"
                 :checked="isCheckboxChecked(line)"
                 @change="toggleCheckbox(index)"
+                @focus="setEditing(true)"
+                @blur="setEditing(false)"
               />
             </div>
             <input
               type="text"
-              class="template-section__input"
+              class="template-section-input"
               :value="getChecklistText(line)"
-              @input="updateChecklistText(index, $event.target.value)"
+              @input="debouncedUpdateChecklistText(index, $event.target.value)"
+              @focus="setEditing(true)"
+              @blur="setEditing(false)"
               placeholder="Checklist item"
+              :ref="el => { if (index === 0 && autoFocus) setInputRef(el) }"
             />
             <button 
               v-if="section.content.length > 1"
-              class="template-section__line-action" 
+              class="template-section-line-action" 
               title="Delete line"
-              @click="deleteContentLine(index)"
+              @click.stop="deleteContentLine(index)"
             >
               <i class="fas fa-times"></i>
             </button>
@@ -120,50 +143,55 @@
       
       <!-- Table section -->
       <template v-else-if="section.type === 'table'">
-        <div class="template-section__table">
+        <div class="template-section-table">
           <div 
             v-for="(row, rowIndex) in tableData" 
             :key="rowIndex"
-            class="template-section__table-row"
+            class="template-section-table-row"
           >
             <div 
               v-for="(cell, colIndex) in row" 
               :key="colIndex"
-              class="template-section__table-cell"
+              class="template-section-table-cell"
             >
               <input
                 type="text"
-                class="template-section__table-input"
+                class="template-section-table-input"
                 :value="cell"
-                @input="updateTableCell(rowIndex, colIndex, $event.target.value)"
+                @input="debouncedUpdateTableCell(rowIndex, colIndex, $event.target.value)"
+                @focus="setEditing(true)"
+                @blur="setEditing(false)"
                 :placeholder="rowIndex === 0 ? 'Header' : 'Cell'"
+                :ref="el => { if (rowIndex === 0 && colIndex === 0 && autoFocus) setInputRef(el) }"
               />
             </div>
             
-            <div class="template-section__table-actions">
+            <div class="template-section-table-actions">
               <button 
                 v-if="tableData.length > 2"
-                class="template-section__line-action" 
+                class="template-section-line-action" 
                 title="Delete row"
-                @click="deleteTableRow(rowIndex)"
+                @click.stop="deleteTableRow(rowIndex)"
               >
                 <i class="fas fa-times"></i>
               </button>
             </div>
           </div>
           
-          <div class="template-section__table-controls">
+          <div class="template-section-table-controls">
             <button 
-              class="template-section__table-button" 
-              @click="addTableRow"
+              class="template-section-table-button" 
+              @click.stop="addTableRow"
+              title="Add new row (Alt+R)"
             >
-              Add Row
+              <i class="fas fa-plus"></i> Add Row
             </button>
             <button 
-              class="template-section__table-button" 
-              @click="addTableColumn"
+              class="template-section-table-button" 
+              @click.stop="addTableColumn"
+              title="Add new column (Alt+C)"
             >
-              Add Column
+              <i class="fas fa-plus"></i> Add Column
             </button>
           </div>
         </div>
@@ -174,21 +202,24 @@
         <div 
           v-for="(line, index) in section.content" 
           :key="index"
-          class="template-section__line"
+          class="template-section-line"
         >
-          <div class="template-section__input-group">
+          <div class="template-section-input-group">
             <textarea
-              class="template-section__textarea"
+              class="template-section-textarea"
               :value="line"
-              @input="updateContentLine(index, $event.target.value)"
+              @input="debouncedUpdateContentLine(index, $event.target.value)"
+              @focus="setEditing(true)"
+              @blur="setEditing(false)"
               placeholder="Enter text..."
               rows="4"
+              :ref="el => { if (index === 0 && autoFocus) setInputRef(el) }"
             ></textarea>
             <button 
               v-if="section.content.length > 1"
-              class="template-section__line-action" 
+              class="template-section-line-action" 
               title="Delete line"
-              @click="deleteContentLine(index)"
+              @click.stop="deleteContentLine(index)"
             >
               <i class="fas fa-times"></i>
             </button>
@@ -201,6 +232,9 @@
         <YamlEditor
           :content="section.content"
           @update:content="updateSectionContent($event)"
+          @focus="setEditing(true)"
+          @blur="setEditing(false)"
+          :auto-focus="autoFocus"
         />
       </template>
       
@@ -209,6 +243,9 @@
         <TemplaterFieldEditor
           :content="section.content"
           @update:content="updateSectionContent($event)"
+          @focus="setEditing(true)"
+          @blur="setEditing(false)"
+          :auto-focus="autoFocus"
         />
       </template>
       
@@ -217,6 +254,9 @@
         <DataviewQueryBuilder
           :content="section.content"
           @update:content="updateSectionContent($event)"
+          @focus="setEditing(true)"
+          @blur="setEditing(false)"
+          :auto-focus="autoFocus"
         />
       </template>
       
@@ -225,14 +265,25 @@
         <KanbanBoardBuilder
           :content="section.content"
           @update:content="updateSectionContent($event)"
+          @focus="setEditing(true)"
+          @blur="setEditing(false)"
+          :auto-focus="autoFocus"
         />
       </template>
     </div>
+    
+    <!-- Toast for feedback messages -->
+    <Transition name="toast">
+      <div v-if="showToast" class="template-section-toast" :class="toastType">
+        <i :class="toastIcon"></i>
+        {{ toastMessage }}
+      </div>
+    </Transition>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, ref, onMounted, watch } from 'vue';
+import { computed, ref, onMounted, watch, nextTick } from 'vue';
 import { TemplateSection, PluginType } from '@/types/TemplateSection';
 import { TEMPLATER, DATAVIEW, KANBAN, getPluginDisplayName, getSectionIcon, validatePluginSyntax } from '@/utils/pluginTemplates';
 import { v4 as uuidv4 } from 'uuid';
@@ -243,14 +294,180 @@ import KanbanBoardBuilder from './KanbanBoardBuilder.vue';
 
 // Define props
 const props = defineProps<{
-  section: TemplateSection
+  section: TemplateSection,
+  isSelected?: boolean,
+  autoFocus?: boolean
 }>();
 
 // Define emits
 const emit = defineEmits<{
   (e: 'update:content', content: string[]): void;
   (e: 'delete'): void;
+  (e: 'select'): void;
+  (e: 'duplicate'): void;
 }>();
+
+// Component state
+const isEditing = ref(false);
+const sectionRef = ref<HTMLElement | null>(null);
+const lastActiveElement = ref<HTMLElement | null>(null);
+
+// Toast feedback state
+const showToast = ref(false);
+const toastMessage = ref('');
+const toastType = ref<'success' | 'error' | 'info'>('info');
+const toastTimeout = ref<ReturnType<typeof setTimeout> | null>(null);
+
+// Focus management
+const firstInputRef = ref<HTMLElement | null>(null);
+
+// Set the input reference for autofocus
+const setInputRef = (el: HTMLElement | null) => {
+  if (el) {
+    firstInputRef.value = el;
+  }
+};
+
+// Focus the first input if autoFocus is true
+onMounted(() => {
+  // Initialize the section
+  if (props.isSelected && props.autoFocus && firstInputRef.value) {
+    nextTick(() => {
+      firstInputRef.value?.focus();
+    });
+  }
+  
+  // Add event handler for outside clicks to deselect
+  document.addEventListener('click', handleOutsideClick);
+});
+
+// Handle section selection/deselection
+const handleSectionClick = () => {
+  emit('select');
+};
+
+// Handle click outside the section
+const handleOutsideClick = (event: MouseEvent) => {
+  if (sectionRef.value && !sectionRef.value.contains(event.target as Node)) {
+    // If we're not editing, we can deselect
+    if (!isEditing.value) {
+      // Not emitting anything here because the parent component
+      // will handle the selection of the new section
+    }
+  }
+};
+
+// Set editing state
+const setEditing = (editing: boolean) => {
+  isEditing.value = editing;
+  
+  // Store the last active element if we're starting to edit
+  if (editing) {
+    lastActiveElement.value = document.activeElement as HTMLElement;
+  }
+};
+
+// Keyboard shortcut handling
+const handleKeyboardShortcut = (event: KeyboardEvent) => {
+  // Don't intercept shortcuts when editing text fields
+  const target = event.target as HTMLElement;
+  const isEditingInput = ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName);
+  
+  // Check for Alt+key shortcuts that can be used while editing
+  if (event.altKey) {
+    if (event.key === 'a') {
+      event.preventDefault();
+      addContentLine();
+      displayToast('Line added', 'success');
+      return;
+    }
+    
+    if (event.key === 'd') {
+      event.preventDefault();
+      emit('duplicate');
+      displayToast('Section duplicated', 'success');
+      return;
+    }
+    
+    if (event.key === 'Delete' || event.key === 'Backspace') {
+      event.preventDefault();
+      confirmDeleteSection();
+      return;
+    }
+    
+    // Table-specific shortcuts
+    if (props.section.type === 'table') {
+      if (event.key === 'r') {
+        event.preventDefault();
+        addTableRow();
+        displayToast('Row added', 'success');
+        return;
+      }
+      
+      if (event.key === 'c') {
+        event.preventDefault();
+        addTableColumn();
+        displayToast('Column added', 'success');
+        return;
+      }
+    }
+  }
+  
+  // Don't process other shortcuts if editing an input
+  if (isEditingInput) return;
+  
+  // Regular shortcuts when not editing
+  if (event.key === 'Delete' || event.key === 'Backspace') {
+    event.preventDefault();
+    confirmDeleteSection();
+  }
+  
+  // Add more keyboard shortcuts as needed
+};
+
+// Toast management
+const displayToast = (message: string, type: 'success' | 'error' | 'info' = 'info') => {
+  // Clear any existing toast timeout
+  if (toastTimeout.value) {
+    clearTimeout(toastTimeout.value);
+  }
+  
+  // Set toast properties
+  toastMessage.value = message;
+  toastType.value = type;
+  showToast.value = true;
+  
+  // Auto-hide the toast after 3 seconds
+  toastTimeout.value = setTimeout(() => {
+    showToast.value = false;
+  }, 3000);
+};
+
+const toastIcon = computed(() => {
+  switch (toastType.value) {
+    case 'success': return 'fas fa-check-circle';
+    case 'error': return 'fas fa-exclamation-circle';
+    default: return 'fas fa-info-circle';
+  }
+});
+
+// Debouncing function for input events
+let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+const debounce = (fn: Function, delay = 300) => {
+  return (...args: any[]) => {
+    if (debounceTimer) clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(() => {
+      fn(...args);
+    }, delay);
+  };
+};
+
+// Confirm section deletion
+const confirmDeleteSection = () => {
+  if (confirm("Are you sure you want to delete this section?")) {
+    emit('delete');
+  }
+};
 
 // Get section type label
 const sectionTypeLabel = computed(() => {
@@ -320,6 +537,14 @@ const addContentLine = () => {
   }
   
   emit('update:content', newContent);
+  
+  // Focus the new item on the next tick
+  nextTick(() => {
+    const inputs = sectionRef.value?.querySelectorAll('input, textarea, select');
+    if (inputs && inputs.length > 0) {
+      (inputs[inputs.length - 1] as HTMLElement).focus();
+    }
+  });
 };
 
 // Delete a line from the content
@@ -327,6 +552,7 @@ const deleteContentLine = (index: number) => {
   const newContent = [...props.section.content];
   newContent.splice(index, 1);
   emit('update:content', newContent);
+  displayToast('Line deleted', 'info');
 };
 
 // Update a line in the content
@@ -335,6 +561,9 @@ const updateContentLine = (index: number, newValue: string) => {
   newContent[index] = newValue;
   emit('update:content', newContent);
 };
+
+// Create debounced versions of update methods
+const debouncedUpdateContentLine = debounce(updateContentLine, 300);
 
 // Header-specific methods
 const getHeaderLevel = (line: string): string => {
@@ -358,6 +587,10 @@ const updateHeaderText = (index: number, text: string) => {
   updateContentLine(index, newHeader);
 };
 
+// Create debounced versions of header methods
+const debouncedUpdateHeaderLevel = debounce(updateHeaderLevel, 300);
+const debouncedUpdateHeaderText = debounce(updateHeaderText, 300);
+
 // Checklist-specific methods
 const isCheckboxChecked = (line: string): boolean => {
   return line.includes('- [x]');
@@ -379,6 +612,9 @@ const updateChecklistText = (index: number, text: string) => {
   const prefix = isChecked ? '- [x] ' : '- [ ] ';
   updateContentLine(index, prefix + text);
 };
+
+// Create debounced version of checklist text update
+const debouncedUpdateChecklistText = debounce(updateChecklistText, 300);
 
 // Table-specific methods
 const tableData = computed(() => {
@@ -435,6 +671,9 @@ const updateTableCell = (rowIndex: number, colIndex: number, value: string) => {
   updateTableData();
 };
 
+// Create debounced version of table cell update
+const debouncedUpdateTableCell = debounce(updateTableCell, 300);
+
 const addTableRow = () => {
   const columnCount = tableData.value[0]?.length || 3;
   const newRow = Array(columnCount).fill('');
@@ -451,6 +690,18 @@ const addTableRow = () => {
   const dataRows = data.map(row => '| ' + row.join(' | ') + ' |');
   
   emit('update:content', [headerRow, separatorRow, ...dataRows]);
+  
+  // Focus the new row on next tick
+  nextTick(() => {
+    const inputs = sectionRef.value?.querySelectorAll('.template-section-table-input');
+    if (inputs && inputs.length > 0) {
+      // Focus the first cell of the new row
+      const index = (newTableData.length - 1) * headers.length;
+      if (inputs[index]) {
+        (inputs[index] as HTMLElement).focus();
+      }
+    }
+  });
 };
 
 const addTableColumn = () => {
@@ -465,6 +716,18 @@ const addTableColumn = () => {
   const dataRows = data.map(row => '| ' + row.join(' | ') + ' |');
   
   emit('update:content', [headerRow, separatorRow, ...dataRows]);
+  
+  // Focus the new column header on next tick
+  nextTick(() => {
+    const inputs = sectionRef.value?.querySelectorAll('.template-section-table-input');
+    if (inputs && inputs.length > 0) {
+      // Focus the header of the new column
+      const index = headers.length - 1;
+      if (inputs[index]) {
+        (inputs[index] as HTMLElement).focus();
+      }
+    }
+  });
 };
 
 const deleteTableRow = (rowIndex: number) => {
@@ -483,721 +746,340 @@ const deleteTableRow = (rowIndex: number) => {
   const dataRows = data.map(row => '| ' + row.join(' | ') + ' |');
   
   emit('update:content', [headerRow, separatorRow, ...dataRows]);
+  displayToast('Row deleted', 'info');
 };
 
-// YAML Frontmatter methods --------------------------------------------------
-
-// Update section content - used by YAML editor component
+// Update section content - used by editor components
 const updateSectionContent = (newContent: string[]) => {
   emit('update:content', newContent);
 };
-
-// Templater Field methods ---------------------------------------------------
-
-// Tabs for the Templater editor
-const activeTemplaterTab = ref('date');
-
-// Templater date format options
-const templaterDateFormat = ref('YYYY-MM-DD');
-const templaterCustomFormat = ref('');
-const templaterDateType = ref('now');
-
-// Templater file property options
-const templaterFileProperty = ref('title');
-
-// Update templater date field
-const updateTemplaterDate = () => {
-  let format = templaterDateFormat.value;
-  
-  if (format === 'custom') {
-    format = templaterCustomFormat.value || 'YYYY-MM-DD';
-  }
-  
-  let templaterCode = '';
-  
-  switch (templaterDateType.value) {
-    case 'now':
-      templaterCode = `<% tp.date.now("${format}") %>`;
-      break;
-    case 'yesterday':
-      templaterCode = `<% tp.date.yesterday("${format}") %>`;
-      break;
-    case 'tomorrow':
-      templaterCode = `<% tp.date.tomorrow("${format}") %>`;
-      break;
-    case 'file.creation_date':
-      templaterCode = `<% tp.file.creation_date("${format}") %>`;
-      break;
-  }
-  
-  emit('update:content', [templaterCode]);
-};
-
-// Update templater file property
-const updateTemplaterFile = () => {
-  let templaterCode = '';
-  
-  switch (templaterFileProperty.value) {
-    case 'title':
-      templaterCode = `<% tp.file.title %>`;
-      break;
-    case 'creation_date':
-      templaterCode = `<% tp.file.creation_date() %>`;
-      break;
-    case 'folder':
-      templaterCode = `<% tp.file.folder() %>`;
-      break;
-    case 'path':
-      templaterCode = `<% tp.file.path() %>`;
-      break;
-    case 'selection':
-      templaterCode = `<% tp.file.selection() %>`;
-      break;
-    case 'cursor':
-      templaterCode = `<% tp.file.cursor() %>`;
-      break;
-  }
-  
-  emit('update:content', [templaterCode]);
-};
-
-// Update templater custom code
-const updateTemplaterCustom = (value: string) => {
-  emit('update:content', [value]);
-};
-
-// Initialize templater based on current content
-onMounted(() => {
-  if (props.section.type === 'templaterField' && props.section.content[0]) {
-    const content = props.section.content[0];
-    
-    // Check if it's a date field
-    if (content.includes('tp.date.now')) {
-      activeTemplaterTab.value = 'date';
-      templaterDateType.value = 'now';
-      // Extract format if possible
-      const formatMatch = content.match(/tp\.date\.now\("([^"]+)"\)/);
-      if (formatMatch && formatMatch[1]) {
-        const format = formatMatch[1];
-        if (['YYYY-MM-DD', 'MM/DD/YYYY', 'DD.MM.YYYY', 'dddd, MMMM Do YYYY', 'YYYY-MM-DDTHH:mm:ssZ'].includes(format)) {
-          templaterDateFormat.value = format;
-        } else {
-          templaterDateFormat.value = 'custom';
-          templaterCustomFormat.value = format;
-        }
-      }
-    } else if (content.includes('tp.date.yesterday')) {
-      activeTemplaterTab.value = 'date';
-      templaterDateType.value = 'yesterday';
-    } else if (content.includes('tp.date.tomorrow')) {
-      activeTemplaterTab.value = 'date';
-      templaterDateType.value = 'tomorrow';
-    } else if (content.includes('tp.file.creation_date')) {
-      const hasFormat = content.includes('tp.file.creation_date(');
-      if (hasFormat) {
-        activeTemplaterTab.value = 'date';
-        templaterDateType.value = 'file.creation_date';
-        // Extract format if possible
-        const formatMatch = content.match(/tp\.file\.creation_date\("([^"]+)"\)/);
-        if (formatMatch && formatMatch[1]) {
-          const format = formatMatch[1];
-          if (['YYYY-MM-DD', 'MM/DD/YYYY', 'DD.MM.YYYY', 'dddd, MMMM Do YYYY', 'YYYY-MM-DDTHH:mm:ssZ'].includes(format)) {
-            templaterDateFormat.value = format;
-          } else {
-            templaterDateFormat.value = 'custom';
-            templaterCustomFormat.value = format;
-          }
-        }
-      } else {
-        activeTemplaterTab.value = 'file';
-        templaterFileProperty.value = 'creation_date';
-      }
-    } else if (content.includes('tp.file.title')) {
-      activeTemplaterTab.value = 'file';
-      templaterFileProperty.value = 'title';
-    } else if (content.includes('tp.file.folder')) {
-      activeTemplaterTab.value = 'file';
-      templaterFileProperty.value = 'folder';
-    } else if (content.includes('tp.file.path')) {
-      activeTemplaterTab.value = 'file';
-      templaterFileProperty.value = 'path';
-    } else if (content.includes('tp.file.selection')) {
-      activeTemplaterTab.value = 'file';
-      templaterFileProperty.value = 'selection';
-    } else if (content.includes('tp.file.cursor')) {
-      activeTemplaterTab.value = 'file';
-      templaterFileProperty.value = 'cursor';
-    } else {
-      activeTemplaterTab.value = 'custom';
-    }
-  }
-});
-
-// Dataview Query methods have been moved to DataviewQueryBuilder component
-
 </script>
 
 <style scoped>
 .template-section {
-  border: 1px solid rgba(230, 235, 245, 0.8);
-  border-radius: 10px;
-  background-color: white;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.03);
+  border: 1px solid var(--color-surface);
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.05);
+  box-shadow: var(--glass-shadow);
   overflow: hidden;
   transition: all 0.2s ease;
-  margin-bottom: 1rem;
+  margin-bottom: var(--spacing-md);
+  position: relative;
+  outline: none;
 }
 
 .template-section:hover {
   box-shadow: 0 6px 15px rgba(0, 0, 0, 0.07);
 }
 
-.template-section__header {
-  display: flex;
-  align-items: center;
-  padding: 0.875rem 1rem;
-  background: rgba(250, 250, 255, 0.9);
-  border-bottom: 1px solid rgba(230, 235, 245, 0.8);
+/* Selected state styling */
+.template-section--selected {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 1px rgba(255, 171, 88, 0.2), 0 5px 15px rgba(0, 0, 0, 0.07);
+  transform: translateY(-1px);
 }
 
-.template-section__handle {
+/* Editing state styling */
+.template-section--editing {
+  box-shadow: 0 0 0 2px rgba(255, 171, 88, 0.3), 0 8px 20px rgba(0, 0, 0, 0.1);
+}
+
+/* Focus outline for keyboard navigation */
+.template-section:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+.template-section-header {
+  display: flex;
+  align-items: center;
+  padding: var(--spacing-sm) var(--spacing-md);
+  background: var(--glass-background);
+  backdrop-filter: blur(var(--glass-blur));
+  border-bottom: 1px solid var(--glass-border);
+  transition: background 0.2s ease;
+}
+
+.template-section--selected .template-section-header {
+  background: rgba(255, 255, 255, 0.1);
+  border-bottom-color: rgba(255, 171, 88, 0.2);
+}
+
+.template-section-handle {
   cursor: grab;
-  color: #94a3b8;
-  margin-right: 0.75rem;
+  color: var(--color-text-muted);
+  margin-right: var(--spacing-sm);
   transition: color 0.2s;
 }
 
-.template-section__handle:hover {
-  color: #4f46e5;
+.template-section-handle:hover {
+  color: var(--color-primary);
 }
 
-.template-section__type {
+.template-section--selected .template-section-handle {
+  color: var(--color-primary);
+}
+
+.template-section-type {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: var(--spacing-xs);
   font-weight: 500;
   font-size: 0.9375rem;
-  color: #334155;
+  color: var(--color-text);
 }
 
-.template-section__plugin-tag {
+.template-section--selected .template-section-type {
+  color: var(--color-text-dark);
+}
+
+.template-section-plugin-tag {
   display: flex;
   align-items: center;
-  gap: 0.25rem;
+  gap: var(--spacing-xs);
   font-size: 0.75rem;
-  padding: 0.25rem 0.5rem;
-  background-color: rgba(99, 102, 241, 0.1);
-  color: #4f46e5;
-  border-radius: 4px;
-  margin-left: 0.5rem;
+  padding: 2px var(--spacing-xs);
+  background-color: rgba(255, 171, 88, 0.1);
+  color: var(--color-primary);
+  border-radius: var(--radius-sm);
+  margin-left: var(--spacing-xs);
 }
 
-.template-section--plugin-templater .template-section__plugin-tag {
+.template-section--plugin-templater .template-section-plugin-tag {
   background-color: rgba(59, 130, 246, 0.1);
   color: #3b82f6;
 }
 
-.template-section--plugin-dataview .template-section__plugin-tag {
+.template-section--plugin-dataview .template-section-plugin-tag {
   background-color: rgba(5, 150, 105, 0.1);
   color: #059669;
 }
 
-.template-section--plugin-kanban .template-section__plugin-tag {
+.template-section--plugin-kanban .template-section-plugin-tag {
   background-color: rgba(139, 92, 246, 0.1);
   color: #8b5cf6;
 }
 
-.template-section__actions {
+.template-section-actions {
   margin-left: auto;
   display: flex;
-  gap: 0.5rem;
+  gap: var(--spacing-xs);
 }
 
-.template-section__action {
+.template-section-action {
   background: none;
   border: none;
   cursor: pointer;
   width: 32px;
   height: 32px;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #94a3b8;
+  color: var(--color-text-muted);
   transition: all 0.2s;
 }
 
-.template-section__action:hover {
-  background-color: rgba(99, 102, 241, 0.1);
-  color: #4f46e5;
+.template-section-action:hover {
+  background-color: rgba(255, 171, 88, 0.1);
+  color: var(--color-primary);
 }
 
-.template-section__action:last-child:hover {
+.template-section-action--duplicate:hover {
+  background-color: rgba(59, 130, 246, 0.1);
+  color: #3b82f6;
+}
+
+.template-section-action--delete:hover {
   background-color: rgba(239, 68, 68, 0.1);
   color: #ef4444;
 }
 
-.template-section__validation-error {
+.template-section-validation-error {
   background-color: rgba(239, 68, 68, 0.1);
   color: #ef4444;
-  padding: 0.75rem 1rem;
+  padding: var(--spacing-sm) var(--spacing-md);
   font-size: 0.875rem;
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: var(--spacing-xs);
   border-bottom: 1px solid rgba(239, 68, 68, 0.2);
 }
 
-.template-section__content {
-  padding: 1.25rem;
+.template-section-content {
+  padding: var(--spacing-md);
 }
 
-.template-section__line {
-  margin-bottom: 1rem;
+.template-section-line {
+  margin-bottom: var(--spacing-md);
 }
 
-.template-section__input-group {
+.template-section-input-group {
   display: flex;
   align-items: center;
-  gap: 0.625rem;
+  gap: var(--spacing-sm);
 }
 
-.template-section__input-group--indent {
-  margin-left: 1.5rem;
-}
-
-.template-section__select {
+.template-section-select {
   width: 80px;
-  padding: 0.625rem;
-  border: 1px solid #e2e8f0;
-  border-radius: 6px;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border: 1px solid var(--color-surface);
+  border-radius: var(--radius-sm);
   font-size: 0.875rem;
-  background-color: #f8fafc;
+  background-color: rgba(255, 255, 255, 0.05);
+  color: var(--color-text);
   transition: all 0.2s;
 }
 
-.template-section__select--wide {
-  width: 100%;
-  min-width: 200px;
-}
-
-.template-section__select:focus {
+.template-section-select:focus {
   outline: none;
-  border-color: #4f46e5;
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px rgba(255, 171, 88, 0.2);
 }
 
-.template-section__input {
+.template-section-input {
   flex: 1;
-  padding: 0.625rem;
-  border: 1px solid #e2e8f0;
-  border-radius: 6px;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border: 1px solid var(--color-surface);
+  border-radius: var(--radius-sm);
   font-size: 0.875rem;
+  background-color: rgba(255, 255, 255, 0.05);
+  color: var(--color-text);
   transition: all 0.2s;
 }
 
-.template-section__input:focus {
+.template-section-input:focus {
   outline: none;
-  border-color: #4f46e5;
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px rgba(255, 171, 88, 0.2);
 }
 
-.template-section__line-action {
+.template-section-line-action {
   background: none;
   border: none;
   cursor: pointer;
   width: 30px;
   height: 30px;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #94a3b8;
+  color: var(--color-text-muted);
   transition: all 0.2s;
+  opacity: 0.7;
 }
 
-.template-section__line-action:hover {
+.template-section-line-action:hover {
   background-color: rgba(239, 68, 68, 0.1);
   color: #ef4444;
+  opacity: 1;
 }
 
-.template-section__checkbox {
+.template-section-checkbox {
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
-.template-section__checkbox input[type="checkbox"] {
+.template-section-checkbox input[type="checkbox"] {
   width: 18px;
   height: 18px;
   cursor: pointer;
-  accent-color: #4f46e5;
+  accent-color: var(--color-primary);
 }
 
-.template-section__textarea {
+.template-section-textarea {
   flex: 1;
-  padding: 0.75rem;
-  border: 1px solid #e2e8f0;
-  border-radius: 6px;
+  padding: var(--spacing-sm);
+  border: 1px solid var(--color-surface);
+  border-radius: var(--radius-sm);
   font-size: 0.875rem;
   min-height: 100px;
   resize: vertical;
   width: 100%;
+  background-color: rgba(255, 255, 255, 0.05);
+  color: var(--color-text);
   transition: all 0.2s;
   line-height: 1.5;
 }
 
-.template-section__textarea:focus {
+.template-section-textarea:focus {
   outline: none;
-  border-color: #4f46e5;
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px rgba(255, 171, 88, 0.2);
 }
 
 /* Table specific styles */
-.template-section__table {
+.template-section-table {
   width: 100%;
   border-collapse: collapse;
-  margin-bottom: 1rem;
+  margin-bottom: var(--spacing-md);
 }
 
-.template-section__table-row {
+.template-section-table-row {
   display: flex;
-  margin-bottom: 0.625rem;
+  margin-bottom: var(--spacing-xs);
 }
 
-.template-section__table-cell {
+.template-section-table-cell {
   flex: 1;
-  padding: 0 0.325rem;
+  padding: 0 var(--spacing-xs);
 }
 
-.template-section__table-input {
+.template-section-table-input {
   width: 100%;
-  padding: 0.625rem;
-  border: 1px solid #e2e8f0;
-  border-radius: 6px;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border: 1px solid var(--color-surface);
+  border-radius: var(--radius-sm);
   font-size: 0.875rem;
+  background-color: rgba(255, 255, 255, 0.05);
+  color: var(--color-text);
   transition: all 0.2s;
 }
 
-.template-section__table-input:focus {
+.template-section-table-input:focus {
   outline: none;
-  border-color: #4f46e5;
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px rgba(255, 171, 88, 0.2);
 }
 
-.template-section__table-actions {
+.template-section-table-actions {
   display: flex;
   align-items: center;
-  padding-left: 0.5rem;
+  padding-left: var(--spacing-xs);
 }
 
-.template-section__table-controls {
+.template-section-table-controls {
   display: flex;
-  gap: 0.625rem;
-  margin-top: 1.25rem;
+  gap: var(--spacing-sm);
+  margin-top: var(--spacing-md);
 }
 
-.template-section__table-button {
-  padding: 0.625rem 0.875rem;
-  background-color: rgba(99, 102, 241, 0.07);
-  border: 1px solid rgba(99, 102, 241, 0.1);
-  border-radius: 6px;
+.template-section-table-button {
+  padding: var(--spacing-xs) var(--spacing-sm);
+  background-color: rgba(255, 171, 88, 0.07);
+  border: 1px solid rgba(255, 171, 88, 0.1);
+  border-radius: var(--radius-sm);
   font-size: 0.8125rem;
-  color: #4f46e5;
+  color: var(--color-primary);
   cursor: pointer;
   transition: all 0.2s ease;
-}
-
-.template-section__table-button:hover {
-  background-color: rgba(99, 102, 241, 0.15);
-}
-
-/* YAML Frontmatter styles */
-.template-section__yaml {
-  width: 100%;
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
-  overflow: hidden;
-}
-
-.template-section__yaml-header {
-  background-color: #f8fafc;
-  padding: 0.625rem 1rem;
-  font-weight: 500;
-  font-size: 0.875rem;
-  color: #475569;
-  border-bottom: 1px solid #e2e8f0;
-}
-
-.template-section__yaml-pairs {
-  padding: 1rem;
-}
-
-.template-section__yaml-pair {
   display: flex;
   align-items: center;
-  margin-bottom: 0.75rem;
-  gap: 0.5rem;
+  gap: var(--spacing-xs);
 }
 
-.template-section__yaml-key {
-  width: 40%;
-  padding: 0.625rem;
-  border: 1px solid #e2e8f0;
-  border-radius: 6px;
-  font-size: 0.875rem;
-  transition: all 0.2s;
+.template-section-table-button:hover {
+  background-color: rgba(255, 171, 88, 0.15);
 }
 
-.template-section__yaml-separator {
-  color: #64748b;
-  font-weight: 500;
-}
-
-.template-section__yaml-value {
-  flex: 1;
-  padding: 0.625rem;
-  border: 1px solid #e2e8f0;
-  border-radius: 6px;
-  font-size: 0.875rem;
-  transition: all 0.2s;
-}
-
-.template-section__yaml-add {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.625rem 0.875rem;
-  background-color: #f8fafc;
-  border: 1px dashed #e2e8f0;
-  border-radius: 6px;
-  font-size: 0.8125rem;
-  color: #64748b;
-  cursor: pointer;
-  transition: all 0.2s;
-  width: 100%;
-  justify-content: center;
-  margin-top: 0.5rem;
-}
-
-.template-section__yaml-add:hover {
-  background-color: #f1f5f9;
-  color: #334155;
-}
-
-/* Plugin-specific UI components */
-.template-section__plugin-editor {
-  width: 100%;
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
-  overflow: hidden;
-}
-
-.template-section__plugin-tabs {
-  display: flex;
-  background-color: #f8fafc;
-  border-bottom: 1px solid #e2e8f0;
-}
-
-.template-section__plugin-tab {
-  padding: 0.75rem 1rem;
-  font-size: 0.875rem;
-  color: #64748b;
-  background: none;
-  border: none;
-  cursor: pointer;
-  border-bottom: 2px solid transparent;
-  transition: all 0.2s;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.template-section__plugin-tab:hover {
-  color: #334155;
-  background-color: rgba(241, 245, 249, 0.6);
-}
-
-.template-section__plugin-tab--active {
-  color: #4f46e5;
-  border-bottom-color: #4f46e5;
-  background-color: white;
-}
-
-.template-section__plugin-content {
-  padding: 1.25rem;
-}
-
-.template-section__select-group {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  margin-bottom: 1.25rem;
-}
-
-.template-section__select-group label {
-  font-size: 0.875rem;
-  font-weight: 500;
-  color: #334155;
-}
-
-.template-section__preview-field {
-  margin-top: 1.25rem;
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
-  overflow: hidden;
-}
-
-.template-section__preview-label {
-  background-color: #f8fafc;
-  padding: 0.5rem 0.75rem;
-  font-size: 0.8125rem;
-  color: #64748b;
-  border-bottom: 1px solid #e2e8f0;
-}
-
-.template-section__preview-code {
-  padding: 0.75rem;
-  font-family: 'Fira Code', monospace;
-  font-size: 0.875rem;
-  background-color: #f8fafc;
-  color: #334155;
-  overflow-x: auto;
-  white-space: pre-wrap;
-}
-
-.template-section__preview-query {
-  padding: 0.75rem;
-  font-family: 'Fira Code', monospace;
-  font-size: 0.875rem;
-  background-color: #f8fafc;
-  color: #334155;
-  overflow-x: auto;
-  white-space: pre-wrap;
-  margin: 0;
-}
-
-.template-section__help-text {
-  font-size: 0.8125rem;
-  color: #64748b;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  margin-top: 0.75rem;
-}
-
-.template-section__help-text code {
-  font-family: 'Fira Code', monospace;
-  background-color: #f1f5f9;
-  padding: 0.125rem 0.25rem;
-  border-radius: 3px;
-  font-size: 0.8125rem;
-}
-
-.template-section__code-editor {
-  width: 100%;
-}
-
-.template-section__code-textarea {
-  width: 100%;
-  padding: 0.75rem;
-  border: 1px solid #e2e8f0;
-  border-radius: 6px;
-  font-family: 'Fira Code', monospace;
-  font-size: 0.875rem;
-  line-height: 1.5;
-  min-height: 160px;
-  resize: vertical;
-  transition: all 0.2s;
-}
-
-.template-section__code-textarea:focus {
-  outline: none;
-  border-color: #4f46e5;
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
-}
-
-/* Kanban specific styles */
-.template-section__plugin-subtitle {
-  font-size: 0.9375rem;
-  color: #334155;
-  margin: 0 0 0.875rem;
-  padding-bottom: 0.5rem;
-  border-bottom: 1px solid #e2e8f0;
-}
-
-.template-section__kanban-editor {
-  margin-bottom: 1.25rem;
-}
-
-.template-section__kanban-settings {
-  margin-bottom: 1.5rem;
-}
-
-.template-section__kanban-lanes-list {
-  display: flex;
-  flex-direction: column;
-  gap: 1.25rem;
-  margin-bottom: 1.25rem;
-}
-
-.template-section__kanban-lane {
-  border: 1px solid #e2e8f0;
-  border-radius: 6px;
-  padding: 1rem;
-  background-color: #f8fafc;
-}
-
-.template-section__kanban-item {
-  margin: 0.625rem 0;
-}
-
-.template-section__kanban-add-item {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 0.75rem;
-  background-color: white;
-  border: 1px dashed #e2e8f0;
-  border-radius: 6px;
-  font-size: 0.8125rem;
-  color: #64748b;
-  cursor: pointer;
-  transition: all 0.2s;
-  width: 100%;
-  justify-content: center;
-  margin-top: 0.875rem;
-}
-
-.template-section__kanban-add-item:hover {
-  background-color: #f1f5f9;
-  color: #334155;
-}
-
-.template-section__kanban-add-lane {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.75rem 1rem;
-  background-color: white;
-  border: 1px dashed #e2e8f0;
-  border-radius: 6px;
-  font-size: 0.875rem;
-  color: #64748b;
-  cursor: pointer;
-  transition: all 0.2s;
-  width: 100%;
-  justify-content: center;
-}
-
-.template-section__kanban-add-lane:hover {
-  background-color: #f1f5f9;
-  color: #334155;
+.template-section-table-button i {
+  font-size: 0.75rem;
 }
 
 /* Type-specific styles */
 .template-section--header {
-  border-top: 3px solid #4f46e5;
+  border-top: 3px solid var(--color-primary);
 }
 
 .template-section--checklist {
@@ -1209,11 +1091,11 @@ onMounted(() => {
 }
 
 .template-section--text {
-  border-top: 3px solid #6366f1;
+  border-top: 3px solid var(--color-primary-light);
 }
 
 .template-section--yaml {
-  border-top: 3px solid #475569;
+  border-top: 3px solid var(--color-text-muted);
 }
 
 .template-section--templaterField {
@@ -1228,30 +1110,106 @@ onMounted(() => {
   border-top: 3px solid #8b5cf6;
 }
 
-/* Responsive adjustments */
+/* Toast notification styling */
+.template-section-toast {
+  position: absolute;
+  bottom: 10px;
+  right: 10px;
+  background-color: rgba(255, 255, 255, 0.9);
+  color: #333;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  font-size: 0.875rem;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.1);
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 80%;
+  border-left: 3px solid #64748b;
+}
+
+.template-section-toast.success {
+  border-left-color: #10b981;
+}
+
+.template-section-toast.success i {
+  color: #10b981;
+}
+
+.template-section-toast.error {
+  border-left-color: #ef4444;
+}
+
+.template-section-toast.error i {
+  color: #ef4444;
+}
+
+.template-section-toast.info {
+  border-left-color: #3b82f6;
+}
+
+.template-section-toast.info i {
+  color: #3b82f6;
+}
+
+/* Toast animation */
+.toast-enter-active,
+.toast-leave-active {
+  transition: opacity 0.3s, transform 0.3s;
+}
+
+.toast-enter-from,
+.toast-leave-to {
+  opacity: 0;
+  transform: translateY(10px);
+}
+
+/* Keyboard shortcut hints in tooltips */
+button[title]:hover::after {
+  content: attr(title);
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 5px 8px;
+  border-radius: 4px;
+  background-color: rgba(0, 0, 0, 0.8);
+  color: white;
+  font-size: 0.75rem;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 20;
+}
+
+/* Responsive styles */
 @media (max-width: 768px) {
-  .template-section__plugin-tabs {
-    overflow-x: auto;
-    flex-wrap: nowrap;
+  .template-section-header {
+    padding: var(--spacing-xs) var(--spacing-sm);
   }
   
-  .template-section__plugin-tab {
-    white-space: nowrap;
-    padding: 0.625rem 0.875rem;
+  .template-section-content {
+    padding: var(--spacing-sm);
   }
   
-  .template-section__yaml-pair {
-    flex-direction: column;
-    align-items: stretch;
+  .template-section-action {
+    width: 28px;
+    height: 28px;
   }
   
-  .template-section__yaml-key,
-  .template-section__yaml-value {
-    width: 100%;
+  .template-section-toast {
+    font-size: 0.75rem;
+    padding: 6px 10px;
   }
-  
-  .template-section__yaml-separator {
-    display: none;
+}
+
+/* Animation for focusing on new sections */
+@keyframes highlight-new {
+  0% {
+    box-shadow: 0 0 0 2px rgba(255, 171, 88, 0.8);
+  }
+  100% {
+    box-shadow: var(--glass-shadow);
   }
 }
 </style>

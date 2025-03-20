@@ -1,41 +1,35 @@
 <template>
   <div class="template-creator">
-    <div class="template-creator__header">
-      <h1 class="template-creator__title">Obsidian Template Creator</h1>
-      <div class="template-creator__actions">
-        <!-- Template Manager -->
-        <TemplateManager 
-          :current-template-id="currentTemplateId"
-          :is-modified="isModified"
-          :sections="sections"
-          :export-profile="exportProfile"
-          @save="handleTemplateSave"
-          @load="handleTemplateLoad"
-          @new="handleNewTemplate"
-        />
-        
-        <!-- Export Profile Selector -->
-        <ExportProfileSelector 
-          :model-value="exportProfile"
-          @update:model-value="updateExportProfile" 
-        />
-        
-        <!-- Download markdown button -->
-        <DownloadMarkdown 
-          :sections="sections" 
-          :initial-profile="exportProfile"
-          @profile-changed="updateExportProfile" 
-        />
-      </div>
-    </div>
+    <!-- Header with App controls -->
+    <AppHeader 
+      ref="appHeaderRef" 
+      :sections="sections" 
+      @view-change="handleViewChange"
+      @preview-toggle="handlePreviewToggle"
+      @save="handleSave"
+      @export-profile-changed="updateExportProfile"
+    />
     
     <div class="template-creator__content">
-      <div class="template-creator__sidebar">
+      <div class="template-creator__sidebar" :class="{ 'hidden': currentView === 'preview' }">
         <!-- Section library with available template sections -->
         <SectionLibrary @add-section="addSection" />
+        
+        <!-- Template Manager -->
+        <div class="template-creator__manager">
+          <TemplateManager 
+            :current-template-id="currentTemplateId"
+            :is-modified="isModified"
+            :sections="sections"
+            :export-profile="exportProfile"
+            @save="handleTemplateSave"
+            @load="handleTemplateLoad"
+            @new="handleNewTemplate"
+          />
+        </div>
       </div>
       
-      <div class="template-creator__editor">
+      <div class="template-creator__editor" :class="{ 'hidden': currentView === 'preview' }">
         <!-- Drag and drop editor for template sections -->
         <DragDropEditor 
           :sections="sections" 
@@ -45,7 +39,10 @@
         />
       </div>
       
-      <div class="template-creator__preview">
+      <div 
+        class="template-creator__preview" 
+        :class="{ 'fullscreen': currentView === 'preview', 'hidden': currentView === 'editor-only' }"
+      >
         <!-- Markdown preview of the template with current export profile -->
         <MarkdownPreview 
           :sections="sections" 
@@ -62,12 +59,15 @@ import { TemplateSection } from '@/types/TemplateSection';
 import { ExportProfileId } from './ExportProfileSelector.vue';
 
 // Import components
+import AppHeader from '@/components/Layout/AppHeader.vue';
 import SectionLibrary from './SectionLibrary.vue';
 import DragDropEditor from './DragDropEditor.vue';
 import MarkdownPreview from './MarkdownPreview.vue';
-import DownloadMarkdown from './DownloadMarkdown.vue';
-import ExportProfileSelector from './ExportProfileSelector.vue';
 import TemplateManager from './TemplateManager.vue';
+import ToastNotification from '@/components/UI/ToastNotification.vue';
+
+// References
+const appHeaderRef = ref<InstanceType<typeof AppHeader> | null>(null);
 
 // Template state
 const sections = reactive<TemplateSection[]>([]);
@@ -75,6 +75,7 @@ const exportProfile = ref<ExportProfileId>('full');
 const currentTemplateId = ref<string>('');
 const isModified = ref<boolean>(false);
 const initialState = ref<string>('[]'); // JSON string of initial state for change detection
+const currentView = ref<'editor' | 'preview' | 'editor-only'>('editor');
 
 /**
  * Adds a new section to the template
@@ -181,6 +182,44 @@ const updateModifiedState = () => {
 // This needs to be after all the state definitions and functions
 updateInitialState();
 
+/**
+ * Handles view change from the AppHeader
+ */
+const handleViewChange = (view: 'library' | 'editor') => {
+  if (view === 'library') {
+    currentView.value = 'editor';
+  } else {
+    currentView.value = 'editor-only';
+  }
+};
+
+/**
+ * Handles preview toggle from the AppHeader
+ */
+const handlePreviewToggle = (visible: boolean) => {
+  currentView.value = visible ? 'preview' : 'editor';
+};
+
+/**
+ * Handles save action from the AppHeader
+ */
+const handleSave = () => {
+  // If we have a current template ID, save to that, otherwise prompt for a name
+  if (currentTemplateId.value) {
+    handleTemplateSave(currentTemplateId.value);
+    
+    if (appHeaderRef.value) {
+      appHeaderRef.value.showToast('Template saved!', 'success');
+    }
+  } else {
+    // Show template manager save dialog or prompt for name
+    // This would depend on your implementation
+    if (appHeaderRef.value) {
+      appHeaderRef.value.showToast('Please name and save your template using the Save button in the sidebar', 'info');
+    }
+  }
+};
+
 // Watch for changes to the sections array that might not be caught by our event handlers
 watch([sections, exportProfile], () => {
   updateModifiedState();
@@ -196,31 +235,6 @@ watch([sections, exportProfile], () => {
   overflow: hidden;
 }
 
-.template-creator__header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 1rem 2rem;
-  background: rgba(255, 255, 255, 0.8);
-  backdrop-filter: blur(10px);
-  border-bottom: 1px solid rgba(230, 235, 245, 0.8);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
-  z-index: 10;
-}
-
-.template-creator__title {
-  font-size: 1.5rem;
-  font-weight: 600;
-  color: #4f46e5;
-  margin: 0;
-}
-
-.template-creator__actions {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-}
-
 .template-creator__content {
   display: grid;
   grid-template-columns: minmax(250px, 1fr) minmax(350px, 1.5fr) minmax(300px, 1.5fr);
@@ -228,10 +242,11 @@ watch([sections, exportProfile], () => {
   flex: 1;
   padding: 1.5rem;
   overflow: hidden;
-  height: calc(100vh - 80px);
+  height: calc(100vh - 62px); /* Updated to match AppHeader height */
   max-width: 1800px;
   margin: 0 auto;
   width: 100%;
+  transition: all 0.3s ease;
 }
 
 .template-creator__sidebar,
@@ -247,6 +262,31 @@ watch([sections, exportProfile], () => {
   height: 100%;
   display: flex;
   flex-direction: column;
+  transition: all 0.3s ease;
+}
+
+.template-creator__sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.template-creator__manager {
+  margin-top: auto;
+  border-top: 1px solid rgba(230, 235, 245, 0.8);
+  padding-top: 1rem;
+}
+
+/* View state classes */
+.hidden {
+  display: none;
+}
+
+.fullscreen {
+  grid-column: 1 / -1;
+  max-width: 1200px;
+  margin: 0 auto;
+  width: 100%;
 }
 
 /* Responsive adjustments */
@@ -256,13 +296,8 @@ watch([sections, exportProfile], () => {
     gap: 1rem;
   }
   
-  .template-creator__preview {
+  .template-creator__preview:not(.fullscreen) {
     grid-column: span 2;
-  }
-  
-  .template-creator__actions {
-    gap: 0.5rem;
-    flex-wrap: wrap;
   }
 }
 
@@ -270,7 +305,7 @@ watch([sections, exportProfile], () => {
   .template-creator__content {
     grid-template-columns: 1fr;
     padding: 1rem;
-    height: calc(100vh - 70px);
+    height: calc(100vh - 62px);
     overflow-y: auto;
   }
   
@@ -281,36 +316,30 @@ watch([sections, exportProfile], () => {
     overflow-y: auto;
   }
   
-  .template-creator__preview {
+  .template-creator__preview:not(.fullscreen) {
     grid-column: span 1;
   }
   
-  .template-creator__header {
-    padding: 0.75rem 1rem;
+  .template-creator__preview.fullscreen {
+    max-height: calc(100vh - 82px);
   }
 }
 
 @media (max-width: 640px) {
-  .template-creator__header {
-    flex-direction: column;
-    gap: 0.75rem;
-    padding: 0.75rem;
-  }
-  
-  .template-creator__title {
-    font-size: 1.25rem;
-  }
-  
   .template-creator__content {
     gap: 0.75rem;
     padding: 0.75rem;
-    height: calc(100vh - 110px);
   }
   
   .template-creator__sidebar,
   .template-creator__editor,
   .template-creator__preview {
     max-height: none;
+    padding: 0.75rem;
+  }
+  
+  .template-creator__preview.fullscreen {
+    padding: 0.5rem;
   }
 }
 </style>
