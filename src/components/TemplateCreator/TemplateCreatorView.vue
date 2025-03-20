@@ -3,8 +3,29 @@
     <div class="template-creator__header">
       <h1 class="template-creator__title">Obsidian Template Creator</h1>
       <div class="template-creator__actions">
+        <!-- Template Manager -->
+        <TemplateManager 
+          :current-template-id="currentTemplateId"
+          :is-modified="isModified"
+          :sections="sections"
+          :export-profile="exportProfile"
+          @save="handleTemplateSave"
+          @load="handleTemplateLoad"
+          @new="handleNewTemplate"
+        />
+        
+        <!-- Export Profile Selector -->
+        <ExportProfileSelector 
+          :model-value="exportProfile"
+          @update:model-value="updateExportProfile" 
+        />
+        
         <!-- Download markdown button -->
-        <DownloadMarkdown :sections="sections" />
+        <DownloadMarkdown 
+          :sections="sections" 
+          :initial-profile="exportProfile"
+          @profile-changed="updateExportProfile" 
+        />
       </div>
     </div>
     
@@ -20,35 +41,47 @@
           :sections="sections" 
           @update="updateSections"
           @delete="deleteSection"
+          @section-change="handleSectionChange"
         />
       </div>
       
       <div class="template-creator__preview">
-        <!-- Markdown preview of the template -->
-        <MarkdownPreview :sections="sections" />
+        <!-- Markdown preview of the template with current export profile -->
+        <MarkdownPreview 
+          :sections="sections" 
+          :export-profile="exportProfile" 
+        />
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { reactive } from 'vue';
+import { reactive, ref, watch } from 'vue';
 import { TemplateSection } from '@/types/TemplateSection';
+import { ExportProfileId } from './ExportProfileSelector.vue';
 
 // Import components
 import SectionLibrary from './SectionLibrary.vue';
 import DragDropEditor from './DragDropEditor.vue';
 import MarkdownPreview from './MarkdownPreview.vue';
 import DownloadMarkdown from './DownloadMarkdown.vue';
+import ExportProfileSelector from './ExportProfileSelector.vue';
+import TemplateManager from './TemplateManager.vue';
 
-// Initialize reactive state for template sections
+// Template state
 const sections = reactive<TemplateSection[]>([]);
+const exportProfile = ref<ExportProfileId>('full');
+const currentTemplateId = ref<string>('');
+const isModified = ref<boolean>(false);
+const initialState = ref<string>('[]'); // JSON string of initial state for change detection
 
 /**
  * Adds a new section to the template
  */
 const addSection = (section: TemplateSection) => {
   sections.push(section);
+  updateModifiedState();
 };
 
 /**
@@ -57,6 +90,7 @@ const addSection = (section: TemplateSection) => {
 const updateSections = (updatedSections: TemplateSection[]) => {
   // Clear the array and add all items to maintain reactivity
   sections.splice(0, sections.length, ...updatedSections);
+  updateModifiedState();
 };
 
 /**
@@ -66,8 +100,91 @@ const deleteSection = (sectionId: string) => {
   const index = sections.findIndex(s => s.id === sectionId);
   if (index !== -1) {
     sections.splice(index, 1);
+    updateModifiedState();
   }
 };
+
+/**
+ * Updates the current export profile
+ */
+const updateExportProfile = (profile: ExportProfileId) => {
+  exportProfile.value = profile;
+  updateModifiedState();
+};
+
+/**
+ * Handles changes to individual section content
+ */
+const handleSectionChange = () => {
+  updateModifiedState();
+};
+
+/**
+ * Handles saving a template
+ */
+const handleTemplateSave = (id: string) => {
+  currentTemplateId.value = id;
+  updateInitialState(); // Reset modified state after save
+};
+
+/**
+ * Handles loading a template
+ */
+const handleTemplateLoad = (templateData: { id: string, sections: TemplateSection[], exportProfile: ExportProfileId }) => {
+  currentTemplateId.value = templateData.id;
+  exportProfile.value = templateData.exportProfile;
+  
+  // Clear sections and load new ones
+  sections.splice(0, sections.length, ...templateData.sections);
+  
+  // Reset modified state
+  updateInitialState();
+};
+
+/**
+ * Handles creating a new template
+ */
+const handleNewTemplate = () => {
+  currentTemplateId.value = '';
+  sections.splice(0, sections.length);
+  exportProfile.value = 'full';
+  updateInitialState();
+};
+
+/**
+ * Creates a serialized version of the current state for change detection
+ */
+const serializeCurrentState = (): string => {
+  return JSON.stringify({
+    sections,
+    exportProfile: exportProfile.value
+  });
+};
+
+/**
+ * Updates the initial state to match the current state
+ */
+const updateInitialState = () => {
+  initialState.value = serializeCurrentState();
+  isModified.value = false;
+};
+
+/**
+ * Updates the modified state by comparing current state to initial state
+ */
+const updateModifiedState = () => {
+  const currentState = serializeCurrentState();
+  isModified.value = currentState !== initialState.value;
+};
+
+// Set initial state on component mount
+// This needs to be after all the state definitions and functions
+updateInitialState();
+
+// Watch for changes to the sections array that might not be caught by our event handlers
+watch([sections, exportProfile], () => {
+  updateModifiedState();
+}, { deep: true });
 </script>
 
 <style scoped>
@@ -96,6 +213,12 @@ const deleteSection = (sectionId: string) => {
   font-weight: 600;
   color: #4f46e5;
   margin: 0;
+}
+
+.template-creator__actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
 }
 
 .template-creator__content {
@@ -135,6 +258,11 @@ const deleteSection = (sectionId: string) => {
   
   .template-creator__preview {
     grid-column: span 2;
+  }
+  
+  .template-creator__actions {
+    gap: 0.5rem;
+    flex-wrap: wrap;
   }
 }
 

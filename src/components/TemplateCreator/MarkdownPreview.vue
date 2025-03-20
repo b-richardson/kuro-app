@@ -1,7 +1,16 @@
 <template>
   <div class="markdown-preview">
     <div class="markdown-preview__header">
-      <h2 class="markdown-preview__title">Preview</h2>
+      <div class="markdown-preview__title-container">
+        <h2 class="markdown-preview__title">Preview</h2>
+        <div 
+          v-if="exportProfile !== 'full'" 
+          class="markdown-preview__profile-badge"
+          :data-profile="exportProfile"
+        >
+          {{ getProfileDisplayName(exportProfile) }}
+        </div>
+      </div>
       <div class="markdown-preview__toggle">
         <button 
           class="markdown-preview__toggle-btn"
@@ -39,10 +48,12 @@ import { computed, ref } from 'vue';
 import MarkdownIt from 'markdown-it';
 import { TemplateSection } from '@/types/TemplateSection';
 import { generateMarkdown } from '@/utils/markdownUtils';
+import { ExportProfileId } from './ExportProfileSelector.vue';
 
 // Define props
 const props = defineProps<{
-  sections: TemplateSection[]
+  sections: TemplateSection[];
+  exportProfile?: ExportProfileId;
 }>();
 
 // Initialize markdown-it
@@ -56,15 +67,38 @@ const md = new MarkdownIt({
 // Toggle between rendered and source view
 const showSource = ref(false);
 
-// Generate markdown text from sections
+// Use provided export profile or default to full
+const exportProfile = computed<ExportProfileId>(() => {
+  return props.exportProfile || 'full';
+});
+
+// Generate markdown text from sections with current export profile
 const markdownText = computed(() => {
-  return generateMarkdown(props.sections);
+  return generateMarkdown(props.sections, exportProfile.value);
 });
 
 // Render markdown to HTML
 const renderedMarkdown = computed(() => {
   return md.render(markdownText.value);
 });
+
+/**
+ * Gets a display name for the profile
+ */
+const getProfileDisplayName = (profile: ExportProfileId): string => {
+  switch (profile) {
+    case 'plain':
+      return 'Plain Markdown';
+    case 'templater':
+      return 'Templater Format';
+    case 'dataview':
+      return 'Dataview Format';
+    case 'full':
+      return 'Full Plugin Format';
+    default:
+      return 'Markdown';
+  }
+};
 </script>
 
 <style scoped>
@@ -81,11 +115,45 @@ const renderedMarkdown = computed(() => {
   margin-bottom: 1rem;
 }
 
+.markdown-preview__title-container {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
 .markdown-preview__title {
   font-size: 1.25rem;
   font-weight: 600;
   margin: 0;
   color: #4f46e5;
+}
+
+.markdown-preview__profile-badge {
+  font-size: 0.75rem;
+  font-weight: 500;
+  padding: 0.25rem 0.5rem;
+  border-radius: 100px;
+  background-color: #f0f9ff;
+  color: #0284c7;
+  border: 1px solid #bae6fd;
+}
+
+.markdown-preview__profile-badge[data-profile="plain"] {
+  background-color: #f1f5f9;
+  color: #64748b;
+  border-color: #cbd5e1;
+}
+
+.markdown-preview__profile-badge[data-profile="templater"] {
+  background-color: #ecfeff;
+  color: #0891b2;
+  border-color: #a5f3fc;
+}
+
+.markdown-preview__profile-badge[data-profile="dataview"] {
+  background-color: #f5f3ff;
+  color: #7c3aed;
+  border-color: #c4b5fd;
 }
 
 .markdown-preview__toggle {

@@ -1,7 +1,10 @@
 <template>
   <div 
     class="template-section" 
-    :class="`template-section--${section.type}`"
+    :class="[
+      `template-section--${section.type}`, 
+      section.pluginType ? `template-section--plugin-${section.pluginType}` : ''
+    ]"
   >
     <!-- Section header with drag handle and actions -->
     <div class="template-section__header">
@@ -10,7 +13,11 @@
       </div>
       <div class="template-section__type">
         <i :class="sectionIcon"></i>
-        {{ sectionTypeLabel }}
+        <span>{{ sectionTypeLabel }}</span>
+        <span v-if="section.pluginType" class="template-section__plugin-tag">
+          <i :class="pluginIcon"></i>
+          {{ pluginTypeLabel }}
+        </span>
       </div>
       <div class="template-section__actions">
         <button 
@@ -28,6 +35,12 @@
           <i class="fas fa-trash"></i>
         </button>
       </div>
+    </div>
+    
+    <!-- Validation error alert -->
+    <div v-if="validationError" class="template-section__validation-error">
+      <i class="fas fa-exclamation-triangle"></i>
+      {{ validationError }}
     </div>
     
     <!-- Section content based on type -->
@@ -182,13 +195,355 @@
           </div>
         </div>
       </template>
+      
+      <!-- YAML Frontmatter section -->
+      <template v-else-if="section.type === 'yaml'">
+        <div class="template-section__yaml">
+          <div class="template-section__yaml-header">YAML Frontmatter</div>
+          <div class="template-section__yaml-pairs">
+            <div 
+              v-for="(line, index) in yamlEntries" 
+              :key="index"
+              class="template-section__yaml-pair"
+              v-show="index > 0 && index < yamlEntries.length - 1"
+            >
+              <input
+                type="text"
+                class="template-section__yaml-key"
+                :value="getYamlKey(line)"
+                @input="updateYamlKey(index, $event.target.value)"
+                placeholder="Key"
+              />
+              <span class="template-section__yaml-separator">:</span>
+              <input
+                type="text"
+                class="template-section__yaml-value"
+                :value="getYamlValue(line)"
+                @input="updateYamlValue(index, $event.target.value)"
+                placeholder="Value"
+              />
+              <button 
+                class="template-section__line-action"
+                title="Delete field"
+                @click="deleteYamlEntry(index)"
+              >
+                <i class="fas fa-times"></i>
+              </button>
+            </div>
+            <button 
+              class="template-section__yaml-add"
+              @click="addYamlEntry"
+            >
+              <i class="fas fa-plus"></i> Add Field
+            </button>
+          </div>
+        </div>
+      </template>
+      
+      <!-- Templater Field section -->
+      <template v-else-if="section.type === 'templaterField'">
+        <div class="template-section__plugin-editor">
+          <div class="template-section__plugin-tabs">
+            <button 
+              class="template-section__plugin-tab"
+              :class="{'template-section__plugin-tab--active': activeTemplaterTab === 'date'}"
+              @click="activeTemplaterTab = 'date'"
+            >
+              <i class="fas fa-calendar-alt"></i> Date & Time
+            </button>
+            <button 
+              class="template-section__plugin-tab"
+              :class="{'template-section__plugin-tab--active': activeTemplaterTab === 'file'}"
+              @click="activeTemplaterTab = 'file'"
+            >
+              <i class="fas fa-file"></i> File Properties
+            </button>
+            <button 
+              class="template-section__plugin-tab"
+              :class="{'template-section__plugin-tab--active': activeTemplaterTab === 'custom'}"
+              @click="activeTemplaterTab = 'custom'"
+            >
+              <i class="fas fa-code"></i> Custom
+            </button>
+          </div>
+          
+          <div class="template-section__plugin-content">
+            <!-- Date & Time tab -->
+            <div v-if="activeTemplaterTab === 'date'" class="template-section__templater-date">
+              <div class="template-section__select-group">
+                <label>Date Format:</label>
+                <select 
+                  class="template-section__select template-section__select--wide"
+                  v-model="templaterDateFormat"
+                  @change="updateTemplaterDate"
+                >
+                  <option value="YYYY-MM-DD">YYYY-MM-DD (Standard)</option>
+                  <option value="MM/DD/YYYY">MM/DD/YYYY (US)</option>
+                  <option value="DD.MM.YYYY">DD.MM.YYYY (Europe)</option>
+                  <option value="dddd, MMMM Do YYYY">dddd, MMMM Do YYYY (Full)</option>
+                  <option value="YYYY-MM-DDTHH:mm:ssZ">YYYY-MM-DDTHH:mm:ssZ (ISO)</option>
+                  <option value="custom">Custom Format...</option>
+                </select>
+              </div>
+              
+              <div v-if="templaterDateFormat === 'custom'" class="template-section__select-group">
+                <label>Custom Format:</label>
+                <input
+                  type="text"
+                  class="template-section__input"
+                  v-model="templaterCustomFormat"
+                  @input="updateTemplaterDate"
+                  placeholder="e.g., YYYY-MM-DD HH:mm"
+                />
+              </div>
+              
+              <div class="template-section__select-group">
+                <label>Date Type:</label>
+                <select 
+                  class="template-section__select template-section__select--wide"
+                  v-model="templaterDateType"
+                  @change="updateTemplaterDate"
+                >
+                  <option value="now">Current Date</option>
+                  <option value="yesterday">Yesterday</option>
+                  <option value="tomorrow">Tomorrow</option>
+                  <option value="file.creation_date">File Creation Date</option>
+                </select>
+              </div>
+              
+              <div class="template-section__preview-field">
+                <div class="template-section__preview-label">Preview:</div>
+                <div class="template-section__preview-code">{{ section.content[0] }}</div>
+              </div>
+            </div>
+            
+            <!-- File Properties tab -->
+            <div v-else-if="activeTemplaterTab === 'file'" class="template-section__templater-file">
+              <div class="template-section__select-group">
+                <label>File Property:</label>
+                <select 
+                  class="template-section__select template-section__select--wide"
+                  v-model="templaterFileProperty"
+                  @change="updateTemplaterFile"
+                >
+                  <option value="title">File Title</option>
+                  <option value="creation_date">Creation Date</option>
+                  <option value="folder">Folder Path</option>
+                  <option value="path">Full Path</option>
+                  <option value="selection">Current Selection</option>
+                  <option value="cursor">Cursor Position</option>
+                </select>
+              </div>
+              
+              <div class="template-section__preview-field">
+                <div class="template-section__preview-label">Preview:</div>
+                <div class="template-section__preview-code">{{ section.content[0] }}</div>
+              </div>
+            </div>
+            
+            <!-- Custom tab -->
+            <div v-else-if="activeTemplaterTab === 'custom'" class="template-section__templater-custom">
+              <div class="template-section__input-group">
+                <textarea
+                  class="template-section__textarea"
+                  :value="section.content[0]"
+                  @input="updateTemplaterCustom($event.target.value)"
+                  placeholder="Enter custom Templater code..."
+                  rows="4"
+                ></textarea>
+              </div>
+              <div class="template-section__help-text">
+                <i class="fas fa-info-circle"></i>
+                Use <code>&lt;% ... %&gt;</code> to add Templater code
+              </div>
+            </div>
+          </div>
+        </div>
+      </template>
+      
+      <!-- Dataview Query section -->
+      <template v-else-if="section.type === 'dataviewQuery'">
+        <div class="template-section__plugin-editor">
+          <div class="template-section__plugin-tabs">
+            <button 
+              class="template-section__plugin-tab"
+              :class="{'template-section__plugin-tab--active': activeDataviewTab === 'template'}"
+              @click="activeDataviewTab = 'template'"
+            >
+              <i class="fas fa-th-list"></i> Templates
+            </button>
+            <button 
+              class="template-section__plugin-tab"
+              :class="{'template-section__plugin-tab--active': activeDataviewTab === 'custom'}"
+              @click="activeDataviewTab = 'custom'"
+            >
+              <i class="fas fa-code"></i> Custom Query
+            </button>
+          </div>
+          
+          <div class="template-section__plugin-content">
+            <!-- Templates tab -->
+            <div v-if="activeDataviewTab === 'template'" class="template-section__dataview-templates">
+              <div class="template-section__select-group">
+                <label>Query Template:</label>
+                <select 
+                  class="template-section__select template-section__select--wide"
+                  v-model="dataviewTemplate"
+                  @change="updateDataviewTemplate"
+                >
+                  <option value="recent">Recent Notes</option>
+                  <option value="tasks">Project Tasks</option>
+                  <option value="linked">Linked Mentions</option>
+                  <option value="tags">Tagged Notes</option>
+                </select>
+              </div>
+              
+              <div class="template-section__select-group">
+                <label>Query Type:</label>
+                <select 
+                  class="template-section__select template-section__select--wide"
+                  v-model="dataviewQueryType"
+                  @change="updateDataviewTemplate"
+                >
+                  <option value="LIST">List</option>
+                  <option value="TABLE">Table</option>
+                  <option value="TASK">Task</option>
+                  <option value="CALENDAR">Calendar</option>
+                </select>
+              </div>
+              
+              <div class="template-section__preview-field">
+                <div class="template-section__preview-label">Preview:</div>
+                <pre class="template-section__preview-query">{{ dataviewPreview }}</pre>
+              </div>
+            </div>
+            
+            <!-- Custom Query tab -->
+            <div v-else-if="activeDataviewTab === 'custom'" class="template-section__dataview-custom">
+              <div class="template-section__code-editor">
+                <textarea
+                  class="template-section__code-textarea"
+                  :value="dataviewCustomQuery"
+                  @input="updateDataviewCustom($event.target.value)"
+                  placeholder="Enter your dataview query here..."
+                  rows="8"
+                ></textarea>
+              </div>
+              <div class="template-section__help-text">
+                <i class="fas fa-info-circle"></i>
+                Dataview query must be wrapped in <code>```dataview</code> and <code>```</code> code blocks.
+              </div>
+            </div>
+          </div>
+        </div>
+      </template>
+      
+      <!-- Kanban Board section -->
+      <template v-else-if="section.type === 'kanban'">
+        <div class="template-section__plugin-editor">
+          <div class="template-section__kanban-editor">
+            <div class="template-section__kanban-settings">
+              <h4 class="template-section__plugin-subtitle">Board Configuration</h4>
+              <div class="template-section__select-group">
+                <label>Board Style:</label>
+                <select 
+                  class="template-section__select template-section__select--wide"
+                  v-model="kanbanStyle"
+                  @change="updateKanban"
+                >
+                  <option value="basic">Basic</option>
+                  <option value="detailed">Detailed</option>
+                  <option value="custom">Custom</option>
+                </select>
+              </div>
+            </div>
+            
+            <div class="template-section__kanban-lanes">
+              <h4 class="template-section__plugin-subtitle">Lanes</h4>
+              <div class="template-section__kanban-lanes-list">
+                <div
+                  v-for="lane in kanbanLanes"
+                  :key="lane.id"
+                  class="template-section__kanban-lane"
+                >
+                  <div class="template-section__input-group">
+                    <input
+                      type="text"
+                      class="template-section__input"
+                      v-model="lane.title"
+                      @input="updateKanban"
+                      placeholder="Lane title"
+                    />
+                    <button 
+                      v-if="kanbanLanes.length > 1"
+                      class="template-section__line-action"
+                      title="Delete lane"
+                      @click="deleteKanbanLane(lane.id)"
+                    >
+                      <i class="fas fa-times"></i>
+                    </button>
+                  </div>
+                  <div
+                    v-for="(item, itemIndex) in lane.items"
+                    :key="itemIndex"
+                    class="template-section__kanban-item"
+                  >
+                    <div class="template-section__input-group template-section__input-group--indent">
+                      <div class="template-section__checkbox">
+                        <input
+                          type="checkbox"
+                          :checked="item.checked"
+                          @change="toggleKanbanItem(lane.id, itemIndex)"
+                        />
+                      </div>
+                      <input
+                        type="text"
+                        class="template-section__input"
+                        v-model="item.text"
+                        @input="updateKanban"
+                        placeholder="Task item"
+                      />
+                      <button 
+                        class="template-section__line-action"
+                        title="Delete item"
+                        @click="deleteKanbanItem(lane.id, itemIndex)"
+                      >
+                        <i class="fas fa-times"></i>
+                      </button>
+                    </div>
+                  </div>
+                  <button 
+                    class="template-section__kanban-add-item"
+                    @click="addKanbanItem(lane.id)"
+                  >
+                    <i class="fas fa-plus"></i> Add Item
+                  </button>
+                </div>
+              </div>
+              <button 
+                class="template-section__kanban-add-lane"
+                @click="addKanbanLane"
+              >
+                <i class="fas fa-plus"></i> Add Lane
+              </button>
+            </div>
+          </div>
+          
+          <div class="template-section__preview-field">
+            <div class="template-section__preview-label">Preview:</div>
+            <pre class="template-section__preview-query">{{ kanbanPreview }}</pre>
+          </div>
+        </div>
+      </template>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue';
-import { TemplateSection } from '@/types/TemplateSection';
+import { computed, ref, onMounted, watch } from 'vue';
+import { TemplateSection, PluginType } from '@/types/TemplateSection';
+import { TEMPLATER, DATAVIEW, KANBAN, getPluginDisplayName, getSectionIcon, validatePluginSyntax } from '@/utils/pluginTemplates';
+import { v4 as uuidv4 } from 'uuid';
 
 // Define props
 const props = defineProps<{
@@ -207,21 +562,48 @@ const sectionTypeLabel = computed(() => {
     header: 'Header',
     checklist: 'Checklist',
     table: 'Table',
-    text: 'Text'
+    text: 'Text',
+    yaml: 'YAML Frontmatter',
+    templaterField: 'Templater Field',
+    dataviewQuery: 'Dataview Query',
+    kanban: 'Kanban Board'
   };
   return labels[props.section.type] || props.section.type;
 });
 
 // Get section icon
 const sectionIcon = computed(() => {
-  const icons = {
-    header: 'fas fa-heading',
-    checklist: 'fas fa-check-square',
-    table: 'fas fa-table',
-    text: 'fas fa-align-left'
-  };
-  return icons[props.section.type] || 'fas fa-file-alt';
+  return getSectionIcon(props.section.type);
 });
+
+// Get plugin display name and icon
+const pluginTypeLabel = computed(() => {
+  return props.section.pluginType ? getPluginDisplayName(props.section.pluginType) : '';
+});
+
+const pluginIcon = computed(() => {
+  const icons = {
+    templater: 'fas fa-calendar-alt',
+    dataview: 'fas fa-database',
+    kanban: 'fas fa-columns'
+  };
+  return icons[props.section.pluginType || ''] || '';
+});
+
+// Validation error handling
+const validationError = ref<string | null>(null);
+
+// Validate plugin syntax when content changes
+watch(() => props.section.content, (newContent) => {
+  if (props.section.pluginType) {
+    const result = validatePluginSyntax(props.section.pluginType, newContent);
+    validationError.value = result.isValid ? null : result.error || null;
+  } else {
+    validationError.value = null;
+  }
+}, { deep: true });
+
+// Basic section methods ------------------------------------------------------
 
 // Add a new line to the content
 const addContentLine = () => {
@@ -406,6 +788,488 @@ const deleteTableRow = (rowIndex: number) => {
   
   emit('update:content', [headerRow, separatorRow, ...dataRows]);
 };
+
+// YAML Frontmatter methods --------------------------------------------------
+
+// YAML frontmatter computed
+const yamlEntries = computed(() => {
+  return props.section.content;
+});
+
+// YAML key and value extraction
+const getYamlKey = (line: string): string => {
+  if (line === '---') return '';
+  const parts = line.split(':');
+  return parts[0].trim();
+};
+
+const getYamlValue = (line: string): string => {
+  if (line === '---') return '';
+  const parts = line.split(':');
+  return parts.length > 1 ? parts.slice(1).join(':').trim() : '';
+};
+
+// YAML entry update methods
+const updateYamlKey = (index: number, key: string) => {
+  const value = getYamlValue(props.section.content[index]);
+  const newLine = `${key}: ${value}`;
+  updateContentLine(index, newLine);
+};
+
+const updateYamlValue = (index: number, value: string) => {
+  const key = getYamlKey(props.section.content[index]);
+  const newLine = `${key}: ${value}`;
+  updateContentLine(index, newLine);
+};
+
+const addYamlEntry = () => {
+  const newContent = [...props.section.content];
+  // Add before the closing --- marker
+  newContent.splice(newContent.length - 1, 0, 'new_key: value');
+  emit('update:content', newContent);
+};
+
+const deleteYamlEntry = (index: number) => {
+  // Don't delete the opening/closing ---
+  if (index === 0 || index === props.section.content.length - 1) return;
+  
+  const newContent = [...props.section.content];
+  newContent.splice(index, 1);
+  emit('update:content', newContent);
+};
+
+// Templater Field methods ---------------------------------------------------
+
+// Tabs for the Templater editor
+const activeTemplaterTab = ref('date');
+
+// Templater date format options
+const templaterDateFormat = ref('YYYY-MM-DD');
+const templaterCustomFormat = ref('');
+const templaterDateType = ref('now');
+
+// Templater file property options
+const templaterFileProperty = ref('title');
+
+// Update templater date field
+const updateTemplaterDate = () => {
+  let format = templaterDateFormat.value;
+  
+  if (format === 'custom') {
+    format = templaterCustomFormat.value || 'YYYY-MM-DD';
+  }
+  
+  let templaterCode = '';
+  
+  switch (templaterDateType.value) {
+    case 'now':
+      templaterCode = `<% tp.date.now("${format}") %>`;
+      break;
+    case 'yesterday':
+      templaterCode = `<% tp.date.yesterday("${format}") %>`;
+      break;
+    case 'tomorrow':
+      templaterCode = `<% tp.date.tomorrow("${format}") %>`;
+      break;
+    case 'file.creation_date':
+      templaterCode = `<% tp.file.creation_date("${format}") %>`;
+      break;
+  }
+  
+  emit('update:content', [templaterCode]);
+};
+
+// Update templater file property
+const updateTemplaterFile = () => {
+  let templaterCode = '';
+  
+  switch (templaterFileProperty.value) {
+    case 'title':
+      templaterCode = `<% tp.file.title %>`;
+      break;
+    case 'creation_date':
+      templaterCode = `<% tp.file.creation_date() %>`;
+      break;
+    case 'folder':
+      templaterCode = `<% tp.file.folder() %>`;
+      break;
+    case 'path':
+      templaterCode = `<% tp.file.path() %>`;
+      break;
+    case 'selection':
+      templaterCode = `<% tp.file.selection() %>`;
+      break;
+    case 'cursor':
+      templaterCode = `<% tp.file.cursor() %>`;
+      break;
+  }
+  
+  emit('update:content', [templaterCode]);
+};
+
+// Update templater custom code
+const updateTemplaterCustom = (value: string) => {
+  emit('update:content', [value]);
+};
+
+// Initialize templater based on current content
+onMounted(() => {
+  if (props.section.type === 'templaterField' && props.section.content[0]) {
+    const content = props.section.content[0];
+    
+    // Check if it's a date field
+    if (content.includes('tp.date.now')) {
+      activeTemplaterTab.value = 'date';
+      templaterDateType.value = 'now';
+      // Extract format if possible
+      const formatMatch = content.match(/tp\.date\.now\("([^"]+)"\)/);
+      if (formatMatch && formatMatch[1]) {
+        const format = formatMatch[1];
+        if (['YYYY-MM-DD', 'MM/DD/YYYY', 'DD.MM.YYYY', 'dddd, MMMM Do YYYY', 'YYYY-MM-DDTHH:mm:ssZ'].includes(format)) {
+          templaterDateFormat.value = format;
+        } else {
+          templaterDateFormat.value = 'custom';
+          templaterCustomFormat.value = format;
+        }
+      }
+    } else if (content.includes('tp.date.yesterday')) {
+      activeTemplaterTab.value = 'date';
+      templaterDateType.value = 'yesterday';
+    } else if (content.includes('tp.date.tomorrow')) {
+      activeTemplaterTab.value = 'date';
+      templaterDateType.value = 'tomorrow';
+    } else if (content.includes('tp.file.creation_date')) {
+      const hasFormat = content.includes('tp.file.creation_date(');
+      if (hasFormat) {
+        activeTemplaterTab.value = 'date';
+        templaterDateType.value = 'file.creation_date';
+        // Extract format if possible
+        const formatMatch = content.match(/tp\.file\.creation_date\("([^"]+)"\)/);
+        if (formatMatch && formatMatch[1]) {
+          const format = formatMatch[1];
+          if (['YYYY-MM-DD', 'MM/DD/YYYY', 'DD.MM.YYYY', 'dddd, MMMM Do YYYY', 'YYYY-MM-DDTHH:mm:ssZ'].includes(format)) {
+            templaterDateFormat.value = format;
+          } else {
+            templaterDateFormat.value = 'custom';
+            templaterCustomFormat.value = format;
+          }
+        }
+      } else {
+        activeTemplaterTab.value = 'file';
+        templaterFileProperty.value = 'creation_date';
+      }
+    } else if (content.includes('tp.file.title')) {
+      activeTemplaterTab.value = 'file';
+      templaterFileProperty.value = 'title';
+    } else if (content.includes('tp.file.folder')) {
+      activeTemplaterTab.value = 'file';
+      templaterFileProperty.value = 'folder';
+    } else if (content.includes('tp.file.path')) {
+      activeTemplaterTab.value = 'file';
+      templaterFileProperty.value = 'path';
+    } else if (content.includes('tp.file.selection')) {
+      activeTemplaterTab.value = 'file';
+      templaterFileProperty.value = 'selection';
+    } else if (content.includes('tp.file.cursor')) {
+      activeTemplaterTab.value = 'file';
+      templaterFileProperty.value = 'cursor';
+    } else {
+      activeTemplaterTab.value = 'custom';
+    }
+  }
+});
+
+// Dataview Query methods ----------------------------------------------------
+
+// Tabs for the Dataview editor
+const activeDataviewTab = ref('template');
+
+// Dataview query options
+const dataviewTemplate = ref('recent');
+const dataviewQueryType = ref('LIST');
+const dataviewCustomQuery = ref(
+  props.section.type === 'dataviewQuery' 
+  ? props.section.content.join('\n') 
+  : '```dataview\nLIST\nFROM ""\nWHERE file.cday >= date(today) - dur(7 days)\nSORT file.cday DESC\n```'
+);
+
+// Computed for dataview query preview
+const dataviewPreview = computed(() => {
+  if (activeDataviewTab.value === 'template') {
+    let query = '';
+    const queryType = dataviewQueryType.value;
+    
+    switch (dataviewTemplate.value) {
+      case 'recent':
+        query = `\`\`\`dataview\n${queryType}\nFROM ""\nWHERE file.cday >= date(today) - dur(7 days)\nSORT file.cday DESC\n\`\`\``;
+        break;
+      case 'tasks':
+        query = `\`\`\`dataview\n${queryType}\nFROM #project\nWHERE !completed\n\`\`\``;
+        break;
+      case 'linked':
+        query = `\`\`\`dataview\n${queryType}\nFROM [[]]\nSORT file.name ASC\n\`\`\``;
+        break;
+      case 'tags':
+        if (queryType === 'TABLE') {
+          query = `\`\`\`dataview\n${queryType} file.cday as Created, file.mday as Modified\nFROM #tag\nSORT file.name ASC\n\`\`\``;
+        } else {
+          query = `\`\`\`dataview\n${queryType}\nFROM #tag\nSORT file.name ASC\n\`\`\``;
+        }
+        break;
+    }
+    return query;
+  } else {
+    return dataviewCustomQuery.value;
+  }
+});
+
+// Update dataview based on template
+const updateDataviewTemplate = () => {
+  const query = dataviewPreview.value.split('\n');
+  emit('update:content', query);
+};
+
+// Update dataview custom query
+const updateDataviewCustom = (value: string) => {
+  dataviewCustomQuery.value = value;
+  emit('update:content', value.split('\n'));
+};
+
+// Initialize dataview based on current content
+onMounted(() => {
+  if (props.section.type === 'dataviewQuery' && props.section.content.length > 0) {
+    const content = props.section.content.join('\n');
+    
+    // Check if it's one of our templates
+    if (content.includes('file.cday >= date(today) - dur(7 days)')) {
+      activeDataviewTab.value = 'template';
+      dataviewTemplate.value = 'recent';
+    } else if (content.includes('FROM #project') && content.includes('WHERE !completed')) {
+      activeDataviewTab.value = 'template';
+      dataviewTemplate.value = 'tasks';
+    } else if (content.includes('FROM [[]]')) {
+      activeDataviewTab.value = 'template';
+      dataviewTemplate.value = 'linked';
+    } else if (content.includes('FROM #tag')) {
+      activeDataviewTab.value = 'template';
+      dataviewTemplate.value = 'tags';
+    } else {
+      activeDataviewTab.value = 'custom';
+      dataviewCustomQuery.value = content;
+    }
+    
+    // Determine query type
+    if (content.includes('TABLE ')) {
+      dataviewQueryType.value = 'TABLE';
+    } else if (content.includes('TASK')) {
+      dataviewQueryType.value = 'TASK';
+    } else if (content.includes('CALENDAR')) {
+      dataviewQueryType.value = 'CALENDAR';
+    } else {
+      dataviewQueryType.value = 'LIST';
+    }
+  }
+});
+
+// Kanban Board methods ------------------------------------------------------
+
+// Kanban board style and config
+const kanbanStyle = ref('basic');
+
+// Define interface for kanban lanes and items
+interface KanbanLane {
+  id: string;
+  title: string;
+  items: KanbanItem[];
+}
+
+interface KanbanItem {
+  text: string;
+  checked: boolean;
+}
+
+// Kanban lanes data
+const kanbanLanes = ref<KanbanLane[]>([]);
+
+// Parse current kanban content to lanes structure
+const parseKanbanContent = () => {
+  const content = props.section.content;
+  let currentLane: KanbanLane | null = null;
+  let inYaml = false;
+  
+  // Reset lanes
+  kanbanLanes.value = [];
+  
+  // Parse content to extract lanes and items
+  for (let i = 0; i < content.length; i++) {
+    const line = content[i];
+    
+    // Skip YAML frontmatter
+    if (line === '---') {
+      inYaml = !inYaml;
+      continue;
+    }
+    if (inYaml) continue;
+    
+    // Lane headers starting with ##
+    if (line.startsWith('## ')) {
+      const laneTitle = line.substring(3).trim();
+      currentLane = {
+        id: uuidv4(),
+        title: laneTitle,
+        items: []
+      };
+      kanbanLanes.value.push(currentLane);
+    } 
+    // Items starting with - [ ] or - [x]
+    else if (line.match(/^- \[[ x]\] /) && currentLane) {
+      const checked = line.includes('- [x]');
+      const text = line.replace(/^- \[[ x]\] /, '');
+      currentLane.items.push({ text, checked });
+    }
+  }
+  
+  // If no lanes were found, initialize with defaults
+  if (kanbanLanes.value.length === 0) {
+    kanbanLanes.value = [
+      {
+        id: uuidv4(),
+        title: 'Todo',
+        items: [
+          { text: 'Task 1', checked: false },
+          { text: 'Task 2', checked: false }
+        ]
+      },
+      {
+        id: uuidv4(),
+        title: 'In Progress',
+        items: [
+          { text: 'Task 3', checked: false }
+        ]
+      },
+      {
+        id: uuidv4(),
+        title: 'Done',
+        items: [
+          { text: 'Completed task', checked: true }
+        ]
+      }
+    ];
+  }
+};
+
+// Initialize kanban structure
+onMounted(() => {
+  if (props.section.type === 'kanban') {
+    parseKanbanContent();
+    
+    // Determine kanban style
+    const yamlContent = props.section.content.join('\n');
+    if (yamlContent.includes('kanban-plugin: basic')) {
+      kanbanStyle.value = 'basic';
+    } else if (yamlContent.includes('kanban-plugin: true') || 
+               yamlContent.includes('date-display-format') ||
+               yamlContent.includes('hide-tags-in-title')) {
+      kanbanStyle.value = 'detailed';
+    } else {
+      kanbanStyle.value = 'custom';
+    }
+  }
+});
+
+// Add a new kanban lane
+const addKanbanLane = () => {
+  kanbanLanes.value.push({
+    id: uuidv4(),
+    title: 'New Lane',
+    items: []
+  });
+  updateKanban();
+};
+
+// Delete a kanban lane
+const deleteKanbanLane = (laneId: string) => {
+  const index = kanbanLanes.value.findIndex(lane => lane.id === laneId);
+  if (index !== -1) {
+    kanbanLanes.value.splice(index, 1);
+    updateKanban();
+  }
+};
+
+// Add a new kanban item to a lane
+const addKanbanItem = (laneId: string) => {
+  const lane = kanbanLanes.value.find(l => l.id === laneId);
+  if (lane) {
+    lane.items.push({ text: 'New item', checked: false });
+    updateKanban();
+  }
+};
+
+// Delete a kanban item
+const deleteKanbanItem = (laneId: string, itemIndex: number) => {
+  const lane = kanbanLanes.value.find(l => l.id === laneId);
+  if (lane && itemIndex >= 0 && itemIndex < lane.items.length) {
+    lane.items.splice(itemIndex, 1);
+    updateKanban();
+  }
+};
+
+// Toggle kanban item checkbox
+const toggleKanbanItem = (laneId: string, itemIndex: number) => {
+  const lane = kanbanLanes.value.find(l => l.id === laneId);
+  if (lane && itemIndex >= 0 && itemIndex < lane.items.length) {
+    lane.items[itemIndex].checked = !lane.items[itemIndex].checked;
+    updateKanban();
+  }
+};
+
+// Update kanban content based on current structure
+const updateKanban = () => {
+  const newContent: string[] = [];
+  
+  // Add YAML frontmatter based on style
+  newContent.push('---');
+  if (kanbanStyle.value === 'basic') {
+    newContent.push('kanban-plugin: basic');
+  } else if (kanbanStyle.value === 'detailed') {
+    newContent.push('kanban-plugin: true');
+    newContent.push('date-display-format: MM/DD/YYYY');
+    newContent.push('hide-tags-in-title: true');
+    newContent.push('lane-width: 300');
+  } else {
+    // Custom - keep existing YAML if present
+    const yamlEnd = props.section.content.indexOf('---', 1);
+    if (yamlEnd > 1) {
+      for (let i = 1; i < yamlEnd; i++) {
+        newContent.push(props.section.content[i]);
+      }
+    } else {
+      newContent.push('kanban-plugin: basic');
+    }
+  }
+  newContent.push('---');
+  newContent.push('');
+  
+  // Add lanes and items
+  for (const lane of kanbanLanes.value) {
+    newContent.push(`## ${lane.title}`);
+    newContent.push('');
+    
+    for (const item of lane.items) {
+      const checkMark = item.checked ? 'x' : ' ';
+      newContent.push(`- [${checkMark}] ${item.text}`);
+    }
+    
+    newContent.push('');
+  }
+  
+  emit('update:content', newContent);
+};
+
+// Computed for kanban board preview
+const kanbanPreview = computed(() => {
+  return props.section.content.join('\n');
+});
 </script>
 
 <style scoped>
@@ -416,6 +1280,7 @@ const deleteTableRow = (rowIndex: number) => {
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.03);
   overflow: hidden;
   transition: all 0.2s ease;
+  margin-bottom: 1rem;
 }
 
 .template-section:hover {
@@ -450,6 +1315,33 @@ const deleteTableRow = (rowIndex: number) => {
   color: #334155;
 }
 
+.template-section__plugin-tag {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.75rem;
+  padding: 0.25rem 0.5rem;
+  background-color: rgba(99, 102, 241, 0.1);
+  color: #4f46e5;
+  border-radius: 4px;
+  margin-left: 0.5rem;
+}
+
+.template-section--plugin-templater .template-section__plugin-tag {
+  background-color: rgba(59, 130, 246, 0.1);
+  color: #3b82f6;
+}
+
+.template-section--plugin-dataview .template-section__plugin-tag {
+  background-color: rgba(5, 150, 105, 0.1);
+  color: #059669;
+}
+
+.template-section--plugin-kanban .template-section__plugin-tag {
+  background-color: rgba(139, 92, 246, 0.1);
+  color: #8b5cf6;
+}
+
 .template-section__actions {
   margin-left: auto;
   display: flex;
@@ -480,6 +1372,17 @@ const deleteTableRow = (rowIndex: number) => {
   color: #ef4444;
 }
 
+.template-section__validation-error {
+  background-color: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+  padding: 0.75rem 1rem;
+  font-size: 0.875rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  border-bottom: 1px solid rgba(239, 68, 68, 0.2);
+}
+
 .template-section__content {
   padding: 1.25rem;
 }
@@ -494,6 +1397,10 @@ const deleteTableRow = (rowIndex: number) => {
   gap: 0.625rem;
 }
 
+.template-section__input-group--indent {
+  margin-left: 1.5rem;
+}
+
 .template-section__select {
   width: 80px;
   padding: 0.625rem;
@@ -502,6 +1409,11 @@ const deleteTableRow = (rowIndex: number) => {
   font-size: 0.875rem;
   background-color: #f8fafc;
   transition: all 0.2s;
+}
+
+.template-section__select--wide {
+  width: 100%;
+  min-width: 200px;
 }
 
 .template-section__select:focus {
@@ -635,6 +1547,289 @@ const deleteTableRow = (rowIndex: number) => {
   background-color: rgba(99, 102, 241, 0.15);
 }
 
+/* YAML Frontmatter styles */
+.template-section__yaml {
+  width: 100%;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.template-section__yaml-header {
+  background-color: #f8fafc;
+  padding: 0.625rem 1rem;
+  font-weight: 500;
+  font-size: 0.875rem;
+  color: #475569;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.template-section__yaml-pairs {
+  padding: 1rem;
+}
+
+.template-section__yaml-pair {
+  display: flex;
+  align-items: center;
+  margin-bottom: 0.75rem;
+  gap: 0.5rem;
+}
+
+.template-section__yaml-key {
+  width: 40%;
+  padding: 0.625rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  transition: all 0.2s;
+}
+
+.template-section__yaml-separator {
+  color: #64748b;
+  font-weight: 500;
+}
+
+.template-section__yaml-value {
+  flex: 1;
+  padding: 0.625rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  transition: all 0.2s;
+}
+
+.template-section__yaml-add {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.625rem 0.875rem;
+  background-color: #f8fafc;
+  border: 1px dashed #e2e8f0;
+  border-radius: 6px;
+  font-size: 0.8125rem;
+  color: #64748b;
+  cursor: pointer;
+  transition: all 0.2s;
+  width: 100%;
+  justify-content: center;
+  margin-top: 0.5rem;
+}
+
+.template-section__yaml-add:hover {
+  background-color: #f1f5f9;
+  color: #334155;
+}
+
+/* Plugin-specific UI components */
+.template-section__plugin-editor {
+  width: 100%;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.template-section__plugin-tabs {
+  display: flex;
+  background-color: #f8fafc;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.template-section__plugin-tab {
+  padding: 0.75rem 1rem;
+  font-size: 0.875rem;
+  color: #64748b;
+  background: none;
+  border: none;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.template-section__plugin-tab:hover {
+  color: #334155;
+  background-color: rgba(241, 245, 249, 0.6);
+}
+
+.template-section__plugin-tab--active {
+  color: #4f46e5;
+  border-bottom-color: #4f46e5;
+  background-color: white;
+}
+
+.template-section__plugin-content {
+  padding: 1.25rem;
+}
+
+.template-section__select-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 1.25rem;
+}
+
+.template-section__select-group label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #334155;
+}
+
+.template-section__preview-field {
+  margin-top: 1.25rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.template-section__preview-label {
+  background-color: #f8fafc;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.8125rem;
+  color: #64748b;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.template-section__preview-code {
+  padding: 0.75rem;
+  font-family: 'Fira Code', monospace;
+  font-size: 0.875rem;
+  background-color: #f8fafc;
+  color: #334155;
+  overflow-x: auto;
+  white-space: pre-wrap;
+}
+
+.template-section__preview-query {
+  padding: 0.75rem;
+  font-family: 'Fira Code', monospace;
+  font-size: 0.875rem;
+  background-color: #f8fafc;
+  color: #334155;
+  overflow-x: auto;
+  white-space: pre-wrap;
+  margin: 0;
+}
+
+.template-section__help-text {
+  font-size: 0.8125rem;
+  color: #64748b;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.template-section__help-text code {
+  font-family: 'Fira Code', monospace;
+  background-color: #f1f5f9;
+  padding: 0.125rem 0.25rem;
+  border-radius: 3px;
+  font-size: 0.8125rem;
+}
+
+.template-section__code-editor {
+  width: 100%;
+}
+
+.template-section__code-textarea {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  font-family: 'Fira Code', monospace;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  min-height: 160px;
+  resize: vertical;
+  transition: all 0.2s;
+}
+
+.template-section__code-textarea:focus {
+  outline: none;
+  border-color: #4f46e5;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
+
+/* Kanban specific styles */
+.template-section__plugin-subtitle {
+  font-size: 0.9375rem;
+  color: #334155;
+  margin: 0 0 0.875rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.template-section__kanban-editor {
+  margin-bottom: 1.25rem;
+}
+
+.template-section__kanban-settings {
+  margin-bottom: 1.5rem;
+}
+
+.template-section__kanban-lanes-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  margin-bottom: 1.25rem;
+}
+
+.template-section__kanban-lane {
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  padding: 1rem;
+  background-color: #f8fafc;
+}
+
+.template-section__kanban-item {
+  margin: 0.625rem 0;
+}
+
+.template-section__kanban-add-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  background-color: white;
+  border: 1px dashed #e2e8f0;
+  border-radius: 6px;
+  font-size: 0.8125rem;
+  color: #64748b;
+  cursor: pointer;
+  transition: all 0.2s;
+  width: 100%;
+  justify-content: center;
+  margin-top: 0.875rem;
+}
+
+.template-section__kanban-add-item:hover {
+  background-color: #f1f5f9;
+  color: #334155;
+}
+
+.template-section__kanban-add-lane {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  background-color: white;
+  border: 1px dashed #e2e8f0;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  color: #64748b;
+  cursor: pointer;
+  transition: all 0.2s;
+  width: 100%;
+  justify-content: center;
+}
+
+.template-section__kanban-add-lane:hover {
+  background-color: #f1f5f9;
+  color: #334155;
+}
+
 /* Type-specific styles */
 .template-section--header {
   border-top: 3px solid #4f46e5;
@@ -650,5 +1845,48 @@ const deleteTableRow = (rowIndex: number) => {
 
 .template-section--text {
   border-top: 3px solid #6366f1;
+}
+
+.template-section--yaml {
+  border-top: 3px solid #475569;
+}
+
+.template-section--templaterField {
+  border-top: 3px solid #3b82f6;
+}
+
+.template-section--dataviewQuery {
+  border-top: 3px solid #059669;
+}
+
+.template-section--kanban {
+  border-top: 3px solid #8b5cf6;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .template-section__plugin-tabs {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+  }
+  
+  .template-section__plugin-tab {
+    white-space: nowrap;
+    padding: 0.625rem 0.875rem;
+  }
+  
+  .template-section__yaml-pair {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .template-section__yaml-key,
+  .template-section__yaml-value {
+    width: 100%;
+  }
+  
+  .template-section__yaml-separator {
+    display: none;
+  }
 }
 </style>

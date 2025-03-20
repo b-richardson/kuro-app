@@ -83,6 +83,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   (e: 'update', sections: ITemplateSection[]): void;
   (e: 'delete', sectionId: string): void;
+  (e: 'section-change'): void;
 }>();
 
 // Create a computed property for the sections to support v-model with draggable
@@ -98,6 +99,7 @@ const sectionsList = computed({
  */
 const updateSections = () => {
   emit('update', sectionsList.value);
+  emit('section-change');
 };
 
 /**
@@ -113,6 +115,7 @@ const updateSectionContent = (sectionId: string, newContent: string[]) => {
       content: newContent
     };
     emit('update', updatedSections);
+    emit('section-change');
   }
 };
 
@@ -121,6 +124,7 @@ const updateSectionContent = (sectionId: string, newContent: string[]) => {
  */
 const deleteSection = (sectionId: string) => {
   emit('delete', sectionId);
+  emit('section-change');
 };
 </script>
 
