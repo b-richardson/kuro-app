@@ -85,139 +85,211 @@ const renderedMarkdown = computed(() => {
   font-size: 1.25rem;
   font-weight: 600;
   margin: 0;
+  color: #4f46e5;
 }
 
 .markdown-preview__toggle {
   display: flex;
-  border: 1px solid #ddd;
-  border-radius: 6px;
+  border: 1px solid rgba(230, 235, 245, 0.8);
+  border-radius: 8px;
   overflow: hidden;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.03);
 }
 
 .markdown-preview__toggle-btn {
   border: none;
   background: white;
-  padding: 0.5rem 0.75rem;
-  font-size: 0.75rem;
+  padding: 0.625rem 0.875rem;
+  font-size: 0.8125rem;
   cursor: pointer;
   display: flex;
   align-items: center;
-  gap: 0.25rem;
+  gap: 0.325rem;
+  color: #64748b;
+  transition: all 0.2s;
+}
+
+.markdown-preview__toggle-btn:hover {
+  background-color: #f8fafc;
+  color: #334155;
 }
 
 .markdown-preview__toggle-btn--active {
-  background-color: #f0f0f0;
+  background-color: #f0f4ff;
+  color: #4f46e5;
   font-weight: 500;
 }
 
 .markdown-preview__content {
   flex: 1;
-  border: 1px solid #ddd;
-  border-radius: 8px;
+  border: 1px solid rgba(230, 235, 245, 0.8);
+  border-radius: 10px;
   overflow: auto;
-  padding: 1rem;
+  padding: 1.5rem;
   background-color: white;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.03);
 }
 
 .markdown-preview__empty {
-  color: #888;
+  color: #94a3b8;
   text-align: center;
-  padding: 2rem;
+  padding: 3rem 2rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.markdown-preview__empty:before {
+  content: "👀";
+  font-size: 2.5rem;
+  margin-bottom: 1rem;
 }
 
 .markdown-preview__source {
-  font-family: monospace;
+  font-family: 'Fira Code', 'Courier New', monospace;
   white-space: pre-wrap;
   font-size: 0.875rem;
-  line-height: 1.5;
+  line-height: 1.6;
+  color: #334155;
+  background-color: #f8fafc;
+  padding: 1rem;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
 }
 
 .markdown-preview__rendered {
-  font-size: 0.875rem;
+  font-size: 0.9375rem;
   line-height: 1.6;
+  color: #334155;
 }
 
 .markdown-preview__rendered :deep(h1) {
-  font-size: 1.75rem;
+  font-size: 1.875rem;
   margin-top: 0;
-  margin-bottom: 1rem;
+  margin-bottom: 1.25rem;
+  color: #1e293b;
+  border-bottom: 2px solid #f1f5f9;
+  padding-bottom: 0.5rem;
 }
 
 .markdown-preview__rendered :deep(h2) {
   font-size: 1.5rem;
-  margin-top: 1.5rem;
-  margin-bottom: 0.75rem;
+  margin-top: 1.75rem;
+  margin-bottom: 0.875rem;
+  color: #1e293b;
 }
 
 .markdown-preview__rendered :deep(h3) {
   font-size: 1.25rem;
-  margin-top: 1.25rem;
-  margin-bottom: 0.5rem;
+  margin-top: 1.5rem;
+  margin-bottom: 0.75rem;
+  color: #1e293b;
 }
 
 .markdown-preview__rendered :deep(h4) {
   font-size: 1.125rem;
-  margin-top: 1rem;
-  margin-bottom: 0.5rem;
+  margin-top: 1.25rem;
+  margin-bottom: 0.625rem;
+  color: #1e293b;
 }
 
 .markdown-preview__rendered :deep(h5) {
   font-size: 1rem;
-  margin-top: 0.75rem;
+  margin-top: 1rem;
   margin-bottom: 0.5rem;
+  color: #1e293b;
 }
 
 .markdown-preview__rendered :deep(h6) {
   font-size: 0.875rem;
-  margin-top: 0.75rem;
+  margin-top: 0.875rem;
   margin-bottom: 0.5rem;
+  color: #1e293b;
 }
 
 .markdown-preview__rendered :deep(p) {
   margin-top: 0;
-  margin-bottom: 1rem;
+  margin-bottom: 1.25rem;
 }
 
 .markdown-preview__rendered :deep(ul), 
 .markdown-preview__rendered :deep(ol) {
   margin-top: 0;
-  margin-bottom: 1rem;
-  padding-left: 1.5rem;
+  margin-bottom: 1.25rem;
+  padding-left: 1.75rem;
+}
+
+.markdown-preview__rendered :deep(li) {
+  margin-bottom: 0.5rem;
 }
 
 .markdown-preview__rendered :deep(table) {
   border-collapse: collapse;
   width: 100%;
-  margin-bottom: 1rem;
+  margin-bottom: 1.5rem;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+  border-radius: 8px;
+  overflow: hidden;
 }
 
 .markdown-preview__rendered :deep(th), 
 .markdown-preview__rendered :deep(td) {
-  border: 1px solid #ddd;
-  padding: 0.5rem;
+  border: 1px solid #e2e8f0;
+  padding: 0.75rem;
   text-align: left;
 }
 
 .markdown-preview__rendered :deep(th) {
-  background-color: #f5f5f5;
+  background-color: #f8fafc;
   font-weight: 600;
+  color: #334155;
+}
+
+.markdown-preview__rendered :deep(tr:nth-child(even)) {
+  background-color: #f8fafc;
 }
 
 .markdown-preview__rendered :deep(code) {
-  font-family: monospace;
-  background-color: #f5f5f5;
-  padding: 0.125rem 0.25rem;
-  border-radius: 3px;
+  font-family: 'Fira Code', 'Courier New', monospace;
+  background-color: #f1f5f9;
+  padding: 0.2rem 0.4rem;
+  border-radius: 4px;
+  font-size: 0.875em;
+  color: #4f46e5;
 }
 
 .markdown-preview__rendered :deep(pre) {
-  background-color: #f5f5f5;
-  padding: 1rem;
-  border-radius: 6px;
+  background-color: #f8fafc;
+  padding: 1.25rem;
+  border-radius: 8px;
   overflow: auto;
+  border: 1px solid #e2e8f0;
+  margin-bottom: 1.5rem;
+}
+
+.markdown-preview__rendered :deep(pre code) {
+  background-color: transparent;
+  padding: 0;
+  color: #334155;
+}
+
+.markdown-preview__rendered :deep(blockquote) {
+  border-left: 4px solid #e2e8f0;
+  padding-left: 1rem;
+  margin-left: 0;
+  color: #64748b;
+}
+
+.markdown-preview__rendered :deep(hr) {
+  border: none;
+  border-top: 2px solid #f1f5f9;
+  margin: 2rem 0;
 }
 
 .markdown-preview__rendered :deep(input[type="checkbox"]) {
   margin-right: 0.5rem;
+  width: 16px;
+  height: 16px;
+  accent-color: #4f46e5;
 }
 </style>

@@ -98,17 +98,19 @@ const addSection = (type: SectionType) => {
   display: flex;
   flex-direction: column;
   gap: 1rem;
+  height: 100%;
 }
 
 .section-library__title {
   font-size: 1.25rem;
   font-weight: 600;
   margin: 0 0 0.5rem;
+  color: #4f46e5;
 }
 
 .section-library__description {
   font-size: 0.875rem;
-  color: #666;
+  color: #64748b;
   margin: 0 0 1rem;
 }
 
@@ -116,50 +118,54 @@ const addSection = (type: SectionType) => {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
+  overflow-y: auto;
 }
 
 .section-library__item {
   display: flex;
   align-items: center;
-  padding: 0.75rem;
-  border-radius: 6px;
+  padding: 0.875rem 1rem;
+  border-radius: 10px;
   cursor: pointer;
   transition: all 0.2s ease;
-  background-color: white;
-  border: 1px solid #e0e0e0;
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(230, 235, 245, 0.8);
   gap: 0.75rem;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.03);
 }
 
 .section-library__item:hover {
   transform: translateY(-2px);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  background: rgba(255, 255, 255, 0.9);
 }
 
 .section-library__item-icon {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
-  border-radius: 6px;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
   color: white;
   font-size: 1rem;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
 }
 
 .section-library__item--header .section-library__item-icon {
-  background-color: #4f46e5;
+  background: linear-gradient(135deg, #4f46e5 0%, #6366f1 100%);
 }
 
 .section-library__item--checklist .section-library__item-icon {
-  background-color: #10b981;
+  background: linear-gradient(135deg, #10b981 0%, #34d399 100%);
 }
 
 .section-library__item--table .section-library__item-icon {
-  background-color: #f59e0b;
+  background: linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%);
 }
 
 .section-library__item--text .section-library__item-icon {
-  background-color: #6366f1;
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
 }
 
 .section-library__item-content {
@@ -167,15 +173,16 @@ const addSection = (type: SectionType) => {
 }
 
 .section-library__item-title {
-  font-size: 0.875rem;
+  font-size: 0.9375rem;
   font-weight: 600;
   margin: 0;
+  color: #334155;
 }
 
 .section-library__item-description {
-  font-size: 0.75rem;
-  color: #666;
+  font-size: 0.8125rem;
+  color: #64748b;
   margin: 0.25rem 0 0;
-  line-height: 1.2;
+  line-height: 1.3;
 }
 </style>

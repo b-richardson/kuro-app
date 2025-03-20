@@ -1,11 +1,19 @@
 <template>
   <div class="template-creator">
-    <div class="template-creator__sidebar">
-      <!-- Section library with available template sections -->
-      <SectionLibrary @add-section="addSection" />
+    <div class="template-creator__header">
+      <h1 class="template-creator__title">Obsidian Template Creator</h1>
+      <div class="template-creator__actions">
+        <!-- Download markdown button -->
+        <DownloadMarkdown :sections="sections" />
+      </div>
     </div>
     
-    <div class="template-creator__main">
+    <div class="template-creator__content">
+      <div class="template-creator__sidebar">
+        <!-- Section library with available template sections -->
+        <SectionLibrary @add-section="addSection" />
+      </div>
+      
       <div class="template-creator__editor">
         <!-- Drag and drop editor for template sections -->
         <DragDropEditor 
@@ -19,11 +27,6 @@
         <!-- Markdown preview of the template -->
         <MarkdownPreview :sections="sections" />
       </div>
-    </div>
-    
-    <div class="template-creator__actions">
-      <!-- Download markdown button -->
-      <DownloadMarkdown :sections="sections" />
     </div>
   </div>
 </template>
@@ -72,45 +75,79 @@ const deleteSection = (sectionId: string) => {
   display: flex;
   flex-direction: column;
   height: 100vh;
-  padding: 1rem;
-  gap: 1rem;
+  background: linear-gradient(135deg, #f5f7ff 0%, #f0f4ff 100%);
+  overflow: hidden;
 }
 
-.template-creator__main {
+.template-creator__header {
   display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 2rem;
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(230, 235, 245, 0.8);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+  z-index: 10;
+}
+
+.template-creator__title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #4f46e5;
+  margin: 0;
+}
+
+.template-creator__content {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 1.5rem;
   flex: 1;
-  gap: 1rem;
+  padding: 1.5rem;
+  overflow: hidden;
+  height: calc(100vh - 80px);
 }
 
-.template-creator__sidebar {
-  width: 250px;
-  background-color: #f5f5f5;
-  border-radius: 8px;
-  padding: 1rem;
-}
-
+.template-creator__sidebar,
 .template-creator__editor,
 .template-creator__preview {
-  flex: 1;
-  background-color: #f5f5f5;
-  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(10px);
+  border-radius: 12px;
   padding: 1rem;
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.05);
   overflow: auto;
-}
-
-.template-creator__actions {
+  border: 1px solid rgba(230, 235, 245, 0.8);
+  height: 100%;
   display: flex;
-  justify-content: flex-end;
-  padding: 1rem;
+  flex-direction: column;
 }
 
-@media (min-width: 768px) {
-  .template-creator {
-    flex-direction: row;
+/* Responsive adjustments */
+@media (max-width: 1200px) {
+  .template-creator__content {
+    grid-template-columns: 1fr 1fr;
   }
   
-  .template-creator__main {
-    flex-direction: row;
+  .template-creator__preview {
+    grid-column: span 2;
+  }
+}
+
+@media (max-width: 768px) {
+  .template-creator__content {
+    grid-template-columns: 1fr;
+    padding: 1rem;
+  }
+  
+  .template-creator__preview {
+    grid-column: span 1;
+  }
+  
+  .template-creator__header {
+    flex-direction: column;
+    gap: 1rem;
+    padding: 1rem;
   }
 }
 </style>

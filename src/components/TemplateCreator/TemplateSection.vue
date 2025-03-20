@@ -410,24 +410,35 @@ const deleteTableRow = (rowIndex: number) => {
 
 <style scoped>
 .template-section {
-  border: 1px solid #e0e0e0;
-  border-radius: 8px;
+  border: 1px solid rgba(230, 235, 245, 0.8);
+  border-radius: 10px;
   background-color: white;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.03);
   overflow: hidden;
+  transition: all 0.2s ease;
+}
+
+.template-section:hover {
+  box-shadow: 0 6px 15px rgba(0, 0, 0, 0.07);
 }
 
 .template-section__header {
   display: flex;
   align-items: center;
-  padding: 0.75rem 1rem;
-  background-color: #f5f5f5;
-  border-bottom: 1px solid #e0e0e0;
+  padding: 0.875rem 1rem;
+  background: rgba(250, 250, 255, 0.9);
+  border-bottom: 1px solid rgba(230, 235, 245, 0.8);
 }
 
 .template-section__handle {
   cursor: grab;
-  color: #888;
+  color: #94a3b8;
   margin-right: 0.75rem;
+  transition: color 0.2s;
+}
+
+.template-section__handle:hover {
+  color: #4f46e5;
 }
 
 .template-section__type {
@@ -435,7 +446,8 @@ const deleteTableRow = (rowIndex: number) => {
   align-items: center;
   gap: 0.5rem;
   font-weight: 500;
-  font-size: 0.875rem;
+  font-size: 0.9375rem;
+  color: #334155;
 }
 
 .template-section__actions {
@@ -448,64 +460,88 @@ const deleteTableRow = (rowIndex: number) => {
   background: none;
   border: none;
   cursor: pointer;
-  width: 28px;
-  height: 28px;
-  border-radius: 4px;
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
   display: flex;
   align-items: center;
   justify-content: center;
+  color: #94a3b8;
+  transition: all 0.2s;
 }
 
 .template-section__action:hover {
-  background-color: rgba(0, 0, 0, 0.05);
+  background-color: rgba(99, 102, 241, 0.1);
+  color: #4f46e5;
+}
+
+.template-section__action:last-child:hover {
+  background-color: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
 }
 
 .template-section__content {
-  padding: 1rem;
+  padding: 1.25rem;
 }
 
 .template-section__line {
-  margin-bottom: 0.75rem;
+  margin-bottom: 1rem;
 }
 
 .template-section__input-group {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.625rem;
 }
 
 .template-section__select {
-  width: 70px;
-  padding: 0.5rem;
-  border: 1px solid #ddd;
-  border-radius: 4px;
+  width: 80px;
+  padding: 0.625rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
   font-size: 0.875rem;
+  background-color: #f8fafc;
+  transition: all 0.2s;
+}
+
+.template-section__select:focus {
+  outline: none;
+  border-color: #4f46e5;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
 }
 
 .template-section__input {
   flex: 1;
-  padding: 0.5rem;
-  border: 1px solid #ddd;
-  border-radius: 4px;
+  padding: 0.625rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
   font-size: 0.875rem;
+  transition: all 0.2s;
+}
+
+.template-section__input:focus {
+  outline: none;
+  border-color: #4f46e5;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
 }
 
 .template-section__line-action {
   background: none;
   border: none;
   cursor: pointer;
-  width: 28px;
-  height: 28px;
-  border-radius: 4px;
+  width: 30px;
+  height: 30px;
+  border-radius: 6px;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #888;
+  color: #94a3b8;
+  transition: all 0.2s;
 }
 
 .template-section__line-action:hover {
-  background-color: rgba(0, 0, 0, 0.05);
-  color: #f44336;
+  background-color: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
 }
 
 .template-section__checkbox {
@@ -514,15 +550,30 @@ const deleteTableRow = (rowIndex: number) => {
   justify-content: center;
 }
 
+.template-section__checkbox input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  accent-color: #4f46e5;
+}
+
 .template-section__textarea {
   flex: 1;
-  padding: 0.5rem;
-  border: 1px solid #ddd;
-  border-radius: 4px;
+  padding: 0.75rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
   font-size: 0.875rem;
   min-height: 100px;
   resize: vertical;
   width: 100%;
+  transition: all 0.2s;
+  line-height: 1.5;
+}
+
+.template-section__textarea:focus {
+  outline: none;
+  border-color: #4f46e5;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
 }
 
 /* Table specific styles */
@@ -534,20 +585,27 @@ const deleteTableRow = (rowIndex: number) => {
 
 .template-section__table-row {
   display: flex;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.625rem;
 }
 
 .template-section__table-cell {
   flex: 1;
-  padding: 0 0.25rem;
+  padding: 0 0.325rem;
 }
 
 .template-section__table-input {
   width: 100%;
-  padding: 0.5rem;
-  border: 1px solid #ddd;
-  border-radius: 4px;
+  padding: 0.625rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
   font-size: 0.875rem;
+  transition: all 0.2s;
+}
+
+.template-section__table-input:focus {
+  outline: none;
+  border-color: #4f46e5;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
 }
 
 .template-section__table-actions {
@@ -558,38 +616,39 @@ const deleteTableRow = (rowIndex: number) => {
 
 .template-section__table-controls {
   display: flex;
-  gap: 0.5rem;
-  margin-top: 1rem;
+  gap: 0.625rem;
+  margin-top: 1.25rem;
 }
 
 .template-section__table-button {
-  padding: 0.5rem 0.75rem;
-  background-color: #f5f5f5;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  font-size: 0.75rem;
+  padding: 0.625rem 0.875rem;
+  background-color: rgba(99, 102, 241, 0.07);
+  border: 1px solid rgba(99, 102, 241, 0.1);
+  border-radius: 6px;
+  font-size: 0.8125rem;
+  color: #4f46e5;
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
 .template-section__table-button:hover {
-  background-color: #e0e0e0;
+  background-color: rgba(99, 102, 241, 0.15);
 }
 
 /* Type-specific styles */
-.template-section--header .template-section__header {
-  border-left: 4px solid #4f46e5;
+.template-section--header {
+  border-top: 3px solid #4f46e5;
 }
 
-.template-section--checklist .template-section__header {
-  border-left: 4px solid #10b981;
+.template-section--checklist {
+  border-top: 3px solid #10b981;
 }
 
-.template-section--table .template-section__header {
-  border-left: 4px solid #f59e0b;
+.template-section--table {
+  border-top: 3px solid #f59e0b;
 }
 
-.template-section--text .template-section__header {
-  border-left: 4px solid #6366f1;
+.template-section--text {
+  border-top: 3px solid #6366f1;
 }
 </style>

@@ -1,19 +1,6 @@
 <template>
   <div class="app">
-    <header class="app-header">
-      <div class="app-logo">
-        <i class="fas fa-file-alt"></i>
-        <h1 class="app-title">Obsidian Template Creator</h1>
-      </div>
-    </header>
-    
-    <main class="app-main">
-      <TemplateCreatorView />
-    </main>
-    
-    <footer class="app-footer">
-      <p>&copy; {{ new Date().getFullYear() }} Obsidian Template Creator</p>
-    </footer>
+    <TemplateCreatorView />
   </div>
 </template>
 
@@ -40,45 +27,23 @@ body {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen,
     Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
   color: var(--text-color);
-  background-color: var(--light-bg);
   line-height: 1.5;
+  background-color: #f5f7ff;
+  height: 100vh;
+  overflow: hidden;
 }
 
 .app {
-  display: flex;
-  flex-direction: column;
-  min-height: 100vh;
+  height: 100vh;
+  width: 100vw;
 }
 
-.app-header {
-  background-color: white;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-  padding: 1rem;
-}
-
-.app-logo {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  color: var(--primary-color);
-}
-
-.app-title {
-  font-size: 1.25rem;
-  font-weight: 600;
-}
-
-.app-main {
-  flex: 1;
-  padding: 0;
-}
-
-.app-footer {
-  background-color: white;
-  padding: 1rem;
-  text-align: center;
-  font-size: 0.875rem;
-  color: #64748b;
-  border-top: 1px solid var(--border-color);
+/* Add support for glassmorphism in more browsers */
+@supports (-webkit-backdrop-filter: blur(10px)) or (backdrop-filter: blur(10px)) {
+  .glassmorphism {
+    background-color: rgba(255, 255, 255, 0.7);
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
+  }
 }
 </style>
