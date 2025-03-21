@@ -1,5 +1,5 @@
 import { TemplateSection } from '@/types/TemplateSection';
-import { ExportProfileId } from '@/components/TemplateCreator/ExportProfileSelector.vue';
+import { ExportProfile } from '@/types/Editor';
 
 /**
  * Error class for markdown generation errors
@@ -18,7 +18,7 @@ export class MarkdownGenerationError extends Error {
  * @returns Markdown string
  * @throws {MarkdownGenerationError} When there's an error generating markdown
  */
-export function generateMarkdown(sections: TemplateSection[], exportProfile: ExportProfileId = 'full'): string {
+export function generateMarkdown(sections: TemplateSection[], exportProfile: ExportProfile = 'full'): string {
   if (!sections || !sections.length) return '';
   
   try {
@@ -77,7 +77,7 @@ export function generateMarkdown(sections: TemplateSection[], exportProfile: Exp
  * @param exportProfile The export profile to use
  * @returns Processed markdown content
  */
-function processSection(section: TemplateSection, exportProfile: ExportProfileId): string {
+function processSection(section: TemplateSection, exportProfile: ExportProfile): string {
   // Handle basic sections (no export profile adjustments needed)
   if (['header', 'checklist', 'table', 'text'].includes(section.type)) {
     return section.content.join(section.type === 'text' ? '\n\n' : '\n');
@@ -125,7 +125,7 @@ function processSection(section: TemplateSection, exportProfile: ExportProfileId
  * @param exportProfile The export profile
  * @returns Processed markdown content
  */
-function processTemplaterField(section: TemplateSection, exportProfile: ExportProfileId): string {
+function processTemplaterField(section: TemplateSection, exportProfile: ExportProfile): string {
   // Always keep the original Templater syntax
   // The display formatting will be handled by MarkdownPreview component
   if (exportProfile === 'templater' || exportProfile === 'full') {
@@ -178,7 +178,7 @@ function processTemplaterField(section: TemplateSection, exportProfile: ExportPr
  * @param exportProfile The export profile
  * @returns Processed markdown content
  */
-function processDataviewQuery(section: TemplateSection, exportProfile: ExportProfileId): string {
+function processDataviewQuery(section: TemplateSection, exportProfile: ExportProfile): string {
   // Only keep Dataview syntax for 'dataview' and 'full' profiles
   if (exportProfile === 'dataview' || exportProfile === 'full') {
     return section.content.join('\n');
@@ -219,7 +219,7 @@ function processDataviewQuery(section: TemplateSection, exportProfile: ExportPro
  * @param exportProfile The export profile
  * @returns Processed markdown content
  */
-function processKanbanBoard(section: TemplateSection, exportProfile: ExportProfileId): string {
+function processKanbanBoard(section: TemplateSection, exportProfile: ExportProfile): string {
   // Only keep full Kanban syntax for 'full' profile
   if (exportProfile === 'full') {
     return section.content.join('\n');

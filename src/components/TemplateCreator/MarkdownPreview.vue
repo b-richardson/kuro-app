@@ -1,143 +1,29 @@
 <template>
   <div class="markdown-preview">
-    <div class="markdown-preview__header">
-      <div class="markdown-preview__title-container">
-        <h2 class="markdown-preview__title">Preview</h2>
+    <!-- Main content area -->
+    <div
+      class="markdown-preview__content"
+      :class="{ 'dark-content': isDarkTheme, 'light-content': !isDarkTheme }"
+    >
+      <!-- Loading indicator -->
+      <div v-if="isGenerating" class="markdown-preview__loading">
+        <div class="spinner"></div>
+        <p>Generating preview...</p>
       </div>
 
-      <div class="preview-controls">
-        <!-- View mode selector dropdown -->
-        <div class="dropdown">
-          <button
-            class="dropdown-trigger glass-button"
-            @click.stop="toggleViewModeMenu"
-            title="Change view mode"
-          >
-            <span>{{ currentViewMode }}</span>
-            <i class="fas fa-chevron-down"></i>
-          </button>
-          <div class="dropdown-menu" v-if="showViewModeMenu">
-            <div
-              class="dropdown-item"
-              :class="{ active: currentViewMode === 'Rendered' }"
-              @click="setViewMode('Rendered')"
-            >
-              <i class="fas fa-eye"></i>
-              Rendered
-            </div>
-            <div
-              class="dropdown-item"
-              :class="{ active: currentViewMode === 'Markdown' }"
-              @click="setViewMode('Markdown')"
-            >
-              <i class="fas fa-code"></i>
-              Markdown
-            </div>
-            <div
-              class="dropdown-item"
-              :class="{ active: currentViewMode === 'Source' }"
-              @click="setViewMode('Source')"
-            >
-              <i class="fas fa-file-code"></i>
-              Source
-            </div>
-          </div>
-        </div>
-
-        <!-- Profile selector dropdown -->
-        <div class="dropdown">
-          <button
-            class="dropdown-trigger glass-button"
-            @click.stop="toggleProfileMenu"
-            title="Change export profile"
-          >
-            <span class="profile-badge" :class="`profile-${exportProfile}`">
-              {{ getProfileDisplayName(exportProfile) }}
-            </span>
-            <i class="fas fa-chevron-down"></i>
-          </button>
-          <div class="dropdown-menu" v-if="showProfileMenu">
-            <div
-              v-for="profile in exportProfiles"
-              :key="profile.id"
-              class="dropdown-item"
-              :class="{ active: exportProfile === profile.id }"
-              @click="setExportProfile(profile.id)"
-            >
-              <i :class="profile.icon"></i>
-              {{ profile.name }}
-            </div>
-          </div>
-        </div>
-
-        <!-- Plugin syntax toggles dropdown -->
-        <div class="dropdown">
-          <button
-            class="dropdown-trigger glass-button"
-            @click.stop="togglePluginMenu"
-            title="Toggle plugin syntax"
-          >
-            <span>Plugins</span>
-            <i class="fas fa-chevron-down"></i>
-          </button>
-          <div class="dropdown-menu" v-if="showPluginMenu">
-            <div
-              class="dropdown-item"
-              :class="{ active: showTemplaterSyntax }"
-              @click="showTemplaterSyntax = !showTemplaterSyntax"
-            >
-              <i class="fas fa-bolt"></i>
-              <span>Templater Syntax</span>
-              <span class="toggle-indicator">{{
-                showTemplaterSyntax ? "On" : "Off"
-              }}</span>
-            </div>
-            <div
-              class="dropdown-item"
-              :class="{ active: showDataviewSyntax }"
-              @click="showDataviewSyntax = !showDataviewSyntax"
-            >
-              <i class="fas fa-database"></i>
-              <span>Dataview Syntax</span>
-              <span class="toggle-indicator">{{
-                showDataviewSyntax ? "On" : "Off"
-              }}</span>
-            </div>
-            <div
-              class="dropdown-item"
-              :class="{ active: showKanbanSyntax }"
-              @click="showKanbanSyntax = !showKanbanSyntax"
-            >
-              <i class="fas fa-columns"></i>
-              <span>Kanban Syntax</span>
-              <span class="toggle-indicator">{{
-                showKanbanSyntax ? "On" : "Off"
-              }}</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- Focus button - Pass to parent component -->
-        <button
-          class="panel-action-button"
-          @click="emitFocusMode"
-          title="Toggle focus mode"
-        >
-          <i class="fas fa-expand"></i>
-        </button>
-      </div>
-    </div>
-
-    <div class="markdown-preview__content">
-      <div v-if="sections.length === 0" class="markdown-preview__empty">
-        <p>Your template preview will appear here</p>
+      <!-- Empty state -->
+      <div v-else-if="sections.length === 0" class="markdown-preview__empty">
+        <i class="fas fa-file-alt empty-icon"></i>
+        <p>Add sections to see your template preview</p>
       </div>
 
+      <!-- Source view (Markdown or Source mode) -->
       <div v-else-if="showSource" class="markdown-preview__source">
         <pre><code v-if="showTemplaterSyntax || showDataviewSyntax || showKanbanSyntax" v-html="highlightSyntax(markdownText)"></code>
         <code v-else>{{ markdownText }}</code></pre>
       </div>
 
+      <!-- Rendered view -->
       <div
         v-else
         class="markdown-preview__rendered"
@@ -148,129 +34,104 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from "vue";
+import { computed, ref, watch, inject } from "vue";
 import MarkdownIt from "markdown-it";
+import { debounce } from "lodash-es";
 import { TemplateSection } from "@/types/TemplateSection";
+import { ExportProfile, ViewMode } from "@/types/Editor";
 import { generateMarkdown } from "@/utils/markdownUtils";
-import { ExportProfileId } from "./ExportProfileSelector.vue";
 
 // Define props
 const props = defineProps<{
   sections: TemplateSection[];
-  exportProfile?: ExportProfileId;
+  exportProfile?: ExportProfile;
+  viewMode?: ViewMode;
+  templaterSyntax?: boolean;
+  dataviewSyntax?: boolean;
+  kanbanSyntax?: boolean;
 }>();
 
 // Define emits
-const emit = defineEmits(["update:exportProfile", "focus-mode"]);
+const emit = defineEmits([
+  "update:exportProfile",
+  "update:viewMode",
+  "generation-start",
+  "generation-complete",
+]);
 
-// Dropdown state variables
-const showViewModeMenu = ref(false);
-const showProfileMenu = ref(false);
-const showPluginMenu = ref(false);
-const currentViewMode = ref("Rendered"); // Options: 'Rendered', 'Markdown', 'Source'
+// Get theme from parent component (injected)
+const isDarkTheme = inject("theme", ref(true));
 
-// Export profiles data for dropdown
-const exportProfiles = [
-  { id: "plain", name: "Plain Markdown", icon: "fas fa-file-alt" },
-  { id: "templater", name: "Templater", icon: "fas fa-bolt" },
-  { id: "dataview", name: "Dataview", icon: "fas fa-database" },
-  { id: "full", name: "Full Plugin Suite", icon: "fas fa-puzzle-piece" },
-];
+// View state variables
+const isGenerating = ref(false);
+const showSource = computed(() => {
+  return props.viewMode === "Markdown" || props.viewMode === "Source";
+});
 
-// Plugin syntax toggle options
-const showTemplaterSyntax = ref(false);
-const showDataviewSyntax = ref(false);
-const showKanbanSyntax = ref(false);
+// Plugin syntax toggle options computed from props with fallback to defaults
+const showTemplaterSyntax = computed(() => props.templaterSyntax ?? false);
+const showDataviewSyntax = computed(() => props.dataviewSyntax ?? false);
+const showKanbanSyntax = computed(() => props.kanbanSyntax ?? false);
 
-// Initialize markdown-it
+// Initialize markdown-it with proper options
 const md = new MarkdownIt({
   html: true,
   linkify: true,
   typographer: true,
   breaks: true,
+  highlight: function (str: string, lang: string) {
+    // Custom syntax highlighting for code blocks could be added here
+    return `<pre class="language-${lang}"><code>${str}</code></pre>`;
+  },
 });
 
-// Toggle between rendered and source view
-const showSource = ref(false);
-
 // Use provided export profile or default to full
-const exportProfile = computed<ExportProfileId>(() => {
+const exportProfile = computed(() => {
   return props.exportProfile || "full";
 });
 
-// Dropdown toggle methods
-const toggleViewModeMenu = () => {
-  showViewModeMenu.value = !showViewModeMenu.value;
-  if (showViewModeMenu.value) {
-    showProfileMenu.value = false;
-    showPluginMenu.value = false;
-  }
-};
-
-const toggleProfileMenu = () => {
-  showProfileMenu.value = !showProfileMenu.value;
-  if (showProfileMenu.value) {
-    showViewModeMenu.value = false;
-    showPluginMenu.value = false;
-  }
-};
-
-const togglePluginMenu = () => {
-  showPluginMenu.value = !showPluginMenu.value;
-  if (showPluginMenu.value) {
-    showViewModeMenu.value = false;
-    showProfileMenu.value = false;
-  }
-};
-
-// Selection and action methods
-const setViewMode = (mode) => {
-  currentViewMode.value = mode;
-  showViewModeMenu.value = false;
-
-  // Update the view based on selection
-  if (mode === "Rendered") {
-    showSource.value = false;
-  } else if (mode === "Markdown" || mode === "Source") {
-    showSource.value = true;
-  }
-};
-
-const setExportProfile = (profileId) => {
-  emit("update:exportProfile", profileId);
-  showProfileMenu.value = false;
-};
-
-const emitFocusMode = () => {
-  emit("focus-mode");
-};
-
-// Close all dropdowns when clicking outside
-const closeAllDropdowns = () => {
-  showViewModeMenu.value = false;
-  showProfileMenu.value = false;
-  showPluginMenu.value = false;
-};
-
-// Add event listener for clicks outside dropdown
-if (typeof window !== "undefined") {
-  window.addEventListener("click", (event) => {
-    if (!(event.target as Element).closest(".dropdown")) {
-      closeAllDropdowns();
-    }
-  });
-}
-
 // Generate markdown text from sections with current export profile
-const markdownText = computed(() => {
-  return generateMarkdown(props.sections, exportProfile.value);
-});
+const generateMarkdownDebounced = debounce(() => {
+  try {
+    isGenerating.value = true;
+    emit("generation-start");
+
+    // Small timeout to ensure loading state is visible
+    setTimeout(() => {
+      markdownText.value = generateMarkdown(
+        props.sections,
+        exportProfile.value
+      );
+      isGenerating.value = false;
+      emit("generation-complete");
+    }, 100);
+  } catch (error) {
+    console.error("Error generating markdown:", error);
+    isGenerating.value = false;
+    emit("generation-complete");
+  }
+}, 300);
+
+// Store the markdown text to avoid recalculating it too often
+const markdownText = ref("");
+
+// Watch for changes that require regenerating the markdown
+watch(
+  () => [props.sections, exportProfile.value],
+  () => {
+    generateMarkdownDebounced();
+  },
+  { deep: true }
+);
+
+// Initialize on mount
+generateMarkdownDebounced();
 
 // Process Templater, Dataview, and Kanban syntax based on toggle states
 const processedMarkdownText = computed(() => {
   let processedText = markdownText.value;
 
-  // Step 1: Process Templater syntax if the toggle is off
+  // Process Templater syntax if the toggle is off
   if (!showTemplaterSyntax.value) {
     // Replace Templater script blocks (<%* ... %>)
     processedText = processedText.replace(/<%\*[\s\S]*?%>/g, (match) => {
@@ -305,7 +166,7 @@ const processedMarkdownText = computed(() => {
     });
   }
 
-  // Step 2: Process Dataview syntax if the toggle is off
+  // Process Dataview syntax if the toggle is off
   if (!showDataviewSyntax.value) {
     // Replace Dataview code blocks with placeholders
     processedText = processedText.replace(
@@ -344,13 +205,13 @@ const processedMarkdownText = computed(() => {
         }
 
         return `<div class="dataview-query-placeholder dataview-query-${queryType.toLowerCase()}">
-        <div class="dataview-query-placeholder__header">
-          <i class="${icon}"></i> ${title}${source}
-        </div>
-        <div class="dataview-query-placeholder__content">
-          <p>This would display a ${queryType.toLowerCase()} of data when opened in Obsidian with the Dataview plugin.</p>
-        </div>
-      </div>`;
+          <div class="dataview-query-placeholder__header">
+            <i class="${icon}"></i> ${title}${source}
+          </div>
+          <div class="dataview-query-placeholder__content">
+            <p>This would display a ${queryType.toLowerCase()} of data when opened in Obsidian with the Dataview plugin.</p>
+          </div>
+        </div>`;
       }
     );
 
@@ -373,7 +234,7 @@ const processedMarkdownText = computed(() => {
     );
   }
 
-  // Step 3: Process Kanban syntax if the toggle is off
+  // Process Kanban syntax if the toggle is off
   if (!showKanbanSyntax.value) {
     // We'll need to detect and replace the kanban board structure
     // This is a complex pattern that spans multiple lines
@@ -627,24 +488,6 @@ const highlightSyntax = (text: string): string => {
 
   return escapedText;
 };
-
-/**
- * Gets a display name for the profile
- */
-const getProfileDisplayName = (profile: ExportProfileId): string => {
-  switch (profile) {
-    case "plain":
-      return "Plain Markdown";
-    case "templater":
-      return "Templater Format";
-    case "dataview":
-      return "Dataview Format";
-    case "full":
-      return "Full Plugin Format";
-    default:
-      return "Markdown";
-  }
-};
 </script>
 
 <style scoped>
@@ -652,213 +495,116 @@ const getProfileDisplayName = (profile: ExportProfileId): string => {
   display: flex;
   flex-direction: column;
   height: 100%;
-  padding: var(--spacing-md); /* Reduced from var(--spacing-lg) */
-  font-size: 0.9rem; /* Add a slightly smaller font size */
-}
-
-.markdown-preview__header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 1rem;
-  background: rgba(30, 30, 46, 0.8);
-}
-
-.markdown-preview__title-container {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-}
-
-.markdown-preview__title {
-  font-size: 1rem; /* Was 1.25rem */
-  font-weight: 600;
-  margin: 0;
-  color: var(--color-primary, #4f46e5);
-}
-
-/* Preview controls styling */
-.preview-controls {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-sm, 0.5rem);
-}
-
-/* Dropdown styling */
-.dropdown {
-  position: relative;
-}
-
-.dropdown-trigger {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-xs, 0.25rem);
-  padding: var(--spacing-xs, 0.25rem) var(--spacing-sm, 0.5rem);
-  background: rgba(255, 255, 255, 0.07);
-  border: 1px solid var(--glass-border, rgba(255, 255, 255, 0.1));
-  border-radius: var(--radius-sm, 4px);
-  color: var(--color-text, #f8fafc);
-  font-size: 0.8rem;
-  cursor: pointer;
-  transition: all var(--transition-fast, 0.15s);
-}
-
-.dropdown-trigger:hover {
-  background: rgba(255, 255, 255, 0.12);
-}
-
-.dropdown-menu {
-  position: absolute;
-  top: calc(100% + 4px);
-  right: 0;
-  width: 200px;
-  background: rgba(30, 30, 46, 0.95);
-  backdrop-filter: blur(var(--glass-blur, 10px));
-  border: 1px solid var(--glass-border, rgba(255, 255, 255, 0.1));
-  border-radius: var(--radius-md, 6px);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
-  z-index: 1000;
+  width: 100%;
   overflow: hidden;
-  animation: fadeIn 0.2s ease;
 }
 
-.dropdown-item {
-  padding: var(--spacing-sm, 0.5rem) var(--spacing-md, 0.75rem);
+/* Loading indicator */
+.markdown-preview__loading {
   display: flex;
-  align-items: center;
-  gap: var(--spacing-sm, 0.5rem);
-  cursor: pointer;
-  transition: all var(--transition-fast, 0.15s);
-}
-
-.dropdown-item i {
-  width: 16px;
-  text-align: center;
-}
-
-.dropdown-item:hover {
-  background: rgba(255, 255, 255, 0.1);
-}
-
-.dropdown-item.active {
-  background: rgba(255, 171, 88, 0.15);
-  color: var(--color-primary, #ffab58);
-}
-
-.toggle-indicator {
-  margin-left: auto;
-  font-size: 0.75rem;
-  opacity: 0.7;
-  background: rgba(255, 255, 255, 0.1);
-  padding: 2px 6px;
-  border-radius: 10px;
-}
-
-.panel-action-button {
-  background: transparent;
-  border: none;
-  color: var(--color-text-secondary, rgba(255, 255, 255, 0.6));
-  cursor: pointer;
-  padding: var(--spacing-xs, 0.25rem);
-  border-radius: var(--radius-sm, 4px);
-  width: 28px;
-  height: 28px;
-  display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  transition: all var(--transition-fast, 0.15s);
+  height: 100%;
+  color: var(--color-text-secondary);
+  text-align: center;
+  gap: var(--spacing-md);
 }
 
-.panel-action-button:hover {
-  background: var(--glass-background, rgba(255, 255, 255, 0.05));
-  color: var(--color-text, #f8fafc);
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid var(--color-surface);
+  border-radius: 50%;
+  border-top-color: var(--color-primary);
+  animation: spin 1s linear infinite;
 }
 
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(-5px);
-  }
+@keyframes spin {
   to {
-    opacity: 1;
-    transform: translateY(0);
+    transform: rotate(360deg);
   }
 }
 
-/* Profile badge styling */
-.profile-badge {
-  display: inline-flex;
-  align-items: center;
-  padding: 2px 6px;
-  border-radius: 100px;
-  font-size: 0.75rem;
-  font-weight: 500;
-}
-
-.profile-plain {
-  background: rgba(100, 116, 139, 0.2);
-  color: rgb(100, 116, 139);
-}
-
-.profile-templater {
-  background: rgba(6, 182, 212, 0.2);
-  color: rgb(6, 182, 212);
-}
-
-.profile-dataview {
-  background: rgba(139, 92, 246, 0.2);
-  color: rgb(139, 92, 246);
-}
-
-.profile-full {
-  background: rgba(79, 70, 229, 0.2);
-  color: rgb(79, 70, 229);
-}
-
-.markdown-preview__content {
-  flex: 1;
-  border: 1px solid rgba(230, 235, 245, 0.8);
-  border-radius: 10px;
-  overflow: auto;
-  padding: 1.5rem;
-  background-color: white;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.03);
-}
-
+/* Empty state styling */
 .markdown-preview__empty {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   height: 100%;
-  color: var(--color-text-tertiary);
+  color: var(--color-text-muted);
   text-align: center;
+  gap: var(--spacing-md);
+}
+
+.empty-icon {
+  font-size: 2.5rem;
+  opacity: 0.5;
 }
 
 .markdown-preview__empty p {
-  font-size: 1rem; /* Smaller than current */
-  font-style: italic;
+  font-size: 0.925rem;
+  margin-top: var(--spacing-sm);
 }
 
+/* Main content area */
+.markdown-preview__content {
+  flex: 1;
+  overflow: auto;
+  padding: var(--spacing-lg);
+  border-radius: var(--radius-md);
+  transition: all 0.3s ease;
+}
+
+/* Dark/Light mode styling for content */
+.light-content {
+  background-color: white;
+  color: #334155;
+  border: 1px solid rgba(230, 235, 245, 0.8);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.03);
+}
+
+.dark-content {
+  background-color: #1a1b26;
+  color: #c0caf5;
+  border: 1px solid rgba(30, 30, 46, 0.3);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+}
+
+/* Source view styling */
 .markdown-preview__source {
   font-family: "Fira Code", "Courier New", monospace;
   white-space: pre-wrap;
   font-size: 0.875rem;
   line-height: 1.6;
-  color: #334155;
+  overflow: auto;
+}
+
+.light-content .markdown-preview__source {
   background-color: #f8fafc;
-  padding: 1rem;
+  color: #334155;
   border-radius: 8px;
+  padding: 1rem;
   border: 1px solid #e2e8f0;
 }
 
+.dark-content .markdown-preview__source {
+  background-color: #24283b;
+  color: #c0caf5;
+  border-radius: 8px;
+  padding: 1rem;
+  border: 1px solid #32344a;
+}
+
+/* Rendered markdown styling */
 .markdown-preview__rendered {
   font-size: 0.9375rem;
   line-height: 1.6;
-  color: #334155;
 }
 
-.markdown-preview__rendered :deep(h1) {
+/* Light mode styling for rendered markdown */
+.light-content .markdown-preview__rendered :deep(h1) {
   font-size: 1.875rem;
   margin-top: 0;
   margin-bottom: 1.25rem;
@@ -867,58 +613,60 @@ const getProfileDisplayName = (profile: ExportProfileId): string => {
   padding-bottom: 0.5rem;
 }
 
-.markdown-preview__rendered :deep(h2) {
+.light-content .markdown-preview__rendered :deep(h2) {
   font-size: 1.5rem;
   margin-top: 1.75rem;
   margin-bottom: 0.875rem;
   color: #1e293b;
 }
 
-.markdown-preview__rendered :deep(h3) {
+.light-content .markdown-preview__rendered :deep(h3) {
   font-size: 1.25rem;
   margin-top: 1.5rem;
   margin-bottom: 0.75rem;
   color: #1e293b;
 }
 
-.markdown-preview__rendered :deep(h4) {
+.light-content .markdown-preview__rendered :deep(h4) {
   font-size: 1.125rem;
   margin-top: 1.25rem;
   margin-bottom: 0.625rem;
   color: #1e293b;
 }
 
-.markdown-preview__rendered :deep(h5) {
+.light-content .markdown-preview__rendered :deep(h5) {
   font-size: 1rem;
   margin-top: 1rem;
   margin-bottom: 0.5rem;
   color: #1e293b;
 }
 
-.markdown-preview__rendered :deep(h6) {
+.light-content .markdown-preview__rendered :deep(h6) {
   font-size: 0.875rem;
   margin-top: 0.875rem;
   margin-bottom: 0.5rem;
   color: #1e293b;
 }
 
-.markdown-preview__rendered :deep(p) {
+.light-content .markdown-preview__rendered :deep(p) {
   margin-top: 0;
   margin-bottom: 1.25rem;
+  color: #334155;
 }
 
-.markdown-preview__rendered :deep(ul),
-.markdown-preview__rendered :deep(ol) {
+.light-content .markdown-preview__rendered :deep(ul),
+.light-content .markdown-preview__rendered :deep(ol) {
   margin-top: 0;
   margin-bottom: 1.25rem;
   padding-left: 1.75rem;
+  color: #334155;
 }
 
-.markdown-preview__rendered :deep(li) {
+.light-content .markdown-preview__rendered :deep(li) {
   margin-bottom: 0.5rem;
 }
 
-.markdown-preview__rendered :deep(table) {
+.light-content .markdown-preview__rendered :deep(table) {
   border-collapse: collapse;
   width: 100%;
   margin-bottom: 1.5rem;
@@ -927,24 +675,24 @@ const getProfileDisplayName = (profile: ExportProfileId): string => {
   overflow: hidden;
 }
 
-.markdown-preview__rendered :deep(th),
-.markdown-preview__rendered :deep(td) {
+.light-content .markdown-preview__rendered :deep(th),
+.light-content .markdown-preview__rendered :deep(td) {
   border: 1px solid #e2e8f0;
   padding: 0.75rem;
   text-align: left;
 }
 
-.markdown-preview__rendered :deep(th) {
+.light-content .markdown-preview__rendered :deep(th) {
   background-color: #f8fafc;
   font-weight: 600;
   color: #334155;
 }
 
-.markdown-preview__rendered :deep(tr:nth-child(even)) {
+.light-content .markdown-preview__rendered :deep(tr:nth-child(even)) {
   background-color: #f8fafc;
 }
 
-.markdown-preview__rendered :deep(code) {
+.light-content .markdown-preview__rendered :deep(code) {
   font-family: "Fira Code", "Courier New", monospace;
   background-color: #f1f5f9;
   padding: 0.2rem 0.4rem;
@@ -953,7 +701,7 @@ const getProfileDisplayName = (profile: ExportProfileId): string => {
   color: #4f46e5;
 }
 
-.markdown-preview__rendered :deep(pre) {
+.light-content .markdown-preview__rendered :deep(pre) {
   background-color: #f8fafc;
   padding: 1.25rem;
   border-radius: 8px;
@@ -962,34 +710,168 @@ const getProfileDisplayName = (profile: ExportProfileId): string => {
   margin-bottom: 1.5rem;
 }
 
-.markdown-preview__rendered :deep(pre code) {
+.light-content .markdown-preview__rendered :deep(pre code) {
   background-color: transparent;
   padding: 0;
   color: #334155;
 }
 
-.markdown-preview__rendered :deep(blockquote) {
+.light-content .markdown-preview__rendered :deep(blockquote) {
   border-left: 4px solid #e2e8f0;
   padding-left: 1rem;
   margin-left: 0;
   color: #64748b;
 }
 
-.markdown-preview__rendered :deep(hr) {
+.light-content .markdown-preview__rendered :deep(hr) {
   border: none;
   border-top: 2px solid #f1f5f9;
   margin: 2rem 0;
 }
 
+/* Dark mode styling for rendered markdown */
+.dark-content .markdown-preview__rendered :deep(h1) {
+  font-size: 1.875rem;
+  margin-top: 0;
+  margin-bottom: 1.25rem;
+  color: #c0caf5;
+  border-bottom: 2px solid #24283b;
+  padding-bottom: 0.5rem;
+}
+
+.dark-content .markdown-preview__rendered :deep(h2) {
+  font-size: 1.5rem;
+  margin-top: 1.75rem;
+  margin-bottom: 0.875rem;
+  color: #c0caf5;
+}
+
+.dark-content .markdown-preview__rendered :deep(h3) {
+  font-size: 1.25rem;
+  margin-top: 1.5rem;
+  margin-bottom: 0.75rem;
+  color: #c0caf5;
+}
+
+.dark-content .markdown-preview__rendered :deep(h4) {
+  font-size: 1.125rem;
+  margin-top: 1.25rem;
+  margin-bottom: 0.625rem;
+  color: #c0caf5;
+}
+
+.dark-content .markdown-preview__rendered :deep(h5) {
+  font-size: 1rem;
+  margin-top: 1rem;
+  margin-bottom: 0.5rem;
+  color: #c0caf5;
+}
+
+.dark-content .markdown-preview__rendered :deep(h6) {
+  font-size: 0.875rem;
+  margin-top: 0.875rem;
+  margin-bottom: 0.5rem;
+  color: #c0caf5;
+}
+
+.dark-content .markdown-preview__rendered :deep(p) {
+  margin-top: 0;
+  margin-bottom: 1.25rem;
+  color: #a9b1d6;
+}
+
+.dark-content .markdown-preview__rendered :deep(ul),
+.dark-content .markdown-preview__rendered :deep(ol) {
+  margin-top: 0;
+  margin-bottom: 1.25rem;
+  padding-left: 1.75rem;
+  color: #a9b1d6;
+}
+
+.dark-content .markdown-preview__rendered :deep(li) {
+  margin-bottom: 0.5rem;
+}
+
+.dark-content .markdown-preview__rendered :deep(table) {
+  border-collapse: collapse;
+  width: 100%;
+  margin-bottom: 1.5rem;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.dark-content .markdown-preview__rendered :deep(th),
+.dark-content .markdown-preview__rendered :deep(td) {
+  border: 1px solid #32344a;
+  padding: 0.75rem;
+  text-align: left;
+}
+
+.dark-content .markdown-preview__rendered :deep(th) {
+  background-color: #24283b;
+  font-weight: 600;
+  color: #c0caf5;
+}
+
+.dark-content .markdown-preview__rendered :deep(tr:nth-child(even)) {
+  background-color: #24283b;
+}
+
+.dark-content .markdown-preview__rendered :deep(code) {
+  font-family: "Fira Code", "Courier New", monospace;
+  background-color: #32344a;
+  padding: 0.2rem 0.4rem;
+  border-radius: 4px;
+  font-size: 0.875em;
+  color: #7aa2f7;
+}
+
+.dark-content .markdown-preview__rendered :deep(pre) {
+  background-color: #24283b;
+  padding: 1.25rem;
+  border-radius: 8px;
+  overflow: auto;
+  border: 1px solid #32344a;
+  margin-bottom: 1.5rem;
+}
+
+.dark-content .markdown-preview__rendered :deep(pre code) {
+  background-color: transparent;
+  padding: 0;
+  color: #a9b1d6;
+}
+
+.dark-content .markdown-preview__rendered :deep(blockquote) {
+  border-left: 4px solid #32344a;
+  padding-left: 1rem;
+  margin-left: 0;
+  color: #9aa5ce;
+}
+
+.dark-content .markdown-preview__rendered :deep(hr) {
+  border: none;
+  border-top: 2px solid #24283b;
+  margin: 2rem 0;
+}
+
+/* Checkbox styling */
 .markdown-preview__rendered :deep(input[type="checkbox"]) {
   margin-right: 0.5rem;
   width: 16px;
   height: 16px;
+}
+
+.light-content .markdown-preview__rendered :deep(input[type="checkbox"]) {
   accent-color: #4f46e5;
 }
 
+.dark-content .markdown-preview__rendered :deep(input[type="checkbox"]) {
+  accent-color: #7aa2f7;
+}
+
 /* Templater field placeholders */
-.markdown-preview__rendered :deep(.templater-field-placeholder) {
+.light-content .markdown-preview__rendered :deep(.templater-field-placeholder) {
   display: inline-flex;
   align-items: center;
   background-color: #ecfeff;
@@ -1004,13 +886,30 @@ const getProfileDisplayName = (profile: ExportProfileId): string => {
   margin: 0 0.125rem;
 }
 
+.dark-content .markdown-preview__rendered :deep(.templater-field-placeholder) {
+  display: inline-flex;
+  align-items: center;
+  background-color: #164e63;
+  color: #22d3ee;
+  font-size: 0.875rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  border: 1px dashed #06b6d4;
+  font-family: system-ui, -apple-system, sans-serif;
+  font-weight: 500;
+  white-space: nowrap;
+  margin: 0 0.125rem;
+}
+
 .markdown-preview__rendered :deep(.templater-field-placeholder)::before {
   content: "⚡";
   margin-right: 0.375rem;
   font-size: 0.75rem;
 }
 
-.markdown-preview__rendered :deep(.templater-script-placeholder) {
+.light-content
+  .markdown-preview__rendered
+  :deep(.templater-script-placeholder) {
   display: inline-block;
   background-color: #f5f3ff;
   color: #7c3aed;
@@ -1023,15 +922,39 @@ const getProfileDisplayName = (profile: ExportProfileId): string => {
   margin: 0.5rem 0;
 }
 
+.dark-content .markdown-preview__rendered :deep(.templater-script-placeholder) {
+  display: inline-block;
+  background-color: #2e1065;
+  color: #a78bfa;
+  font-size: 0.875rem;
+  padding: 0.375rem 0.625rem;
+  border-radius: 4px;
+  border: 1px dashed #7c3aed;
+  font-family: system-ui, -apple-system, sans-serif;
+  font-weight: 500;
+  margin: 0.5rem 0;
+}
+
 .markdown-preview__rendered :deep(.templater-script-placeholder)::before {
   content: "📝 ";
   margin-right: 0.25rem;
 }
 
-.markdown-preview__rendered :deep(.templater-cursor-placeholder) {
+.light-content
+  .markdown-preview__rendered
+  :deep(.templater-cursor-placeholder) {
   display: inline-block;
   background-color: rgba(79, 70, 229, 0.1);
   color: #4f46e5;
+  font-weight: bold;
+  padding: 0 0.25rem;
+  animation: cursor-blink 1s infinite;
+}
+
+.dark-content .markdown-preview__rendered :deep(.templater-cursor-placeholder) {
+  display: inline-block;
+  background-color: rgba(122, 162, 247, 0.2);
+  color: #7aa2f7;
   font-weight: bold;
   padding: 0 0.25rem;
   animation: cursor-blink 1s infinite;
@@ -1047,8 +970,8 @@ const getProfileDisplayName = (profile: ExportProfileId): string => {
   }
 }
 
-/* Dataview query placeholders */
-.markdown-preview__rendered :deep(.dataview-query-placeholder) {
+/* Dataview query placeholders - Light mode */
+.light-content .markdown-preview__rendered :deep(.dataview-query-placeholder) {
   background-color: #f0fdf4;
   border: 1px dashed #86efac;
   border-radius: 6px;
@@ -1057,7 +980,9 @@ const getProfileDisplayName = (profile: ExportProfileId): string => {
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
-.markdown-preview__rendered :deep(.dataview-query-placeholder__header) {
+.light-content
+  .markdown-preview__rendered
+  :deep(.dataview-query-placeholder__header) {
   background-color: #dcfce7;
   padding: 0.75rem 1rem;
   color: #166534;
@@ -1070,164 +995,77 @@ const getProfileDisplayName = (profile: ExportProfileId): string => {
   border-bottom: 1px dashed #86efac;
 }
 
-.markdown-preview__rendered :deep(.dataview-query-placeholder__content) {
+.light-content
+  .markdown-preview__rendered
+  :deep(.dataview-query-placeholder__content) {
   padding: 1rem;
   color: #374151;
   font-size: 0.875rem;
 }
 
-.markdown-preview__rendered :deep(.dataview-query-placeholder__content p) {
-  margin: 0;
+/* Dataview query placeholders - Dark mode */
+.dark-content .markdown-preview__rendered :deep(.dataview-query-placeholder) {
+  background-color: #132e1f;
+  border: 1px dashed #22c55e;
+  border-radius: 6px;
+  margin: 1.5rem 0;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
 }
 
-.markdown-preview__rendered :deep(.dataview-query-table) {
+.dark-content
+  .markdown-preview__rendered
+  :deep(.dataview-query-placeholder__header) {
+  background-color: #14532d;
+  padding: 0.75rem 1rem;
+  color: #4ade80;
+  font-weight: 600;
+  font-family: system-ui, -apple-system, sans-serif;
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  font-size: 0.9375rem;
+  border-bottom: 1px dashed #22c55e;
+}
+
+.dark-content
+  .markdown-preview__rendered
+  :deep(.dataview-query-placeholder__content) {
+  padding: 1rem;
+  color: #a9b1d6;
+  font-size: 0.875rem;
+}
+
+/* Table query variation - Light mode */
+.light-content .markdown-preview__rendered :deep(.dataview-query-table) {
   background-color: #f0f9ff;
   border-color: #93c5fd;
 }
 
-.markdown-preview__rendered
+.light-content
+  .markdown-preview__rendered
   :deep(.dataview-query-table .dataview-query-placeholder__header) {
   background-color: #dbeafe;
   color: #1e40af;
   border-color: #93c5fd;
 }
 
-.markdown-preview__rendered :deep(.dataview-query-task) {
-  background-color: #fef3c7;
-  border-color: #fcd34d;
+/* Table query variation - Dark mode */
+.dark-content .markdown-preview__rendered :deep(.dataview-query-table) {
+  background-color: #172554;
+  border-color: #3b82f6;
 }
 
-.markdown-preview__rendered
-  :deep(.dataview-query-task .dataview-query-placeholder__header) {
-  background-color: #fde68a;
-  color: #92400e;
-  border-color: #fcd34d;
+.dark-content
+  .markdown-preview__rendered
+  :deep(.dataview-query-table .dataview-query-placeholder__header) {
+  background-color: #1e3a8a;
+  color: #60a5fa;
+  border-color: #3b82f6;
 }
 
-.markdown-preview__rendered :deep(.dataview-query-calendar) {
-  background-color: #fae8ff;
-  border-color: #e879f9;
-}
-
-.markdown-preview__rendered
-  :deep(.dataview-query-calendar .dataview-query-placeholder__header) {
-  background-color: #f5d0fe;
-  color: #86198f;
-  border-color: #e879f9;
-}
-
-.markdown-preview__rendered :deep(.dataview-inline-placeholder) {
-  display: inline-flex;
-  align-items: center;
-  background-color: #f0fdf4;
-  color: #166534;
-  font-size: 0.875rem;
-  padding: 0.25rem 0.5rem;
-  border-radius: 4px;
-  border: 1px dashed #86efac;
-  font-family: system-ui, -apple-system, sans-serif;
-  font-weight: 500;
-  white-space: nowrap;
-  margin: 0 0.125rem;
-}
-
-.markdown-preview__rendered :deep(.dataview-inline-placeholder)::before {
-  content: "🔍";
-  margin-right: 0.375rem;
-  font-size: 0.75rem;
-}
-
-/* Templater and Dataview syntax highlighting in source view */
-.markdown-preview__source pre code :deep(.templater-syntax) {
-  color: #4f46e5;
-  font-weight: 500;
-}
-
-.markdown-preview__source pre code :deep(.templater-script) {
-  color: #7c3aed;
-  background-color: rgba(245, 243, 255, 0.5);
-  padding: 0 2px;
-  border-radius: 2px;
-}
-
-.markdown-preview__source pre code :deep(.templater-field) {
-  color: #0891b2;
-  background-color: rgba(236, 254, 255, 0.5);
-  padding: 0 2px;
-  border-radius: 2px;
-}
-
-.markdown-preview__source pre code :deep(.dataview-syntax) {
-  color: #15803d;
-  font-weight: 500;
-}
-
-.markdown-preview__source pre code :deep(.dataview-block) {
-  display: block;
-  background-color: rgba(240, 253, 244, 0.5);
-  border: 1px solid rgba(134, 239, 172, 0.3);
-  border-radius: 4px;
-  padding: 0.5rem;
-  margin: 0.5rem 0;
-}
-
-.markdown-preview__source pre code :deep(.dataview-inline) {
-  background-color: rgba(240, 253, 244, 0.5);
-  padding: 0 2px;
-  border-radius: 2px;
-}
-
-/* Kanban syntax highlighting */
-.markdown-preview__source pre code :deep(.kanban-syntax) {
-  color: #8b5cf6;
-  font-weight: 500;
-}
-
-.markdown-preview__source pre code :deep(.kanban-setting-primary) {
-  color: #7c3aed;
-  background-color: rgba(245, 243, 255, 0.5);
-  padding: 0 2px;
-  border-radius: 2px;
-  font-weight: 600;
-}
-
-.markdown-preview__source pre code :deep(.kanban-setting) {
-  color: #9333ea;
-  background-color: rgba(245, 243, 255, 0.3);
-  padding: 0 2px;
-  border-radius: 2px;
-}
-
-.markdown-preview__source pre code :deep(.kanban-yaml) {
-  color: #a78bfa;
-}
-
-.markdown-preview__source pre code :deep(.kanban-lane) {
-  color: #6d28d9;
-  font-weight: 600;
-  background-color: rgba(245, 243, 255, 0.4);
-  padding: 0 2px;
-  border-radius: 2px;
-  display: block;
-  margin-top: 0.5rem;
-}
-
-.markdown-preview__source pre code :deep(.kanban-card) {
-  color: #8b5cf6;
-  padding: 0 2px;
-  border-radius: 2px;
-  display: block;
-  margin-left: 1rem;
-}
-
-.markdown-preview__source pre code :deep(.kanban-card-checked) {
-  color: #a78bfa;
-  text-decoration: line-through;
-  opacity: 0.8;
-}
-
-/* Kanban board placeholder in rendered view */
-.markdown-preview__rendered :deep(.kanban-board-placeholder) {
+/* Kanban board styles - Light mode */
+.light-content .markdown-preview__rendered :deep(.kanban-board-placeholder) {
   background-color: #f5f3ff;
   border: 1px dashed #c4b5fd;
   border-radius: 6px;
@@ -1236,7 +1074,9 @@ const getProfileDisplayName = (profile: ExportProfileId): string => {
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
-.markdown-preview__rendered :deep(.kanban-board-placeholder__header) {
+.light-content
+  .markdown-preview__rendered
+  :deep(.kanban-board-placeholder__header) {
   background-color: #ede9fe;
   padding: 0.75rem 1rem;
   color: #6d28d9;
@@ -1249,104 +1089,145 @@ const getProfileDisplayName = (profile: ExportProfileId): string => {
   border-bottom: 1px dashed #c4b5fd;
 }
 
-.markdown-preview__rendered :deep(.kanban-board-placeholder__content) {
+.light-content
+  .markdown-preview__rendered
+  :deep(.kanban-board-placeholder__content) {
   padding: 1rem;
   color: #374151;
   font-size: 0.875rem;
 }
 
-.markdown-preview__rendered :deep(.kanban-board-placeholder__content p) {
-  margin: 0;
+/* Kanban board styles - Dark mode */
+.dark-content .markdown-preview__rendered :deep(.kanban-board-placeholder) {
+  background-color: #2e1065;
+  border: 1px dashed #8b5cf6;
+  border-radius: 6px;
+  margin: 1.5rem 0;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
 }
 
-.markdown-preview__rendered :deep(.kanban-board-detailed) {
-  background-color: #faf5ff;
-  border-color: #d8b4fe;
+.dark-content
+  .markdown-preview__rendered
+  :deep(.kanban-board-placeholder__header) {
+  background-color: #4c1d95;
+  padding: 0.75rem 1rem;
+  color: #a78bfa;
+  font-weight: 600;
+  font-family: system-ui, -apple-system, sans-serif;
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  font-size: 0.9375rem;
+  border-bottom: 1px dashed #8b5cf6;
 }
 
-.markdown-preview__rendered
-  :deep(.kanban-board-detailed .kanban-board-placeholder__header) {
-  background-color: #f3e8ff;
-  color: #7e22ce;
-  border-color: #d8b4fe;
+.dark-content
+  .markdown-preview__rendered
+  :deep(.kanban-board-placeholder__content) {
+  padding: 1rem;
+  color: #a9b1d6;
+  font-size: 0.875rem;
 }
 
-/* Toggle button text and styling */
-.templater-btn-text,
-.dataview-btn-text,
-.kanban-btn-text {
-  font-size: 0.8125rem;
+/* Syntax highlighting in source view - Light mode */
+.light-content .markdown-preview__source pre code :deep(.templater-syntax) {
+  color: #4f46e5;
+  font-weight: 500;
 }
 
-/* Special styling for the Dataview button */
-.markdown-preview__dataview-btn {
-  margin-left: 0.5rem;
-  border-left: 1px solid #e2e8f0;
-  color: #15803d;
-}
-
-.markdown-preview__dataview-btn:hover {
-  color: #166534;
-  background-color: #f0fdf4;
-}
-
-.markdown-preview__dataview-btn.markdown-preview__toggle-btn--active {
-  background-color: #f0fdf4;
-  color: #15803d;
-  border-color: #86efac;
-}
-
-/* Special styling for the Kanban button */
-.markdown-preview__kanban-btn {
-  margin-left: 0.5rem;
-  border-left: 1px solid #e2e8f0;
-  color: #8b5cf6;
-}
-
-.markdown-preview__kanban-btn:hover {
+.light-content .markdown-preview__source pre code :deep(.templater-script) {
   color: #7c3aed;
-  background-color: #f5f3ff;
+  background-color: rgba(245, 243, 255, 0.5);
+  padding: 0 2px;
+  border-radius: 2px;
 }
 
-.markdown-preview__kanban-btn.markdown-preview__toggle-btn--active {
-  background-color: #f5f3ff;
+.light-content .markdown-preview__source pre code :deep(.templater-field) {
+  color: #0891b2;
+  background-color: rgba(236, 254, 255, 0.5);
+  padding: 0 2px;
+  border-radius: 2px;
+}
+
+.light-content .markdown-preview__source pre code :deep(.dataview-syntax) {
+  color: #15803d;
+  font-weight: 500;
+}
+
+.light-content .markdown-preview__source pre code :deep(.dataview-block) {
+  display: block;
+  background-color: rgba(240, 253, 244, 0.5);
+  border: 1px solid rgba(134, 239, 172, 0.3);
+  border-radius: 4px;
+  padding: 0.5rem;
+  margin: 0.5rem 0;
+}
+
+.light-content .markdown-preview__source pre code :deep(.dataview-inline) {
+  background-color: rgba(240, 253, 244, 0.5);
+  padding: 0 2px;
+  border-radius: 2px;
+}
+
+.light-content .markdown-preview__source pre code :deep(.kanban-syntax) {
   color: #8b5cf6;
-  border-color: #c4b5fd;
+  font-weight: 500;
+}
+
+/* Syntax highlighting in source view - Dark mode */
+.dark-content .markdown-preview__source pre code :deep(.templater-syntax) {
+  color: #7aa2f7;
+  font-weight: 500;
+}
+
+.dark-content .markdown-preview__source pre code :deep(.templater-script) {
+  color: #bb9af7;
+  background-color: rgba(122, 162, 247, 0.1);
+  padding: 0 2px;
+  border-radius: 2px;
+}
+
+.dark-content .markdown-preview__source pre code :deep(.templater-field) {
+  color: #7dcfff;
+  background-color: rgba(125, 207, 255, 0.1);
+  padding: 0 2px;
+  border-radius: 2px;
+}
+
+.dark-content .markdown-preview__source pre code :deep(.dataview-syntax) {
+  color: #9ece6a;
+  font-weight: 500;
+}
+
+.dark-content .markdown-preview__source pre code :deep(.dataview-block) {
+  display: block;
+  background-color: rgba(158, 206, 106, 0.1);
+  border: 1px solid rgba(158, 206, 106, 0.2);
+  border-radius: 4px;
+  padding: 0.5rem;
+  margin: 0.5rem 0;
+}
+
+.dark-content .markdown-preview__source pre code :deep(.dataview-inline) {
+  background-color: rgba(158, 206, 106, 0.1);
+  padding: 0 2px;
+  border-radius: 2px;
+}
+
+.dark-content .markdown-preview__source pre code :deep(.kanban-syntax) {
+  color: #bb9af7;
+  font-weight: 500;
 }
 
 /* Mobile responsive styles */
 @media (max-width: 768px) {
-  .markdown-preview__header {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 0.75rem;
-  }
-
-  .markdown-preview__toggle {
-    align-self: flex-end;
-  }
-
   .markdown-preview__content {
-    padding: 1rem;
-  }
-
-  .templater-btn-text,
-  .dataview-btn-text,
-  .kanban-btn-text {
-    display: none;
+    padding: var(--spacing-md);
   }
 }
 
 @media (max-width: 480px) {
-  .markdown-preview__toggle-btn {
-    padding: 0.5rem 0.625rem;
-    font-size: 0.75rem;
-  }
-
-  .markdown-preview__toggle-btn i {
-    margin-right: 0.25rem;
-  }
-
   .markdown-preview__rendered :deep(h1) {
     font-size: 1.5rem;
   }

@@ -1,18 +1,17 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
+import { ExportProfile, getDefaultExportProfile } from '@/types/Editor'
 
-export type ExportProfileId = 'plain' | 'templater' | 'dataview' | 'full';
-
-export interface ExportProfile {
-  id: ExportProfileId
+export interface ExportProfileOptions {
+  id: ExportProfile
   name: string
   options: Record<string, any>
 }
 
 export const usePreferencesStore = defineStore('preferences', () => {
   // State
-  const exportProfiles = ref<ExportProfile[]>([])
-  const activeExportProfileId = ref<string>('')
+  const exportProfiles = ref<ExportProfileOptions[]>([])
+  const activeExportProfileId = ref<ExportProfile>(getDefaultExportProfile())
   const lastVisitedView = ref<string>('home')
   const editorTheme = ref<string>('light')
 
@@ -95,18 +94,24 @@ export const usePreferencesStore = defineStore('preferences', () => {
     setActiveExportProfile('full')
   }
 
-  function createExportProfile(name: string, options: Record<string, any> = {}, id?: ExportProfileId) {
-    // Use provided ID or generate timestamp-based one
-    const profileId = id || (Date.now().toString() as ExportProfileId)
-    exportProfiles.value.push({ id: profileId, name, options })
-    if (exportProfiles.value.length === 1) {
-      activeExportProfileId.value = profileId
+  function createExportProfile(name: string, options: Record<string, any> = {}, id?: ExportProfile) {
+    // Use provided ID or ensure a valid export profile ID
+    const profileId = id || 'full'
+    
+    // Only add if it's a valid ExportProfile value
+    if (['plain', 'templater', 'dataview', 'full'].includes(profileId)) {
+      exportProfiles.value.push({ id: profileId as ExportProfile, name, options })
+      
+      if (exportProfiles.value.length === 1) {
+        activeExportProfileId.value = profileId as ExportProfile
+      }
+      savePreferences()
+      return profileId
     }
-    savePreferences()
-    return profileId
+    return null
   }
 
-  function updateExportProfile(id: string, name?: string, options?: Record<string, any>) {
+  function updateExportProfile(id: ExportProfile, name?: string, options?: Record<string, any>) {
     const profile = exportProfiles.value.find(p => p.id === id)
     if (profile) {
       if (name) profile.name = name
@@ -115,7 +120,7 @@ export const usePreferencesStore = defineStore('preferences', () => {
     }
   }
 
-  function deleteExportProfile(id: string) {
+  function deleteExportProfile(id: ExportProfile) {
     // Don't delete if it's the only profile
     if (exportProfiles.value.length <= 1) {
       return false
@@ -125,7 +130,9 @@ export const usePreferencesStore = defineStore('preferences', () => {
     if (index !== -1) {
       exportProfiles.value.splice(index, 1)
       if (activeExportProfileId.value === id) {
-        activeExportProfileId.value = exportProfiles.value.length > 0 ? exportProfiles.value[0].id : ''
+        activeExportProfileId.value = exportProfiles.value.length > 0 
+          ? exportProfiles.value[0].id 
+          : getDefaultExportProfile()
       }
       savePreferences()
       return true
@@ -133,9 +140,8 @@ export const usePreferencesStore = defineStore('preferences', () => {
     return false
   }
 
-  function setActiveExportProfile(id: string) {
-    const profile = exportProfiles.value.find(p => p.id === id)
-    if (profile) {
+  function setActiveExportProfile(id: ExportProfile) {
+    if (['plain', 'templater', 'dataview', 'full'].includes(id)) {
       activeExportProfileId.value = id
       savePreferences()
       return true

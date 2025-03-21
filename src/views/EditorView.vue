@@ -128,13 +128,13 @@
                   class="profile-badge"
                   :class="`profile-${getCurrentProfileId()}`"
                 >
-                  {{ getProfileName(getCurrentProfileId()) }}
+                  {{ getExportProfileName(getCurrentProfileId()) }}
                 </span>
                 <i class="fas fa-chevron-down"></i>
               </button>
               <div class="dropdown-menu" v-if="showProfileMenu">
                 <div
-                  v-for="profile in exportProfiles"
+                  v-for="profile in EXPORT_PROFILES"
                   :key="profile.id"
                   class="dropdown-item"
                   :class="{ active: getCurrentProfileId() === profile.id }"
@@ -142,6 +142,53 @@
                 >
                   <i :class="profile.icon"></i>
                   {{ profile.name }}
+                </div>
+              </div>
+            </div>
+
+            <!-- Plugin Syntax Dropdown -->
+            <div class="dropdown">
+              <button
+                class="dropdown-trigger glass-button"
+                @click.stop="togglePluginMenu"
+                title="Toggle plugin syntax"
+              >
+                <span>Plugins</span>
+                <i class="fas fa-chevron-down"></i>
+              </button>
+              <div class="dropdown-menu" v-if="showPluginMenu">
+                <div
+                  class="dropdown-item"
+                  :class="{ active: showTemplaterSyntax }"
+                  @click="toggleTemplaterSyntax"
+                >
+                  <i class="fas fa-bolt"></i>
+                  <span>Templater Syntax</span>
+                  <span class="toggle-indicator">{{
+                    showTemplaterSyntax ? "On" : "Off"
+                  }}</span>
+                </div>
+                <div
+                  class="dropdown-item"
+                  :class="{ active: showDataviewSyntax }"
+                  @click="toggleDataviewSyntax"
+                >
+                  <i class="fas fa-database"></i>
+                  <span>Dataview Syntax</span>
+                  <span class="toggle-indicator">{{
+                    showDataviewSyntax ? "On" : "Off"
+                  }}</span>
+                </div>
+                <div
+                  class="dropdown-item"
+                  :class="{ active: showKanbanSyntax }"
+                  @click="toggleKanbanSyntax"
+                >
+                  <i class="fas fa-columns"></i>
+                  <span>Kanban Syntax</span>
+                  <span class="toggle-indicator">{{
+                    showKanbanSyntax ? "On" : "Off"
+                  }}</span>
                 </div>
               </div>
             </div>
@@ -164,8 +211,14 @@
         <MarkdownPreview
           :sections="templateStore.currentSections"
           :export-profile="getCurrentProfileId()"
+          :view-mode="currentViewMode"
+          :templater-syntax="showTemplaterSyntax"
+          :dataview-syntax="showDataviewSyntax"
+          :kanban-syntax="showKanbanSyntax"
           @update:export-profile="setExportProfile"
-          @focus-mode="togglePreviewFocus"
+          @update:view-mode="setViewMode"
+          @generation-start="previewGenerating = true"
+          @generation-complete="previewGenerating = false"
         />
       </div>
     </div>
@@ -240,9 +293,15 @@ import { useRouter, useRoute } from "vue-router";
 import { useTemplateStore } from "@/stores/template";
 import { useUIStore } from "@/stores/ui";
 import { usePreferencesStore } from "@/stores/preferences";
-import { debounce } from "lodash-es";
+import debounce from "lodash-es/debounce";
 import { v4 as uuidv4 } from "uuid";
 import { TemplateSection } from "@/types/TemplateSection";
+import {
+  ViewMode,
+  ExportProfile,
+  EXPORT_PROFILES,
+  getExportProfileName,
+} from "@/types/Editor";
 
 // Import components
 import SectionLibrary from "@/components/TemplateCreator/SectionLibrary.vue";
@@ -265,12 +324,19 @@ const props = defineProps<{
 // Local state
 const isSidebarCollapsed = ref(false);
 const autoSaving = ref(false);
+const previewGenerating = ref(false);
 const mobileView = ref("editor"); // 'editor' or 'preview' for mobile view
 const showViewModeMenu = ref(false);
 const showProfileMenu = ref(false);
-const currentViewMode = ref("Rendered"); // 'Rendered', 'Markdown', or 'Source'
+const showPluginMenu = ref(false);
+const currentViewMode = ref<ViewMode>("Rendered");
 const isPreviewFocused = ref(false);
 const dragDropEditorRef = ref<InstanceType<typeof DragDropEditor> | null>(null);
+
+// Plugin syntax toggle options
+const showTemplaterSyntax = ref(false);
+const showDataviewSyntax = ref(false);
+const showKanbanSyntax = ref(false);
 
 // Theme
 const isDarkTheme = inject("theme", ref(true));
@@ -296,22 +362,9 @@ const templateDescription = computed({
   },
 });
 
-// Export profiles
-const exportProfiles = [
-  { id: "plain", name: "Plain Markdown", icon: "fas fa-file-alt" },
-  { id: "templater", name: "Templater", icon: "fas fa-bolt" },
-  { id: "dataview", name: "Dataview", icon: "fas fa-database" },
-  { id: "full", name: "Full Plugin Suite", icon: "fas fa-plug" },
-];
-
 // Helper functions
-const getCurrentProfileId = () => {
+const getCurrentProfileId = (): ExportProfile => {
   return preferencesStore.activeExportProfileId || "full";
-};
-
-const getProfileName = (profileId: string) => {
-  const profile = exportProfiles.find((p) => p.id === profileId);
-  return profile ? profile.name : "Full Plugin Suite";
 };
 
 // UI Interaction methods
@@ -326,17 +379,40 @@ const toggleViewModeMenu = () => {
 
 const toggleProfileMenu = () => {
   showProfileMenu.value = !showProfileMenu.value;
-  if (showProfileMenu.value) showViewModeMenu.value = false;
+  if (showProfileMenu.value) {
+    showViewModeMenu.value = false;
+    showPluginMenu.value = false;
+  }
 };
 
-const setViewMode = (mode: string) => {
+const togglePluginMenu = () => {
+  showPluginMenu.value = !showPluginMenu.value;
+  if (showPluginMenu.value) {
+    showViewModeMenu.value = false;
+    showProfileMenu.value = false;
+  }
+};
+
+const setViewMode = (mode: ViewMode) => {
   currentViewMode.value = mode;
   showViewModeMenu.value = false;
 };
 
-const setExportProfile = (profileId: string) => {
+const setExportProfile = (profileId: ExportProfile) => {
   preferencesStore.setActiveExportProfile(profileId);
   showProfileMenu.value = false;
+};
+
+const toggleTemplaterSyntax = () => {
+  showTemplaterSyntax.value = !showTemplaterSyntax.value;
+};
+
+const toggleDataviewSyntax = () => {
+  showDataviewSyntax.value = !showDataviewSyntax.value;
+};
+
+const toggleKanbanSyntax = () => {
+  showKanbanSyntax.value = !showKanbanSyntax.value;
 };
 
 const setMobileView = (view: string) => {
@@ -585,6 +661,7 @@ const closeDropdowns = (event: MouseEvent) => {
   if (!event.target || !(event.target as Element).closest(".dropdown")) {
     showViewModeMenu.value = false;
     showProfileMenu.value = false;
+    showPluginMenu.value = false;
   }
 };
 
@@ -922,6 +999,15 @@ onUnmounted(() => {
 .dropdown-item.active {
   background: rgba(255, 171, 88, 0.15);
   color: var(--color-primary);
+}
+
+.toggle-indicator {
+  margin-left: auto;
+  font-size: 0.75rem;
+  padding: 2px 6px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--color-text-muted);
 }
 
 /* Profile badge styling */

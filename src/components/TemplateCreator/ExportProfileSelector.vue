@@ -32,54 +32,22 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
-
-export type ExportProfileId = 'plain' | 'templater' | 'dataview' | 'full';
-
-interface ExportProfile {
-  id: ExportProfileId;
-  name: string;
-  description: string;
-  icon: string;
-}
+import { ExportProfile, EXPORT_PROFILES } from '@/types/Editor';
 
 const props = defineProps<{
-  modelValue?: ExportProfileId;
+  modelValue?: ExportProfile;
 }>();
 
 const emit = defineEmits<{
-  (e: 'update:modelValue', value: ExportProfileId): void;
+  (e: 'update:modelValue', value: ExportProfile): void;
 }>();
 
-const exportProfiles: ExportProfile[] = [
-  {
-    id: 'plain',
-    name: 'Plain Markdown',
-    description: 'Converts all plugin-specific syntax to plain markdown. Works without any plugins.',
-    icon: 'fas fa-file-alt'
-  },
-  {
-    id: 'templater',
-    name: 'Templater-Ready',
-    description: 'Maintains Templater fields but converts other plugin syntax to plain markdown.',
-    icon: 'fas fa-calendar-alt'
-  },
-  {
-    id: 'dataview',
-    name: 'Dataview-Compatible',
-    description: 'Preserves Dataview queries but converts other plugin syntax to plain markdown.',
-    icon: 'fas fa-database'
-  },
-  {
-    id: 'full',
-    name: 'Full Plugin Suite',
-    description: 'Keeps all plugin-specific syntax (Templater, Dataview, Kanban) intact.',
-    icon: 'fas fa-puzzle-piece'
-  }
-];
+// Use the centralized export profiles with descriptions for each profile
+const exportProfiles = EXPORT_PROFILES;
 
-const selectedProfile = ref<ExportProfileId>(props.modelValue || 'plain');
+const selectedProfile = ref<ExportProfile>(props.modelValue || 'plain');
 
-const selectProfile = (profileId: ExportProfileId) => {
+const selectProfile = (profileId: ExportProfile) => {
   selectedProfile.value = profileId;
   emit('update:modelValue', profileId);
 };
