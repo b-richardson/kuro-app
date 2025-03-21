@@ -5,6 +5,7 @@ import HomeView from "../views/HomeView.vue";
 import LibraryView from "../views/LibraryView.vue";
 import EditorView from "../views/EditorView.vue";
 import DesignView from "../views/DesignView.vue";
+import SettingsView from "../views/SettingsView.vue";
 
 const routes = [
   {
@@ -27,6 +28,11 @@ const routes = [
     name: "editor",
     component: EditorView,
     props: true, // Pass route params as props
+  },
+  {
+    path: "/settings",
+    name: "settings",
+    component: SettingsView,
   },
   {
     path: "/design",

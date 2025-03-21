@@ -10,19 +10,19 @@
         
         <div class="home-actions">
           <router-link to="/library" custom v-slot="{ navigate }">
-            <PrimaryButton @click="navigate" icon="fas fa-book-open" size="large">
-              Browse Templates
-            </PrimaryButton>
+            <button @click="navigate" class="primary-button">
+              <i class="fas fa-book-open"></i> Browse Templates
+            </button>
           </router-link>
           
           <router-link to="/editor" custom v-slot="{ navigate }">
-            <button @click="navigate" class="btn btn-secondary">
+            <button @click="navigate" class="secondary-button">
               <i class="fas fa-plus"></i> Create New Template
             </button>
           </router-link>
           
           <router-link to="/design" custom v-slot="{ navigate }">
-            <button @click="navigate" class="btn btn-outline">
+            <button @click="navigate" class="outline-button">
               <i class="fas fa-palette"></i> Design System
             </button>
           </router-link>
@@ -80,7 +80,6 @@
 <script setup lang="ts">
 import { onMounted } from 'vue'
 import { usePreferencesStore } from '../stores'
-import PrimaryButton from '../components/UI/PrimaryButton.vue'
 
 // Get the preferences store
 const preferenceStore = usePreferencesStore()
@@ -102,12 +101,12 @@ onMounted(() => {
 .home-container {
   max-width: 1200px;
   margin: 0 auto;
-  padding: 2rem;
+  padding: var(--spacing-xl);
 }
 
 .home-hero {
   text-align: center;
-  padding: 4rem 2rem;
+  padding: 6rem 2rem 4rem;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -115,9 +114,9 @@ onMounted(() => {
 }
 
 .home-logo {
-  width: 100px;
-  height: 100px;
-  margin-bottom: 1rem;
+  width: 120px;
+  height: 120px;
+  margin-bottom: 1.5rem;
 }
 
 .home-logo img {
@@ -126,7 +125,7 @@ onMounted(() => {
 }
 
 .home-title {
-  font-size: 2.5rem;
+  font-size: 3rem;
   font-weight: 700;
   margin-bottom: 1rem;
   background: linear-gradient(to right, var(--color-primary-light), var(--color-primary-dark));
@@ -144,55 +143,72 @@ onMounted(() => {
 
 .home-actions {
   display: flex;
-  gap: 1rem;
-  margin-top: 1rem;
+  gap: var(--spacing-md);
+  margin-top: var(--spacing-lg);
 }
 
-.btn {
-  display: inline-flex;
+.primary-button {
+  display: flex;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.75rem 1.5rem;
-  border-radius: 0.5rem;
+  justify-content: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-md) var(--spacing-lg);
+  border-radius: var(--radius-md);
   font-weight: 500;
+  font-size: 1.1rem;
   cursor: pointer;
-  transition: all 0.3s ease;
-  text-decoration: none;
-}
-
-.btn-primary {
-  background-color: var(--color-primary);
-  color: var(--color-text-dark);
+  transition: all var(--transition-fast);
+  background: linear-gradient(135deg, var(--color-primary-light), var(--color-primary));
+  color: white;
   border: none;
-  box-shadow: 0 4px 6px rgba(255, 171, 88, 0.2);
+  box-shadow: 0 4px 8px rgba(255, 171, 88, 0.3);
 }
 
-.btn-primary:hover {
-  background-color: var(--color-primary-light);
+.primary-button:hover {
   transform: translateY(-2px);
-  box-shadow: 0 6px 8px rgba(255, 171, 88, 0.3);
+  box-shadow: 0 6px 12px rgba(255, 171, 88, 0.4);
 }
 
-.btn-secondary {
-  background-color: var(--glass-background);
+.secondary-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-md) var(--spacing-lg);
+  border-radius: var(--radius-md);
+  font-weight: 500;
+  font-size: 1.1rem;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  background: rgba(255, 255, 255, 0.1);
   color: var(--color-text);
   border: 1px solid var(--glass-border);
   backdrop-filter: blur(var(--glass-blur));
   -webkit-backdrop-filter: blur(var(--glass-blur));
 }
 
-.btn-secondary:hover {
-  background-color: rgba(255, 255, 255, 0.15);
+.secondary-button:hover {
+  background: rgba(255, 255, 255, 0.15);
   transform: translateY(-2px);
 }
 
-.btn-outline {
-  background-color: transparent;
+.outline-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-md) var(--spacing-lg);
+  border-radius: var(--radius-md);
+  font-weight: 500;
+  font-size: 1.1rem;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  background: transparent;
   color: var(--color-text-secondary);
   border: 1px solid var(--glass-border);
 }
 
-.btn-outline:hover {
+.outline-button:hover {
   border-color: var(--color-primary);
   color: var(--color-primary-light);
   transform: translateY(-2px);
@@ -288,13 +304,17 @@ onMounted(() => {
   
   .home-actions {
     flex-direction: column;
+    align-items: center;
     width: 100%;
-    max-width: 300px;
   }
   
-  .btn {
+  .primary-button,
+  .secondary-button,
+  .outline-button {
     width: 100%;
+    max-width: 300px;
     justify-content: center;
+    font-size: 1rem;
   }
 }
 </style>

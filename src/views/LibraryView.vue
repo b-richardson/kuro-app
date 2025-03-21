@@ -1,23 +1,8 @@
 <template>
   <div class="library-view">
-    <AppHeader 
-      view="library"
-      :sections="[]"
-      @new-template="goToNewTemplate"
-    >
-      <template #actions>
-        <PrimaryButton 
-          icon="fas fa-plus" 
-          @click="goToNewTemplate"
-        >
-          New Template
-        </PrimaryButton>
-      </template>
-    </AppHeader>
-    
     <div class="library-view__content">
       <div class="library-header glass-card">
-        <h2 class="library-header__title">Your Templates</h2>
+        <h1 class="library-header__title">Your Templates</h1>
         
         <div class="library-header__actions">
           <button class="action-button" @click="handleImportAction">
@@ -36,7 +21,10 @@
         <h3>No Templates Yet</h3>
         <p>Create your first template or add example templates to get started</p>
         <div class="empty-library__actions">
-          <PrimaryButton @click="goToNewTemplate">Create New Template</PrimaryButton>
+          <button class="primary-button" @click="goToNewTemplate">
+            <i class="fas fa-plus"></i>
+            Create New Template
+          </button>
           <button class="secondary-button" @click="addExampleTemplates">
             Add Example Templates
           </button>
@@ -101,8 +89,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import AppHeader from '../components/Layout/AppHeader.vue'
-import PrimaryButton from '../components/UI/PrimaryButton.vue'
 import ConfirmationDialog from '../components/UI/ConfirmationDialog.vue'
 import { ExportProfileId } from '../components/TemplateCreator/ExportProfileSelector.vue'
 import { useTemplateStore, useUIStore, usePreferencesStore } from '../stores'
@@ -228,12 +214,13 @@ const handleNotification = (message: string, type: 'success' | 'error' | 'warnin
   justify-content: space-between;
   align-items: center;
   padding: var(--spacing-md) var(--spacing-lg);
-  margin-bottom: var(--spacing-md);
+  margin-bottom: var(--spacing-lg);
 }
 
 .library-header__title {
   margin: 0;
-  font-size: 1.25rem;
+  font-size: 1.75rem;
+  font-weight: 600;
   background: linear-gradient(135deg, var(--color-primary-light), var(--color-primary));
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -264,6 +251,27 @@ const handleNotification = (message: string, type: 'success' | 'error' | 'warnin
   transform: translateY(-1px);
 }
 
+.primary-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--radius-md);
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  background: linear-gradient(135deg, var(--color-primary-light), var(--color-primary));
+  color: white;
+  border: none;
+  box-shadow: 0 2px 4px rgba(255, 171, 88, 0.2);
+}
+
+.primary-button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(255, 171, 88, 0.3);
+}
+
 .secondary-button {
   padding: var(--spacing-sm) var(--spacing-md);
   background: rgba(255, 255, 255, 0.1);
@@ -274,6 +282,9 @@ const handleNotification = (message: string, type: 'success' | 'error' | 'warnin
   font-weight: 500;
   cursor: pointer;
   transition: all var(--transition-fast);
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .secondary-button:hover {

@@ -1,69 +1,46 @@
 <template>
   <div class="editor-view">
-    <AppHeader 
-      :title="templateName || 'Untitled Template'" 
-      :show-back-button="true"
-      @back="handleBack"
-    >
-      <template #actions>
-        <div class="editor-actions">
-          <PrimaryButton 
-            icon="fas fa-save" 
-            @click="saveTemplate" 
-            :disabled="!uiStore.isModified"
-          >
-            Save
-          </PrimaryButton>
-          
-          <ExportDropdown />
-          
-          <button class="layout-button glass-button" @click="toggleSidebar" aria-label="Toggle sidebar">
-            <i class="fas" :class="uiStore.sidebarHidden ? 'fa-bars' : 'fa-times'"></i>
-          </button>
-        </div>
-      </template>
-    </AppHeader>
-    
-    <div class="editor-layout" :class="{ 'sidebar-hidden': uiStore.sidebarHidden }">
-      <!-- Section Library Sidebar -->
-      <div class="editor-sidebar glass-card">
-        <SectionLibrary @add-section="addSection" />
-      </div>
-      
+    <div class="editor-layout">
       <!-- Main content area with editor and preview -->
       <div class="editor-content">
+        <div class="editor-header">
+          <div class="editor-title">
+            <h1>
+              <input 
+                type="text"
+                class="template-title-input"
+                v-model="templateName"
+                placeholder="Untitled Template"
+                @input="markAsModified"
+              />
+            </h1>
+          </div>
+          <div class="editor-actions">
+            <button 
+              class="action-button"
+              @click="setFocusMode(uiStore.focusMode === 'editor' ? 'none' : 'editor')"
+              title="Toggle editor fullscreen"
+            >
+              <i class="fas" :class="uiStore.focusMode === 'editor' ? 'fa-compress' : 'fa-expand'"></i>
+            </button>
+            <button 
+              class="action-button"
+              @click="setFocusMode(uiStore.focusMode === 'preview' ? 'none' : 'preview')"
+              title="Toggle preview fullscreen"
+            >
+              <i class="fas" :class="uiStore.focusMode === 'preview' ? 'fa-compress' : 'fa-eye'"></i>
+            </button>
+            
+            <ExportDropdown />
+          </div>
+        </div>
+        
         <div class="editor-grid" :style="editorGridStyle">
           <!-- Template Editor -->
           <div class="editor-panel glass-card" :class="{ 'full-width': uiStore.focusMode === 'editor' }">
             <div class="panel-header">
               <div class="panel-title">
                 <h2>Editor</h2>
-                <input 
-                  v-if="uiStore.focusMode !== 'preview'"
-                  type="text"
-                  class="template-title-input"
-                  v-model="templateName"
-                  placeholder="Untitled Template"
-                  @input="markAsModified"
-                />
-              </div>
-              <div class="panel-actions">
-                <button 
-                  class="panel-action-button" 
-                  @click="setFocusMode('editor')" 
-                  v-if="uiStore.focusMode !== 'editor'"
-                  title="Expand editor"
-                >
-                  <i class="fas fa-expand"></i>
-                </button>
-                <button 
-                  class="panel-action-button"
-                  @click="setFocusMode('none')" 
-                  v-else
-                  title="Restore split view"
-                >
-                  <i class="fas fa-compress"></i>
-                </button>
               </div>
             </div>
             
@@ -127,9 +104,6 @@ import { useUIStore } from '@/stores/ui';
 import { usePreferencesStore } from '@/stores/preferences';
 import { debounce } from 'lodash-es';
 
-import AppHeader from '@/components/Layout/AppHeader.vue';
-import PrimaryButton from '@/components/UI/PrimaryButton.vue';
-import SectionLibrary from '@/components/TemplateCreator/SectionLibrary.vue';
 import DragDropEditor from '@/components/TemplateCreator/DragDropEditor.vue';
 import MarkdownPreview from '@/components/TemplateCreator/MarkdownPreview.vue';
 import ExportDropdown from '@/components/TemplateCreator/ExportDropdown.vue';
@@ -414,41 +388,68 @@ onUnmounted(() => {
   overflow: hidden;
 }
 
-.editor-actions {
-  display: flex;
-  gap: var(--spacing-sm);
-}
-
 .editor-layout {
   display: flex;
   flex: 1;
   overflow: hidden;
-  padding: var(--spacing-lg);
-  gap: var(--spacing-lg);
-}
-
-.editor-sidebar {
-  width: 280px; /* Slightly wider for more content space */
-  overflow-y: auto;
-  padding: 0;
-  flex-shrink: 0;
-  /* Enhanced glassmorphism for sidebar */
-  background: rgba(30, 30, 46, 0.7);
-  border: 1px solid rgba(167, 139, 250, 0.2);
-  box-shadow: 0 8px 32px rgba(167, 139, 250, 0.15);
-  border-radius: var(--radius-lg);
+  padding: var(--spacing-md);
+  position: relative;
+  height: 100%;
 }
 
 .editor-content {
   flex: 1;
   overflow: hidden;
-  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+.editor-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--spacing-md) var(--spacing-md) var(--spacing-lg);
+}
+
+.editor-title h1 {
+  margin: 0;
+  font-size: 1.75rem;
+  font-weight: 600;
+  background: linear-gradient(135deg, var(--color-primary-light), var(--color-primary));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.editor-actions {
+  display: flex;
+  gap: var(--spacing-md);
+}
+
+.action-button {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--glass-background);
+  border: 1px solid var(--glass-border);
+  color: var(--color-text);
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.action-button:hover {
+  background: rgba(255, 255, 255, 0.15);
+  transform: translateY(-1px);
 }
 
 .editor-grid {
   display: grid;
   grid-template-columns: 50% 50%;
-  height: 100%;
+  flex: 1;
   position: relative;
   gap: var(--spacing-lg); /* Increased gap between panels */
 }
@@ -499,40 +500,16 @@ onUnmounted(() => {
   font-weight: 500;
 }
 
-.panel-actions {
-  display: flex;
-  gap: var(--spacing-xs);
-}
-
-.panel-action-button {
-  background: transparent;
-  border: none;
-  color: var(--color-text-secondary);
-  cursor: pointer;
-  padding: var(--spacing-xs);
-  border-radius: var(--radius-sm);
-  width: 28px;
-  height: 28px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all var(--transition-fast);
-}
-
-.panel-action-button:hover {
-  background: var(--glass-background);
-  color: var(--color-text);
-}
-
 .template-title-input {
-  padding: 2px 6px;
+  padding: 8px 12px;
   border: 1px solid var(--glass-border);
   border-radius: var(--radius-sm);
-  background: var(--glass-background);
+  background: rgba(255, 255, 255, 0.05);
   color: var(--color-text);
-  font-size: 0.9rem;
-  width: 200px;
+  font-size: 1.5rem;
+  width: 100%;
   transition: all var(--transition-fast);
+  font-weight: 600;
 }
 
 .template-title-input:focus {
@@ -540,12 +517,6 @@ onUnmounted(() => {
   border-color: var(--color-primary);
   box-shadow: 0 0 0 2px rgba(255, 171, 88, 0.25);
 }
-
-.export-profile-indicator {
-  display: flex;
-  align-items: center;
-}
-
 
 .full-width {
   grid-column: 1 / span 2;
@@ -592,31 +563,6 @@ onUnmounted(() => {
   user-select: none !important;
 }
 
-.sidebar-hidden .editor-sidebar {
-  display: none;
-}
-
-.glass-button {
-  padding: var(--spacing-xs) var(--spacing-sm);
-  background: var(--glass-background);
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius-sm);
-  color: var(--color-text);
-  font-size: 0.875rem;
-  cursor: pointer;
-  width: 36px;
-  height: 36px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all var(--transition-fast);
-}
-
-.glass-button:hover {
-  background: rgba(255, 255, 255, 0.15);
-  transform: translateY(-1px);
-}
-
 .autosave-indicator {
   position: fixed;
   bottom: var(--spacing-md);
@@ -645,12 +591,12 @@ onUnmounted(() => {
   .editor-layout {
     flex-direction: column;
     padding: var(--spacing-sm);
-    gap: var(--spacing-sm);
   }
   
-  .editor-sidebar {
-    width: auto;
-    height: 200px;
+  .editor-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--spacing-md);
   }
   
   .editor-grid {
@@ -677,7 +623,7 @@ onUnmounted(() => {
   }
   
   .template-title-input {
-    width: 120px;
+    font-size: 1.2rem;
   }
 }
 </style>
