@@ -652,6 +652,8 @@ const getProfileDisplayName = (profile: ExportProfileId): string => {
   display: flex;
   flex-direction: column;
   height: 100%;
+  padding: var(--spacing-md); /* Reduced from var(--spacing-lg) */
+  font-size: 0.9rem; /* Add a slightly smaller font size */
 }
 
 .markdown-preview__header {
@@ -669,7 +671,7 @@ const getProfileDisplayName = (profile: ExportProfileId): string => {
 }
 
 .markdown-preview__title {
-  font-size: 1.25rem;
+  font-size: 1rem; /* Was 1.25rem */
   font-weight: 600;
   margin: 0;
   color: var(--color-primary, #4f46e5);
@@ -824,18 +826,18 @@ const getProfileDisplayName = (profile: ExportProfileId): string => {
 }
 
 .markdown-preview__empty {
-  color: #94a3b8;
-  text-align: center;
-  padding: 3rem 2rem;
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--color-text-tertiary);
+  text-align: center;
 }
 
-.markdown-preview__empty:before {
-  content: "👀";
-  font-size: 2.5rem;
-  margin-bottom: 1rem;
+.markdown-preview__empty p {
+  font-size: 1rem; /* Smaller than current */
+  font-style: italic;
 }
 
 .markdown-preview__source {

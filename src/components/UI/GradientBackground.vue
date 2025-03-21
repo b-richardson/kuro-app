@@ -5,10 +5,10 @@
 </template>
 
 <script setup lang="ts">
-import { inject } from 'vue';
+import { inject } from "vue";
 
 // Get theme from parent component
-const theme = inject('theme', 'dark');
+const theme = inject("theme", "dark");
 </script>
 
 <style scoped>
@@ -23,14 +23,15 @@ const theme = inject('theme', 'dark');
 }
 
 .gradient-background {
-  background: 
-    linear-gradient(
+  background: linear-gradient(
       135deg,
-      rgba(30, 30, 46, 0.92) 0%,
+      rgba(30, 30, 46, 0.2) 0%,
       rgba(33, 6, 60, 0.97) 100%
     ),
-    url("https://images.unsplash.com/photo-1635776063043-ab23b4c226f6?q=80&w=2832&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D")
-    center/cover no-repeat;
+    url("https://images.unsplash.com/photo-1639493115941-a70fcef4f715?w=800&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1yZWxhdGVkfDE4fHx8ZW58MHx8fHx8")
+      center/cover no-repeat;
+  /* url("https://images.unsplash.com/photo-1635776063043-ab23b4c226f6?q=80&w=2832&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D")
+      center/cover no-repeat; */
   background-attachment: fixed;
 }
 

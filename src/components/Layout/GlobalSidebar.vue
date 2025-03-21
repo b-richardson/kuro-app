@@ -8,13 +8,24 @@
       <h1 class="app-title">Template Builder</h1>
     </div>
     
+    <!-- User profile section -->
+    <div class="user-profile" v-if="authStore.user">
+      <div class="user-avatar">
+        {{ getInitials(authStore.user.name) }}
+      </div>
+      <div class="user-info">
+        <div class="user-name">{{ authStore.user.name }}</div>
+        <div class="user-plan">{{ getPlanLabel(authStore.user.subscription.plan) }}</div>
+      </div>
+    </div>
+    
     <!-- Main navigation -->
     <div class="sidebar-nav">
       <router-link 
-        to="/" 
+        to="/dashboard" 
         class="nav-item" 
         exact
-        :class="{ active: currentRoute === 'home' }"
+        :class="{ active: currentRoute === 'dashboard' }"
       >
         <i class="fas fa-home"></i>
         <span>Dashboard</span>
@@ -26,7 +37,16 @@
         :class="{ active: currentRoute === 'library' }"
       >
         <i class="fas fa-folder"></i>
-        <span>Templates</span>
+        <span>My Templates</span>
+      </router-link>
+      
+      <router-link 
+        to="/template-library" 
+        class="nav-item"
+        :class="{ active: currentRoute === 'templateLibrary' }"
+      >
+        <i class="fas fa-book"></i>
+        <span>Template Library</span>
       </router-link>
       
       <router-link 
@@ -85,24 +105,32 @@
         </button>
       </div>
       
-      <button v-else class="action-button primary-button" @click="$emit('new-template')">
+      <button v-else-if="currentRoute === 'dashboard' || currentRoute === 'library'" class="action-button primary-button" @click="$emit('new-template')">
         <i class="fas fa-plus"></i>
         <span>New Template</span>
       </button>
       
       <!-- Theme toggle button -->
-      <button class="theme-toggle" @click="toggleTheme">
-        <i class="fas" :class="isDarkTheme ? 'fa-sun' : 'fa-moon'"></i>
-      </button>
+      <div class="footer-actions">
+        <button class="theme-toggle" @click="toggleTheme">
+          <i class="fas" :class="isDarkTheme ? 'fa-sun' : 'fa-moon'"></i>
+        </button>
+        
+        <button class="logout-button" @click="logout">
+          <i class="fas fa-sign-out-alt"></i>
+          <span>Logout</span>
+        </button>
+      </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed, ref, onMounted } from 'vue';
-import { useRoute } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import SectionLibrary from '@/components/TemplateCreator/SectionLibrary.vue';
 import { useUIStore, usePreferencesStore } from '@/stores';
+import { useAuthStore } from '@/stores/auth';
 
 // Props
 const props = defineProps({
@@ -124,16 +152,43 @@ const emit = defineEmits([
 // Get stores
 const uiStore = useUIStore();
 const preferencesStore = usePreferencesStore();
+const authStore = useAuthStore();
+const router = useRouter();
 
 // Get current route
 const route = useRoute();
 const currentRoute = computed(() => {
-  if (route.path === '/') return 'home';
+  if (route.path === '/dashboard') return 'dashboard';
   if (route.path.includes('/editor')) return 'editor';
   if (route.path === '/library') return 'library';
+  if (route.path === '/template-library') return 'templateLibrary';
   if (route.path === '/settings') return 'settings';
   return '';
 });
+
+// User profile methods
+const getInitials = (name: string) => {
+  if (!name) return '';
+  return name
+    .split(' ')
+    .map(part => part.charAt(0))
+    .join('')
+    .toUpperCase();
+};
+
+const getPlanLabel = (plan: string) => {
+  switch (plan) {
+    case 'free': return 'Free Plan';
+    case 'premium': return 'Premium Plan';
+    case 'pro': return 'Pro Plan';
+    default: return 'Free Plan';
+  }
+};
+
+const logout = () => {
+  authStore.logout();
+  router.push({ name: 'login' });
+};
 
 // Theme toggle
 const isDarkTheme = ref(true); // Default to dark theme
@@ -165,7 +220,7 @@ const toggleTheme = () => {
 .global-sidebar {
   display: flex;
   flex-direction: column;
-  width: 280px;
+  width: 260px; /* Was 280px */
   height: 100vh;
   background: rgba(30, 30, 46, 0.8);
   border-right: 1px solid var(--glass-border);
@@ -179,24 +234,24 @@ const toggleTheme = () => {
 .sidebar-header {
   display: flex;
   align-items: center;
-  padding: var(--spacing-lg);
+  padding: var(--spacing-md) var(--spacing-lg); /* Reduced from var(--spacing-lg) */
   gap: var(--spacing-md);
 }
 
 .app-logo {
-  width: 40px;
-  height: 40px;
+  width: 36px; /* Was 40px */
+  height: 36px; /* Was 40px */
   background: linear-gradient(135deg, var(--color-primary), var(--color-primary-dark));
   border-radius: var(--radius-sm);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.25rem;
+  font-size: 1.125rem; /* Was 1.25rem */
   color: white;
 }
 
 .app-title {
-  font-size: 1.25rem;
+  font-size: 1.125rem; /* Was 1.25rem */
   font-weight: 600;
   margin: 0;
   background: linear-gradient(135deg, var(--color-primary-light), var(--color-primary));
@@ -215,13 +270,13 @@ const toggleTheme = () => {
   display: flex;
   align-items: center;
   gap: var(--spacing-md);
-  padding: var(--spacing-md);
+  padding: var(--spacing-sm) var(--spacing-md); /* Reduced from var(--spacing-md) */
   border-radius: var(--radius-md);
   color: var(--color-text);
   text-decoration: none;
   font-weight: 500;
   transition: all var(--transition-fast);
-  margin-bottom: var(--spacing-xs);
+  margin-bottom: 2px; /* Was var(--spacing-xs) */
 }
 
 .nav-item:hover {
@@ -248,16 +303,16 @@ const toggleTheme = () => {
 .sidebar-context {
   flex: 1;
   overflow-y: auto;
-  padding: 0 var(--spacing-md);
+  padding: 0 var(--spacing-sm); /* Was 0 var(--spacing-md) */
 }
 
 .sidebar-section-title {
-  font-size: 0.9rem;
+  font-size: 0.8rem; /* Was 0.9rem */
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.05em;
   color: var(--color-text-secondary);
-  margin: var(--spacing-md) var(--spacing-md);
+  margin: var(--spacing-sm) var(--spacing-md); /* Was var(--spacing-md) var(--spacing-md) */
 }
 
 .section-library-container {
@@ -292,7 +347,7 @@ const toggleTheme = () => {
 }
 
 .sidebar-footer {
-  padding: var(--spacing-md);
+  padding: var(--spacing-sm) var(--spacing-md); /* Was var(--spacing-md) */
   border-top: 1px solid var(--glass-border);
   display: flex;
   flex-direction: column;
@@ -309,9 +364,10 @@ const toggleTheme = () => {
   align-items: center;
   justify-content: center;
   gap: var(--spacing-sm);
-  padding: var(--spacing-sm) var(--spacing-md);
+  padding: var(--spacing-xs) var(--spacing-sm); /* Reduced from var(--spacing-sm) var(--spacing-md) */
   border-radius: var(--radius-md);
   font-weight: 500;
+  font-size: 0.9rem; /* Added to reduce text size */
   cursor: pointer;
   transition: all var(--transition-fast);
   flex: 1;
@@ -344,6 +400,13 @@ const toggleTheme = () => {
   background: rgba(255, 255, 255, 0.15);
 }
 
+.footer-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: var(--spacing-sm);
+}
+
 .theme-toggle {
   background: transparent;
   border: none;
@@ -351,10 +414,8 @@ const toggleTheme = () => {
   font-size: 1.2rem;
   cursor: pointer;
   transition: all var(--transition-fast);
-  margin-top: var(--spacing-sm);
   padding: var(--spacing-sm);
   border-radius: var(--radius-sm);
-  align-self: center;
 }
 
 .theme-toggle:hover {
@@ -364,7 +425,7 @@ const toggleTheme = () => {
 
 /* Custom scrollbar for sidebar content */
 .sidebar-context::-webkit-scrollbar {
-  width: 4px;
+  width: 3px; /* Was 4px */
 }
 
 .sidebar-context::-webkit-scrollbar-track {
@@ -372,12 +433,68 @@ const toggleTheme = () => {
 }
 
 .sidebar-context::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.08); /* Lighter, more subtle */
+  border-radius: 1.5px;
 }
 
 .sidebar-context::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.15);
+}
+
+/* User profile styles */
+.user-profile {
+  display: flex;
+  align-items: center;
+  padding: var(--spacing-md) var(--spacing-lg);
+  gap: var(--spacing-md);
+  border-bottom: 1px solid var(--glass-border);
+}
+
+.user-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-full);
+  background: linear-gradient(135deg, var(--color-primary-light), var(--color-primary));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: 500;
+  font-size: 0.875rem;
+}
+
+.user-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.user-name {
+  font-weight: 500;
+  font-size: 0.9rem;
+}
+
+.user-plan {
+  font-size: 0.75rem;
+  color: var(--color-primary);
+}
+
+.logout-button {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  background: transparent;
+  border: none;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: var(--radius-sm);
+  font-size: 0.875rem;
+  transition: all var(--transition-fast);
+}
+
+.logout-button:hover {
+  color: var(--color-text);
+  background: rgba(255, 255, 255, 0.05);
 }
 
 @media (max-width: 768px) {

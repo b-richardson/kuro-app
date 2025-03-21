@@ -376,9 +376,9 @@ const addYamlPreset = (presetId: string) => {
 }
 
 .section-library-category-title {
-  font-size: 1rem;
+  font-size: 0.8rem; /* Was 1rem */
   font-weight: 600;
-  margin: 0 0 var(--spacing-sm);
+  margin: var(--spacing-xs) 0; /* Reduced from var(--spacing-sm) 0 */
   color: var(--color-text);
   padding-bottom: var(--spacing-xs);
   border-bottom: 1px solid var(--color-surface);
@@ -412,7 +412,7 @@ const addYamlPreset = (presetId: string) => {
 .section-library-item {
   display: flex;
   align-items: center;
-  padding: var(--spacing-sm) var(--spacing-md);
+  padding: var(--spacing-xs) var(--spacing-sm); /* Reduced from var(--spacing-sm) var(--spacing-md) */
   border-radius: var(--radius-md);
   cursor: pointer;
   transition: all 0.2s ease;
@@ -420,6 +420,7 @@ const addYamlPreset = (presetId: string) => {
   border: 1px solid var(--color-surface);
   gap: var(--spacing-sm);
   box-shadow: var(--glass-shadow);
+  margin-bottom: var(--spacing-xs); /* Added to create spacing between items */
 }
 
 .section-library-item:hover {
@@ -432,13 +433,14 @@ const addYamlPreset = (presetId: string) => {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
+  width: 32px; /* Was 36px */
+  height: 32px; /* Was 36px */
   border-radius: var(--radius-sm);
   color: white;
-  font-size: 1rem;
+  font-size: 0.9rem; /* Was 1rem */
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
   flex-shrink: 0;
+  margin-right: var(--spacing-sm); /* Was var(--spacing-md) */
 }
 
 /* Basic section icons */
@@ -489,14 +491,14 @@ const addYamlPreset = (presetId: string) => {
 }
 
 .section-library-item-title {
-  font-size: 0.9375rem;
+  font-size: 0.9rem; /* Slightly smaller */
   font-weight: 600;
   margin: 0;
   color: var(--color-text);
 }
 
 .section-library-item-description {
-  font-size: 0.8125rem;
+  font-size: 0.75rem; /* Was 0.8125rem */
   color: var(--color-text-muted);
   margin: var(--spacing-xs) 0 0;
   line-height: 1.3;
