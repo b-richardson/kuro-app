@@ -348,3 +348,72 @@ input:focus, textarea:focus, select:focus {
     display: none;
   }
 }
+
+/* Drag and drop customizations */
+.is-dragging .section-wrapper {
+  transition: transform 0.2s ease;
+}
+
+/* Ghost element (the placeholder where the dragged item will be dropped) */
+.section-ghost {
+  opacity: 0.5;
+  background: rgba(255, 171, 88, 0.1) !important;
+  border: 2px dashed var(--color-primary) !important;
+  box-shadow: inset 0 0 15px rgba(255, 171, 88, 0.1) !important;
+  border-radius: var(--radius-md);
+  position: relative;
+  margin: var(--spacing-md) 0;
+  min-height: 80px;
+}
+
+/* The element being dragged */
+.section-chosen {
+  background: rgba(255, 171, 88, 0.05) !important;
+  border-color: var(--color-primary) !important;
+  z-index: 100 !important;
+  transform: scale(1.02) !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2) !important;
+  opacity: 0.9 !important;
+}
+
+.being-dragged {
+  z-index: 100;
+}
+
+/* Style the container when dragging is happening */
+.is-dragging .sections-list {
+  padding-bottom: 100px; /* Extra space at the bottom for easier dragging */
+}
+
+/* Add a visual indicator for drag handles */
+.section-handle {
+  cursor: grab;
+  padding: 8px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: rgba(255, 255, 255, 0.03);
+  color: var(--color-text-secondary);
+}
+
+.section-handle:hover {
+  background-color: rgba(255, 171, 88, 0.15);
+  color: var(--color-primary);
+  transform: scale(1.1);
+}
+
+.section-handle:active, 
+.is-dragging .section-handle {
+  cursor: grabbing;
+  background-color: rgba(255, 171, 88, 0.25);
+  color: var(--color-primary);
+}
+
+/* Add visual cues during dragging */
+.is-dragging .section-wrapper:not(.section-chosen):hover {
+  transform: translateY(5px);
+  border-top: 2px solid var(--color-primary);
+  transition: transform 0.2s ease, border-top 0.2s ease;
+}

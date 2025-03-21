@@ -14,8 +14,9 @@
   >
     <!-- Section header with drag handle and actions -->
     <div class="template-section-header">
-      <div class="template-section-handle section-handle">
+      <div class="template-section-handle section-handle" title="Drag to reorder">
         <i class="fas fa-grip-vertical"></i>
+        <span class="drag-hint">Drag</span>
       </div>
       <div class="template-section-type">
         <i :class="sectionIcon"></i>
@@ -809,15 +810,33 @@ const updateSectionContent = (newContent: string[]) => {
   cursor: grab;
   color: var(--color-text-muted);
   margin-right: var(--spacing-sm);
-  transition: color 0.2s;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  padding: 3px;
+  border-radius: var(--radius-sm);
 }
 
 .template-section-handle:hover {
   color: var(--color-primary);
+  background: rgba(255, 171, 88, 0.1);
 }
 
 .template-section--selected .template-section-handle {
   color: var(--color-primary);
+}
+
+.drag-hint {
+  font-size: 0.75rem;
+  font-weight: 500;
+  opacity: 0;
+  transition: opacity 0.2s;
+  color: var(--color-primary);
+}
+
+.template-section-handle:hover .drag-hint {
+  opacity: 1;
 }
 
 .template-section-type {

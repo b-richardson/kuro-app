@@ -1,5 +1,14 @@
 <template>
   <div class="drag-drop-editor" @click.self="clearSelection">
+    <!-- Debug information -->
+    <div v-if="showDebugInfo" class="debug-info">
+      <p>Sections count: {{ sections.length }}</p>
+      <button @click="toggleUseDraggable">
+        {{ useDraggable ? 'Switch to Manual Render' : 'Switch to Draggable' }}
+      </button>
+      <pre>{{ JSON.stringify(sections, null, 2) }}</pre>
+    </div>
+    
     <div v-if="sections.length === 0" class="empty-template">
       <div class="empty-template-icon">
         <i class="fas fa-file-alt"></i>
@@ -7,9 +16,9 @@
       <p class="empty-template-title">Your template is empty</p>
       <p class="empty-template-subtitle">Add sections from the library or drag them here</p>
     </div>
-    
-    <!-- Fallback for any draggable loading issues -->
-    <div v-else-if="!isDraggableLoaded" class="sections-list">
+
+    <!-- Test with manual rendering -->
+    <div v-else-if="!useDraggable" class="sections-list">
       <div v-for="section in sections" :key="section.id" class="section-wrapper">
         <TemplateSection
           :section="section"
@@ -23,8 +32,9 @@
       </div>
     </div>
     
-    <DraggableWrapper
-      v-else
+    <!-- Draggable implementation -->
+    <draggable
+      v-else-if="sections.length > 0"
       v-model="sectionsList"
       item-key="id"
       group="sections"
@@ -32,13 +42,20 @@
       handle=".section-handle"
       ghost-class="section-ghost"
       chosen-class="section-chosen"
+      drag-class="is-dragging"
       animation="200"
+      :delay="50"
+      :delayOnTouchOnly="true"
+      :force-fallback="true"
       @change="updateSections"
+      @start="onDragStart"
+      @end="onDragEnd"
       tag="transition-group"
       :component-data="{
         name: 'fade',
         tag: 'div',
-        css: true
+        css: true,
+        'data-draggable': true
       }"
     >
       <template #item="{element}">
@@ -54,7 +71,7 @@
           />
         </div>
       </template>
-    </DraggableWrapper>
+    </draggable>
     
     <!-- Keyboard shortcuts help (toggled with Alt+?) -->
     <div v-if="showKeyboardHelp" class="keyboard-shortcuts-help">
@@ -126,14 +143,38 @@
 import { computed, ref, onMounted, nextTick, watch } from 'vue';
 import { TemplateSection as ITemplateSection } from '@/types/TemplateSection';
 import TemplateSection from './TemplateSection.vue';
-import DraggableWrapper from './DraggableWrapper.vue';
 import { v4 as uuidv4 } from 'uuid';
+// Import draggable directly from vue-draggable-next
+import { VueDraggableNext } from 'vue-draggable-next';
 
-// Track if draggable component is loaded properly
-const isDraggableLoaded = ref(true);
+// Define props first - this must come before any references to props
+const props = defineProps<{
+  sections: ITemplateSection[]
+}>();
+
+// Define emits after props
+const emit = defineEmits<{
+  (e: 'update', sections: ITemplateSection[]): void;
+  (e: 'delete', sectionId: string): void;
+  (e: 'section-change'): void;
+}>();
+
+// Rename to draggable to make it easier to use
+const draggable = VueDraggableNext;
+
+// Debug variables
+const showDebugInfo = ref(true); // Set to true initially for debugging
+const useDraggable = ref(false); // Start with manual rendering for debugging
+
 const selectedSectionId = ref<string | null>(null);
 const autoFocusSectionId = ref<string | null>(null);
 const showKeyboardHelp = ref(false);
+
+// Function to toggle between draggable and manual rendering
+const toggleUseDraggable = () => {
+  useDraggable.value = !useDraggable.value;
+  console.log('Switched to:', useDraggable.value ? 'draggable' : 'manual rendering');
+};
 
 // Toast notification system
 interface ToastState {
@@ -186,43 +227,86 @@ const hideToast = () => {
   }
 };
 
-// Handle any error with draggable loading
-onMounted(() => {
-  try {
-    // Check if draggable is valid by checking its properties
-    // This is just a basic check that will be refined when the component actually tries to render
-    if (typeof draggable !== 'object' && typeof draggable !== 'function') {
-      console.error('Draggable component not loaded correctly');
-      isDraggableLoaded.value = false;
-    }
-    
-    // Add global keyboard event listener
-    document.addEventListener('keydown', handleGlobalKeydown);
-  } catch (e) {
-    console.error('Error checking draggable component:', e);
-    isDraggableLoaded.value = false;
-  }
-});
-
-// Define props
-const props = defineProps<{
-  sections: ITemplateSection[]
-}>();
-
-// Define emits
-const emit = defineEmits<{
-  (e: 'update', sections: ITemplateSection[]): void;
-  (e: 'delete', sectionId: string): void;
-  (e: 'section-change'): void;
-}>();
-
 // Create a computed property for the sections to support v-model with draggable
-const sectionsList = computed({
+const sectionsList = computed<ITemplateSection[]>({
   get: () => props.sections,
   set: (value) => {
+    // Add a console.log to debug updates
+    console.log('Sections updated via v-model:', value);
     emit('update', value);
   }
 });
+
+/**
+ * Temporary adapter function to fix section type mismatches between 
+ * store definition and component expectations
+ */
+const adaptSectionTypes = () => {
+  if (!props.sections || props.sections.length === 0) return;
+  
+  // Create a mapping between store types and component expected types
+  const typeMap: Record<string, string> = {
+    'heading': 'header',
+    'list': 'checklist',
+    'text': 'text',
+    'table': 'table',
+    'code': 'text',
+    'frontmatter': 'yaml'
+  };
+  
+  // Check if any section needs adaptation
+  let needsAdaptation = false;
+  
+  props.sections.forEach(section => {
+    // Type-safe check
+    const sectionType = section.type as string;
+    if (typeMap[sectionType] && sectionType !== typeMap[sectionType]) {
+      needsAdaptation = true;
+      console.log(`Section type needs adaptation: ${sectionType} -> ${typeMap[sectionType]}`);
+    }
+    
+    // Also ensure content is an array (store might use string)
+    if (typeof section.content === 'string') {
+      needsAdaptation = true;
+      console.log(`Section content needs adaptation from string to array`);
+    }
+  });
+  
+  if (needsAdaptation) {
+    console.log('Adapting section types for compatibility...');
+    
+    // Create adapted sections with proper types
+    const adaptedSections = props.sections.map(section => {
+      // Create a new object to avoid mutating props directly
+      const adapted = { ...section };
+      
+      // Type-safe adaptation
+      const sectionType = section.type as string;
+      if (typeMap[sectionType]) {
+        // @ts-ignore - We need to convert types safely
+        adapted.type = typeMap[sectionType];
+      }
+      
+      // Ensure content is an array
+      if (typeof section.content === 'string') {
+        adapted.content = [section.content];
+      }
+      
+      // Ensure pluginType exists
+      if (adapted.pluginType === undefined) {
+        adapted.pluginType = null;
+      }
+      
+      return adapted;
+    });
+    
+    // Use the adapted sections
+    console.log('Adapted sections:', adaptedSections);
+    
+    // Replace the sections in the computed property
+    emit('update', adaptedSections);
+  }
+};
 
 /**
  * Handle global keyboard shortcuts
@@ -245,12 +329,83 @@ const handleGlobalKeydown = (event: KeyboardEvent) => {
   // More global shortcuts can be added here
 };
 
+// Drag state tracking
+const isDragging = ref(false);
+
+/**
+ * Handle drag start event
+ */
+const onDragStart = (evt: any) => {
+  isDragging.value = true;
+  document.body.classList.add('is-dragging');
+  
+  // Add a class to the dragged element for better styling
+  if (evt.item) {
+    evt.item.classList.add('being-dragged');
+  }
+  
+  // Log the drag start event for debugging
+  console.log('Drag started:', evt.oldIndex);
+};
+
+/**
+ * Handle drag end event
+ */
+const onDragEnd = (evt: any) => {
+  isDragging.value = false;
+  document.body.classList.remove('is-dragging');
+  
+  // Remove the dragging class
+  if (evt.item) {
+    evt.item.classList.remove('being-dragged');
+  }
+  
+  // Log the drag end event for debugging
+  console.log('Drag ended. Old index:', evt.oldIndex, 'New index:', evt.newIndex);
+  
+  // If indices are different, we had a valid reordering
+  if (evt.oldIndex !== evt.newIndex) {
+    // Show a toast notification for user feedback
+    showToast('Section reordered successfully', 'success');
+  }
+};
+
+// Add a watcher for sections prop to debug updates - after adaptSectionTypes is defined
+watch(() => props.sections, (newSections) => {
+  console.log('Sections updated:', newSections);
+  
+  // Apply section type adapter on updates
+  adaptSectionTypes();
+}, { immediate: true, deep: true });
+
+// Set up event listeners - after all functions are defined
+onMounted(() => {
+  try {
+    // Add global keyboard event listener
+    document.addEventListener('keydown', handleGlobalKeydown);
+    
+    // Log for debugging
+    console.log('DragDropEditor mounted with direct vuedraggable implementation');
+    console.log('Sections received:', props.sections);
+    
+    // Apply section type adapter on mount
+    adaptSectionTypes();
+  } catch (e) {
+    console.error('Error in DragDropEditor mount:', e);
+  }
+});
+
 /**
  * Updates sections after drag-drop events
  */
-const updateSections = () => {
-  emit('update', sectionsList.value);
-  emit('section-change');
+const updateSections = (evt: any) => {
+  console.log('Update sections event:', evt);
+  
+  // The v-model binding should already update the props.sections via emit('update')
+  // We just need to trigger any additional events if we have a moved event
+  if (evt.moved) {
+    emit('section-change');
+  }
 };
 
 /**
@@ -345,6 +500,40 @@ const duplicateSection = (sectionId: string) => {
   box-sizing: border-box;
   padding: 0;
   margin: 0;
+}
+
+/* Debug info styling */
+.debug-info {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  background: rgba(0, 0, 0, 0.8);
+  color: white;
+  padding: 10px;
+  font-family: monospace;
+  z-index: 1000;
+  max-height: 300px;
+  overflow: auto;
+}
+
+.debug-info pre {
+  font-size: 12px;
+  white-space: pre-wrap;
+}
+
+.debug-info button {
+  background: #555;
+  color: white;
+  border: none;
+  padding: 5px 10px;
+  margin: 5px 0;
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+.debug-info button:hover {
+  background: #777;
 }
 
 .empty-template {
