@@ -81,38 +81,11 @@
             :class="{ 'full-width': uiStore.focusMode === 'preview', 'hidden': uiStore.focusMode === 'editor' }"
             v-show="uiStore.focusMode !== 'editor'"
           >
-            <div class="panel-header">
-              <div class="panel-title">
-                <h2>Preview</h2>
-                <div class="export-profile-indicator">
-                  <span class="profile-badge" :class="`profile-${getCurrentProfileId()}`">
-                    {{ getProfileName(getCurrentProfileId()) }}
-                  </span>
-                </div>
-              </div>
-              <div class="panel-actions">
-                <button 
-                  class="panel-action-button"
-                  @click="setFocusMode('preview')" 
-                  v-if="uiStore.focusMode !== 'preview'"
-                  title="Expand preview"
-                >
-                  <i class="fas fa-expand"></i>
-                </button>
-                <button 
-                  class="panel-action-button"
-                  @click="setFocusMode('none')" 
-                  v-else
-                  title="Restore split view"
-                >
-                  <i class="fas fa-compress"></i>
-                </button>
-              </div>
-            </div>
-            
             <MarkdownPreview
               :sections="templateStore.currentSections"
               :export-profile="preferencesStore.currentExportProfile"
+              @update:export-profile="preferencesStore.setCurrentExportProfile"
+              @focus-mode="togglePreviewFocus"
             />
           </div>
           
@@ -147,7 +120,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, onMounted, onUnmounted, watch } from 'vue';
+import { computed, ref, onMounted, onUnmounted, watch, nextTick } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { useTemplateStore } from '@/stores/template';
 import { useUIStore } from '@/stores/ui';
@@ -177,6 +150,7 @@ const preferencesStore = usePreferencesStore();
 // Local state
 const resizing = ref(false);
 const autoSaving = ref(false);
+const themeMode = ref('dark'); // Get from preferences
 const templateName = computed({
   get: () => templateStore.currentTemplate?.name || '',
   set: (value) => {
@@ -191,6 +165,11 @@ const templateName = computed({
 
 // Computed properties
 const editorGridStyle = computed(() => {
+  // Don't override direct style changes when in the middle of resizing
+  if (resizing.value) {
+    return {};
+  }
+  
   if (uiStore.focusMode !== 'none') {
     return {};
   }
@@ -199,21 +178,7 @@ const editorGridStyle = computed(() => {
   };
 });
 
-// Helper functions for profiles
-const getProfileName = (profileId: string): string => {
-  const profiles: Record<string, string> = {
-    plain: "Plain Markdown",
-    templater: "Templater",
-    dataview: "Dataview",
-    full: "Full Plugin Suite"
-  };
-  return profiles[profileId] || "Unknown";
-};
 
-const getCurrentProfileId = (): "plain" | "templater" | "dataview" | "full" => {
-  if (!preferencesStore.currentExportProfile) return "full";
-  return preferencesStore.currentExportProfile.id || "full";
-};
 
 // Methods
 const handleBack = () => {
@@ -253,6 +218,15 @@ const setFocusMode = (mode) => {
   uiStore.setFocusMode(mode);
 };
 
+// Toggle preview focus from MarkdownPreview component
+const togglePreviewFocus = () => {
+  if (uiStore.focusMode !== 'preview') {
+    uiStore.setFocusMode('preview');
+  } else {
+    uiStore.setFocusMode('none');
+  }
+};
+
 const addSection = (section) => {
   templateStore.addSection(section);
   markAsModified();
@@ -289,7 +263,7 @@ const debouncedAutosave = debounce(async () => {
   }
 }, 5000);
 
-// Resize functionality
+// Improved resize functionality
 const startResize = (e) => {
   e.preventDefault();
   resizing.value = true;
@@ -314,7 +288,17 @@ const handleResize = (e) => {
   const width = e.clientX - rect.left;
   const percent = Math.min(Math.max((width / rect.width) * 100, 20), 80);
   
+  // Apply the style directly to the grid element for immediate visual feedback
+  container.style.gridTemplateColumns = `${percent}% ${100 - percent}%`;
+  
+  // Also update the store for persistence
   uiStore.setEditorWidth(percent);
+  
+  // Update the resize handle position
+  const handle = document.querySelector('.resize-handle');
+  if (handle) {
+    handle.style.left = `${percent}%`;
+  }
 };
 
 const stopResize = () => {
@@ -328,6 +312,12 @@ const stopResize = () => {
   
   document.removeEventListener('mousemove', handleResize);
   document.removeEventListener('mouseup', stopResize);
+  
+  // Final sync of handle position with actual grid division
+  const handle = document.querySelector('.resize-handle');
+  if (handle) {
+    handle.style.left = `${uiStore.editorWidth}%`;
+  }
   
   // Save the preference
   preferencesStore.saveEditorWidth(uiStore.editorWidth);
@@ -369,6 +359,24 @@ onMounted(async () => {
   await templateStore.loadTemplates();
   preferencesStore.loadPreferences();
   uiStore.loadUIPreferences();
+  
+  // No longer need document-level dropdown management as it's handled in the MarkdownPreview component
+  // Get theme preference
+  themeMode.value = preferencesStore.theme || 'dark';
+  
+  // Explicitly set the initial grid template columns and resize handle position
+  nextTick(() => {
+    const container = document.querySelector('.editor-grid');
+    const handle = document.querySelector('.resize-handle');
+    
+    if (container && uiStore.focusMode === 'none') {
+      container.style.gridTemplateColumns = `${uiStore.editorWidth}% ${100 - uiStore.editorWidth}%`;
+    }
+    
+    if (handle) {
+      handle.style.left = `${uiStore.editorWidth}%`;
+    }
+  });
   
   // Set last visited view
   preferencesStore.setLastVisitedView('editor');
@@ -415,20 +423,20 @@ onUnmounted(() => {
   display: flex;
   flex: 1;
   overflow: hidden;
-  padding: var(--spacing-md);
-  gap: var(--spacing-md);
+  padding: var(--spacing-lg);
+  gap: var(--spacing-lg);
 }
 
 .editor-sidebar {
-  width: 250px;
+  width: 280px; /* Slightly wider for more content space */
   overflow-y: auto;
   padding: 0;
   flex-shrink: 0;
-  /* Special styling for sidebar */
-  background: rgba(30, 30, 46, 0.6);
-  border: 1px solid rgba(167, 139, 250, 0.15);
-  /* Add a subtle purple tint to the sidebar */
-  box-shadow: 0 4px 20px rgba(167, 139, 250, 0.1);
+  /* Enhanced glassmorphism for sidebar */
+  background: rgba(30, 30, 46, 0.7);
+  border: 1px solid rgba(167, 139, 250, 0.2);
+  box-shadow: 0 8px 32px rgba(167, 139, 250, 0.15);
+  border-radius: var(--radius-lg);
 }
 
 .editor-content {
@@ -442,7 +450,7 @@ onUnmounted(() => {
   grid-template-columns: 50% 50%;
   height: 100%;
   position: relative;
-  gap: var(--spacing-md);
+  gap: var(--spacing-lg); /* Increased gap between panels */
 }
 
 .editor-panel, .preview-panel {
@@ -450,31 +458,33 @@ onUnmounted(() => {
   flex-direction: column;
   overflow: hidden;
   transition: all var(--transition-standard);
+  border-radius: var(--radius-lg); /* Increased border radius */
 }
 
 /* Unique styling for the editor panel */
 .editor-panel {
   background: rgba(30, 30, 46, 0.5);
-  border: 1px solid rgba(76, 205, 196, 0.15);
-  /* Add a subtle teal tint */
-  box-shadow: 0 4px 20px rgba(76, 205, 196, 0.05);
+  border: 1px solid rgba(76, 205, 196, 0.2);
+  /* Enhanced teal tint with better shadow */
+  box-shadow: 0 8px 32px rgba(76, 205, 196, 0.1);
 }
 
 /* Unique styling for the preview panel */
 .preview-panel {
   background: rgba(30, 30, 46, 0.5);
-  border: 1px solid rgba(52, 211, 153, 0.15);
-  /* Add a subtle green tint */
-  box-shadow: 0 4px 20px rgba(52, 211, 153, 0.05);
+  border: 1px solid rgba(52, 211, 153, 0.2);
+  /* Enhanced green tint with better shadow */
+  box-shadow: 0 8px 32px rgba(52, 211, 153, 0.1);
 }
 
 .panel-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: var(--spacing-sm) var(--spacing-md);
+  padding: var(--spacing-md) var(--spacing-lg);
   border-bottom: 1px solid var(--glass-border);
-  background: rgba(30, 30, 46, 0.7);
+  background: rgba(30, 30, 46, 0.8);
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
 }
 
 .panel-title {
@@ -536,33 +546,6 @@ onUnmounted(() => {
   align-items: center;
 }
 
-.profile-badge {
-  font-size: 0.7rem;
-  padding: 2px 6px;
-  border-radius: var(--radius-full);
-  background: var(--glass-background);
-  color: var(--color-text);
-}
-
-.profile-plain {
-  background: rgba(100, 116, 139, 0.2);
-  color: rgb(100, 116, 139);
-}
-
-.profile-templater {
-  background: rgba(6, 182, 212, 0.2);
-  color: rgb(6, 182, 212);
-}
-
-.profile-dataview {
-  background: rgba(139, 92, 246, 0.2);
-  color: rgb(139, 92, 246);
-}
-
-.profile-full {
-  background: rgba(79, 70, 229, 0.2);
-  color: rgb(79, 70, 229);
-}
 
 .full-width {
   grid-column: 1 / span 2;
@@ -577,24 +560,28 @@ onUnmounted(() => {
   top: 0;
   bottom: 0;
   left: 50%;
-  width: 6px;
-  background: transparent;
+  width: 8px; /* Wider for easier grabbing */
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: var(--radius-full);
   cursor: col-resize;
   z-index: 10;
   transform: translateX(-50%);
-  transition: background-color var(--transition-fast);
+  transition: background-color var(--transition-fast), opacity var(--transition-fast), width var(--transition-fast), box-shadow var(--transition-fast);
 }
 
 .resize-handle:hover {
   background: var(--color-primary);
-  opacity: 0.3;
+  opacity: 0.4;
+  width: 8px;
+  box-shadow: 0 0 8px rgba(255, 171, 88, 0.3);
 }
 
 .resize-handle:active,
 .resizing .resize-handle {
   background: var(--color-primary);
-  opacity: 0.5;
-  width: 8px;
+  opacity: 0.6;
+  width: 10px;
+  box-shadow: 0 0 12px var(--color-primary);
 }
 
 .resizing {

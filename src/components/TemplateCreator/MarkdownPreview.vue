@@ -3,54 +3,121 @@
     <div class="markdown-preview__header">
       <div class="markdown-preview__title-container">
         <h2 class="markdown-preview__title">Preview</h2>
-        <div 
-          v-if="exportProfile !== 'full'" 
-          class="markdown-preview__profile-badge"
-          :data-profile="exportProfile"
-        >
-          {{ getProfileDisplayName(exportProfile) }}
-        </div>
       </div>
-      <div class="markdown-preview__toggle">
-        <button 
-          class="markdown-preview__toggle-btn"
-          :class="{ 'markdown-preview__toggle-btn--active': !showSource }"
-          @click="showSource = false"
-        >
-          <i class="fas fa-eye"></i> Rendered
-        </button>
-        <button 
-          class="markdown-preview__toggle-btn"
-          :class="{ 'markdown-preview__toggle-btn--active': showSource }"
-          @click="showSource = true"
-        >
-          <i class="fas fa-code"></i> Source
-        </button>
-        <button 
-          class="markdown-preview__toggle-btn markdown-preview__templater-btn"
-          :class="{ 'markdown-preview__toggle-btn--active': showTemplaterSyntax }"
-          @click="showTemplaterSyntax = !showTemplaterSyntax"
-          title="Toggle Templater Syntax"
-        >
-          <i class="fas fa-bolt"></i> <span class="templater-btn-text">Templater Syntax</span>
-        </button>
+      
+      <div class="preview-controls">
+        <!-- View mode selector dropdown -->
+        <div class="dropdown">
+          <button 
+            class="dropdown-trigger glass-button" 
+            @click.stop="toggleViewModeMenu"
+            title="Change view mode"
+          >
+            <span>{{ currentViewMode }}</span>
+            <i class="fas fa-chevron-down"></i>
+          </button>
+          <div class="dropdown-menu" v-if="showViewModeMenu">
+            <div 
+              class="dropdown-item"
+              :class="{ active: currentViewMode === 'Rendered' }"
+              @click="setViewMode('Rendered')"
+            >
+              <i class="fas fa-eye"></i>
+              Rendered
+            </div>
+            <div 
+              class="dropdown-item"
+              :class="{ active: currentViewMode === 'Markdown' }"
+              @click="setViewMode('Markdown')"
+            >
+              <i class="fas fa-code"></i>
+              Markdown
+            </div>
+            <div 
+              class="dropdown-item"
+              :class="{ active: currentViewMode === 'Source' }"
+              @click="setViewMode('Source')"
+            >
+              <i class="fas fa-file-code"></i>
+              Source
+            </div>
+          </div>
+        </div>
         
-        <button 
-          class="markdown-preview__toggle-btn markdown-preview__dataview-btn"
-          :class="{ 'markdown-preview__toggle-btn--active': showDataviewSyntax }"
-          @click="showDataviewSyntax = !showDataviewSyntax"
-          title="Toggle Dataview Syntax"
-        >
-          <i class="fas fa-database"></i> <span class="dataview-btn-text">Dataview Syntax</span>
-        </button>
+        <!-- Profile selector dropdown -->
+        <div class="dropdown">
+          <button 
+            class="dropdown-trigger glass-button" 
+            @click.stop="toggleProfileMenu"
+            title="Change export profile"
+          >
+            <span class="profile-badge" :class="`profile-${exportProfile}`">
+              {{ getProfileDisplayName(exportProfile) }}
+            </span>
+            <i class="fas fa-chevron-down"></i>
+          </button>
+          <div class="dropdown-menu" v-if="showProfileMenu">
+            <div 
+              v-for="profile in exportProfiles" 
+              :key="profile.id"
+              class="dropdown-item"
+              :class="{ active: exportProfile === profile.id }"
+              @click="setExportProfile(profile.id)"
+            >
+              <i :class="profile.icon"></i>
+              {{ profile.name }}
+            </div>
+          </div>
+        </div>
         
+        <!-- Plugin syntax toggles dropdown -->
+        <div class="dropdown">
+          <button 
+            class="dropdown-trigger glass-button" 
+            @click.stop="togglePluginMenu"
+            title="Toggle plugin syntax"
+          >
+            <span>Plugins</span>
+            <i class="fas fa-chevron-down"></i>
+          </button>
+          <div class="dropdown-menu" v-if="showPluginMenu">
+            <div 
+              class="dropdown-item"
+              :class="{ active: showTemplaterSyntax }"
+              @click="showTemplaterSyntax = !showTemplaterSyntax"
+            >
+              <i class="fas fa-bolt"></i>
+              <span>Templater Syntax</span>
+              <span class="toggle-indicator">{{ showTemplaterSyntax ? 'On' : 'Off' }}</span>
+            </div>
+            <div 
+              class="dropdown-item"
+              :class="{ active: showDataviewSyntax }"
+              @click="showDataviewSyntax = !showDataviewSyntax"
+            >
+              <i class="fas fa-database"></i>
+              <span>Dataview Syntax</span>
+              <span class="toggle-indicator">{{ showDataviewSyntax ? 'On' : 'Off' }}</span>
+            </div>
+            <div 
+              class="dropdown-item"
+              :class="{ active: showKanbanSyntax }"
+              @click="showKanbanSyntax = !showKanbanSyntax"
+            >
+              <i class="fas fa-columns"></i>
+              <span>Kanban Syntax</span>
+              <span class="toggle-indicator">{{ showKanbanSyntax ? 'On' : 'Off' }}</span>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Focus button - Pass to parent component -->
         <button 
-          class="markdown-preview__toggle-btn markdown-preview__kanban-btn"
-          :class="{ 'markdown-preview__toggle-btn--active': showKanbanSyntax }"
-          @click="showKanbanSyntax = !showKanbanSyntax"
-          title="Toggle Kanban Syntax"
+          class="panel-action-button"
+          @click="emitFocusMode"
+          title="Toggle focus mode"
         >
-          <i class="fas fa-columns"></i> <span class="kanban-btn-text">Kanban Syntax</span>
+          <i class="fas fa-expand"></i>
         </button>
       </div>
     </div>
@@ -83,7 +150,24 @@ const props = defineProps<{
   exportProfile?: ExportProfileId;
 }>();
 
-// Additional options for preview display
+// Define emits
+const emit = defineEmits(['update:exportProfile', 'focus-mode']);
+
+// Dropdown state variables
+const showViewModeMenu = ref(false);
+const showProfileMenu = ref(false);
+const showPluginMenu = ref(false);
+const currentViewMode = ref('Rendered'); // Options: 'Rendered', 'Markdown', 'Source'
+
+// Export profiles data for dropdown
+const exportProfiles = [
+  { id: 'plain', name: 'Plain Markdown', icon: 'fas fa-file-alt' },
+  { id: 'templater', name: 'Templater', icon: 'fas fa-bolt' },
+  { id: 'dataview', name: 'Dataview', icon: 'fas fa-database' },
+  { id: 'full', name: 'Full Plugin Suite', icon: 'fas fa-puzzle-piece' },
+];
+
+// Plugin syntax toggle options
 const showTemplaterSyntax = ref(false);
 const showDataviewSyntax = ref(false);
 const showKanbanSyntax = ref(false);
@@ -103,6 +187,69 @@ const showSource = ref(false);
 const exportProfile = computed<ExportProfileId>(() => {
   return props.exportProfile || 'full';
 });
+
+// Dropdown toggle methods
+const toggleViewModeMenu = () => {
+  showViewModeMenu.value = !showViewModeMenu.value;
+  if (showViewModeMenu.value) {
+    showProfileMenu.value = false;
+    showPluginMenu.value = false;
+  }
+};
+
+const toggleProfileMenu = () => {
+  showProfileMenu.value = !showProfileMenu.value;
+  if (showProfileMenu.value) {
+    showViewModeMenu.value = false;
+    showPluginMenu.value = false;
+  }
+};
+
+const togglePluginMenu = () => {
+  showPluginMenu.value = !showPluginMenu.value;
+  if (showPluginMenu.value) {
+    showViewModeMenu.value = false;
+    showProfileMenu.value = false;
+  }
+};
+
+// Selection and action methods
+const setViewMode = (mode) => {
+  currentViewMode.value = mode;
+  showViewModeMenu.value = false;
+  
+  // Update the view based on selection
+  if (mode === 'Rendered') {
+    showSource.value = false;
+  } else if (mode === 'Markdown' || mode === 'Source') {
+    showSource.value = true;
+  }
+};
+
+const setExportProfile = (profileId) => {
+  emit('update:exportProfile', profileId);
+  showProfileMenu.value = false;
+};
+
+const emitFocusMode = () => {
+  emit('focus-mode');
+};
+
+// Close all dropdowns when clicking outside
+const closeAllDropdowns = () => {
+  showViewModeMenu.value = false;
+  showProfileMenu.value = false;
+  showPluginMenu.value = false;
+};
+
+// Add event listener for clicks outside dropdown
+if (typeof window !== 'undefined') {
+  window.addEventListener('click', (event) => {
+    if (!(event.target as Element).closest('.dropdown')) {
+      closeAllDropdowns();
+    }
+  });
+}
 
 // Generate markdown text from sections with current export profile
 const markdownText = computed(() => {
@@ -481,86 +628,139 @@ const getProfileDisplayName = (profile: ExportProfileId): string => {
   font-size: 1.25rem;
   font-weight: 600;
   margin: 0;
-  color: #4f46e5;
+  color: var(--color-primary, #4f46e5);
 }
 
-.markdown-preview__profile-badge {
-  font-size: 0.75rem;
-  font-weight: 500;
-  padding: 0.25rem 0.5rem;
-  border-radius: 100px;
-  background-color: #f0f9ff;
-  color: #0284c7;
-  border: 1px solid #bae6fd;
-}
-
-.markdown-preview__profile-badge[data-profile="plain"] {
-  background-color: #f1f5f9;
-  color: #64748b;
-  border-color: #cbd5e1;
-}
-
-.markdown-preview__profile-badge[data-profile="templater"] {
-  background-color: #ecfeff;
-  color: #0891b2;
-  border-color: #a5f3fc;
-}
-
-.markdown-preview__profile-badge[data-profile="dataview"] {
-  background-color: #f5f3ff;
-  color: #7c3aed;
-  border-color: #c4b5fd;
-}
-
-.markdown-preview__toggle {
-  display: flex;
-  border: 1px solid rgba(230, 235, 245, 0.8);
-  border-radius: 8px;
-  overflow: hidden;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.03);
-}
-
-.markdown-preview__toggle-btn {
-  border: none;
-  background: white;
-  padding: 0.625rem 0.875rem;
-  font-size: 0.8125rem;
-  cursor: pointer;
+/* Preview controls styling */
+.preview-controls {
   display: flex;
   align-items: center;
-  gap: 0.325rem;
-  color: #64748b;
-  transition: all 0.2s;
-  white-space: nowrap;
+  gap: var(--spacing-sm, 0.5rem);
 }
 
-.markdown-preview__toggle-btn:hover {
-  background-color: #f8fafc;
-  color: #334155;
+/* Dropdown styling */
+.dropdown {
+  position: relative;
 }
 
-.markdown-preview__toggle-btn--active {
-  background-color: #f0f4ff;
-  color: #4f46e5;
+.dropdown-trigger {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs, 0.25rem);
+  padding: var(--spacing-xs, 0.25rem) var(--spacing-sm, 0.5rem);
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid var(--glass-border, rgba(255, 255, 255, 0.1));
+  border-radius: var(--radius-sm, 4px);
+  color: var(--color-text, #f8fafc);
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all var(--transition-fast, 0.15s);
+}
+
+.dropdown-trigger:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.dropdown-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  width: 200px;
+  background: rgba(30, 30, 46, 0.95);
+  backdrop-filter: blur(var(--glass-blur, 10px));
+  border: 1px solid var(--glass-border, rgba(255, 255, 255, 0.1));
+  border-radius: var(--radius-md, 6px);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  z-index: 1000;
+  overflow: hidden;
+  animation: fadeIn 0.2s ease;
+}
+
+.dropdown-item {
+  padding: var(--spacing-sm, 0.5rem) var(--spacing-md, 0.75rem);
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm, 0.5rem);
+  cursor: pointer;
+  transition: all var(--transition-fast, 0.15s);
+}
+
+.dropdown-item i {
+  width: 16px;
+  text-align: center;
+}
+
+.dropdown-item:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.dropdown-item.active {
+  background: rgba(255, 171, 88, 0.15);
+  color: var(--color-primary, #ffab58);
+}
+
+.toggle-indicator {
+  margin-left: auto;
+  font-size: 0.75rem;
+  opacity: 0.7;
+  background: rgba(255, 255, 255, 0.1);
+  padding: 2px 6px;
+  border-radius: 10px;
+}
+
+.panel-action-button {
+  background: transparent;
+  border: none;
+  color: var(--color-text-secondary, rgba(255, 255, 255, 0.6));
+  cursor: pointer;
+  padding: var(--spacing-xs, 0.25rem);
+  border-radius: var(--radius-sm, 4px);
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition-fast, 0.15s);
+}
+
+.panel-action-button:hover {
+  background: var(--glass-background, rgba(255, 255, 255, 0.05));
+  color: var(--color-text, #f8fafc);
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Profile badge styling */
+.profile-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 6px;
+  border-radius: 100px;
+  font-size: 0.75rem;
   font-weight: 500;
 }
 
-/* Special styling for the Templater button */
-.markdown-preview__templater-btn {
-  margin-left: 0.5rem;
-  border-left: 1px solid #e2e8f0;
-  color: #0891b2;
+.profile-plain {
+  background: rgba(100, 116, 139, 0.2);
+  color: rgb(100, 116, 139);
 }
 
-.markdown-preview__templater-btn:hover {
-  color: #0e7490;
-  background-color: #ecfeff;
+.profile-templater {
+  background: rgba(6, 182, 212, 0.2);
+  color: rgb(6, 182, 212);
 }
 
-.markdown-preview__templater-btn.markdown-preview__toggle-btn--active {
-  background-color: #ecfeff;
-  color: #0891b2;
-  border-color: #a5f3fc;
+.profile-dataview {
+  background: rgba(139, 92, 246, 0.2);
+  color: rgb(139, 92, 246);
+}
+
+.profile-full {
+  background: rgba(79, 70, 229, 0.2);
+  color: rgb(79, 70, 229);
 }
 
 .markdown-preview__content {
