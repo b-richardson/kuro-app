@@ -2,7 +2,9 @@
   /* Color Palette */
   --color-background: #121212;
   --color-surface: #222222;
+  --color-border: rgba(255, 255, 255, 0.1);
   --color-text: #e1e1e1;
+  --color-text-light: #a0a0a0;
   --color-text-muted: #a0a0a0;
   --color-primary: #7c3aed;
   --color-primary-light: #9f6bff;
@@ -13,11 +15,16 @@
   --color-success: #2eb85c;
   
   /* Spacing */
-  --spacing-xs: 0.25rem;
-  --spacing-sm: 0.5rem;
-  --spacing-md: 1rem;
-  --spacing-lg: 1.5rem;
-  --spacing-xl: 2rem;
+  --space-xs: 0.25rem;
+  --space-sm: 0.5rem;
+  --space-md: 1rem;
+  --space-lg: 1.5rem;
+  --space-xl: 2rem;
+  --spacing-xs: 0.25rem; /* Legacy - keep for compatibility */
+  --spacing-sm: 0.5rem; /* Legacy - keep for compatibility */
+  --spacing-md: 1rem; /* Legacy - keep for compatibility */
+  --spacing-lg: 1.5rem; /* Legacy - keep for compatibility */
+  --spacing-xl: 2rem; /* Legacy - keep for compatibility */
   
   /* Border Radius */
   --radius-sm: 4px;
@@ -29,6 +36,10 @@
   --glass-border: rgba(255, 255, 255, 0.1);
   --glass-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
   --glass-blur: 10px;
+  
+  /* Editor specific */
+  --editor-width: 50%;
+  --editor-sidebar-width: 250px;
 }
 
 /* Base styles */
@@ -233,7 +244,9 @@ input:focus, textarea:focus, select:focus {
 [data-theme="light"] {
   --color-background: #f8fafc;
   --color-surface: #ffffff;
+  --color-border: #e2e8f0;
   --color-text: #1e293b;
+  --color-text-light: #64748b;
   --color-text-muted: #64748b;
   --glass-background: rgba(255, 255, 255, 0.8);
   --glass-border: rgba(0, 0, 0, 0.1);

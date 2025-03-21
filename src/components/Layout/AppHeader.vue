@@ -1,67 +1,62 @@
 <template>
   <header class="app-header glass">
     <div class="header-container">
+      <!-- Back Button (if enabled) -->
+      <button 
+        v-if="showBackButton"
+        @click="handleBack"
+        class="back-button"
+        aria-label="Go back"
+      >
+        <i class="fas fa-arrow-left"></i>
+      </button>
+      
       <!-- App Logo and Title -->
       <div class="app-branding">
         <div class="app-logo">
           <i class="fas fa-file-alt"></i>
         </div>
-        <h1 class="app-title">Obsidian Template Builder</h1>
+        <h1 class="app-title">{{ title || 'Obsidian Template Builder' }}</h1>
       </div>
       
       <!-- Actions Toolbar -->
       <div class="actions">
-        <!-- Different actions based on current view -->
-        <template v-if="view === 'library'">
-          <!-- New Template Button in Library View -->
-          <button 
-            @click="createNewTemplate"
-            class="btn btn-primary action-btn"
-            aria-label="Create new template"
-          >
-            <i class="fas fa-plus"></i> New Template
-          </button>
-        </template>
-        
-        <template v-else-if="view === 'editor'">
-          <!-- Back to Library button in Editor View -->
-          <button 
-            @click="backToLibrary"
-            class="btn btn-outline action-btn"
-            aria-label="Back to library"
-          >
-            <i class="fas fa-arrow-left"></i> Back to Library
-          </button>
+        <!-- Slot for custom actions -->
+        <slot name="actions">
+          <!-- Default actions based on current view -->
+          <template v-if="view === 'library'">
+            <!-- New Template Button in Library View -->
+            <button 
+              @click="createNewTemplate"
+              class="btn btn-primary action-btn"
+              aria-label="Create new template"
+            >
+              <i class="fas fa-plus"></i> New Template
+            </button>
+          </template>
           
-          <!-- Preview button -->
-          <button 
-            @click="showPreview"
-            class="btn btn-outline action-btn"
-            aria-label="Preview"
-          >
-            <i class="fas fa-eye"></i> Preview
-          </button>
-          
-          <!-- Save button -->
-          <button 
-            @click="saveTemplate"
-            class="btn btn-primary action-btn"
-            aria-label="Save template"
-          >
-            <i class="fas fa-save"></i> Save
-          </button>
-          
-          <!-- Enhanced Export Dropdown -->
-          <ExportDropdown 
-            v-if="sections.length > 0"
-            ref="exportDropdownRef"
-            :sections="sections"
-            :initial-profile="exportProfile"
-            @profile-changed="handleProfileChanged"
-            @export-success="handleExportSuccess"
-            @export-error="handleExportError"
-          />
-        </template>
+          <template v-else-if="view === 'editor'">
+            <!-- Save button -->
+            <button 
+              @click="saveTemplate"
+              class="btn btn-primary action-btn"
+              aria-label="Save template"
+            >
+              <i class="fas fa-save"></i> Save
+            </button>
+            
+            <!-- Enhanced Export Dropdown -->
+            <ExportDropdown 
+              v-if="sections.length > 0"
+              ref="exportDropdownRef"
+              :sections="sections"
+              :initial-profile="exportProfile"
+              @profile-changed="handleProfileChanged"
+              @export-success="handleExportSuccess"
+              @export-error="handleExportError"
+            />
+          </template>
+        </slot>
         
         <!-- Theme Toggle (always visible) -->
         <button
@@ -81,37 +76,52 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
 import { TemplateSection } from '@/types/TemplateSection';
 import ExportDropdown from '@/components/TemplateCreator/ExportDropdown.vue';
 import ToastNotification from '@/components/UI/ToastNotification.vue';
 import { ExportProfileId } from '@/components/TemplateCreator/ExportProfileSelector.vue';
+import { usePreferencesStore } from '@/stores/preferences';
 
 // Props
-const props = defineProps<{
-  sections?: TemplateSection[];
-  view: 'library' | 'editor';
-}>();
-
-// Provide default values for props
-const sections = computed(() => props.sections || []);
+const props = defineProps({
+  title: {
+    type: String,
+    default: ''
+  },
+  sections: {
+    type: Array as () => TemplateSection[],
+    default: () => []
+  },
+  view: {
+    type: String as () => 'library' | 'editor' | 'home',
+    default: 'home'
+  },
+  showBackButton: {
+    type: Boolean,
+    default: false
+  }
+});
 
 // References
 const exportDropdownRef = ref<InstanceType<typeof ExportDropdown> | null>(null);
 const toastRef = ref<InstanceType<typeof ToastNotification> | null>(null);
 
+// Stores
+const preferencesStore = usePreferencesStore();
+
 // Reactive state
 const isDarkTheme = ref(false);
-const exportProfile = ref<ExportProfileId>('full');
+const exportProfile = ref<ExportProfileId>(preferencesStore.currentExportProfile?.id as ExportProfileId || 'full');
 
 // Emits
 const emit = defineEmits<{
-  (e: 'view-change', view: 'library' | 'editor'): void;
+  (e: 'view-change', view: 'library' | 'editor' | 'home'): void;
   (e: 'preview-toggle', visible: boolean): void;
   (e: 'save'): void;
-  (e: 'export', format: 'markdown' | 'templater' | 'dataview' | 'full'): void;
+  (e: 'export', format: string): void;
   (e: 'new-template'): void;
-  (e: 'back-to-library'): void;
+  (e: 'back'): void; 
   (e: 'export-profile-changed', profile: ExportProfileId): void;
 }>();
 
@@ -120,12 +130,8 @@ const createNewTemplate = () => {
   emit('new-template');
 };
 
-const backToLibrary = () => {
-  emit('back-to-library');
-};
-
-const showPreview = () => {
-  emit('preview-toggle', true);
+const handleBack = () => {
+  emit('back');
 };
 
 const saveTemplate = () => {
@@ -169,6 +175,11 @@ const handleExportError = (error: string) => {
 
 // Get display name for profile
 const getProfileDisplayName = (profile: ExportProfileId): string => {
+  const foundProfile = preferencesStore.exportProfiles.find(p => p.id === profile);
+  if (foundProfile) {
+    return foundProfile.name;
+  }
+  
   switch (profile) {
     case 'plain':
       return 'Plain Markdown';
@@ -185,18 +196,14 @@ const getProfileDisplayName = (profile: ExportProfileId): string => {
 
 const toggleTheme = () => {
   isDarkTheme.value = !isDarkTheme.value;
+  const themeName = isDarkTheme.value ? 'dark' : 'light';
   
   // Update the document theme
-  if (isDarkTheme.value) {
-    document.documentElement.setAttribute('data-theme', 'dark');
-    document.body.classList.add('dark-theme');
-  } else {
-    document.documentElement.setAttribute('data-theme', 'light');
-    document.body.classList.remove('dark-theme');
-  }
+  document.documentElement.setAttribute('data-theme', themeName);
+  document.body.classList.toggle('dark-theme', isDarkTheme.value);
   
-  // Store preference in localStorage
-  localStorage.setItem('theme', isDarkTheme.value ? 'dark' : 'light');
+  // Store preference
+  preferencesStore.setEditorTheme(themeName);
 };
 
 // Keyboard shortcuts
@@ -220,34 +227,28 @@ const handleKeyDown = (e: KeyboardEvent) => {
     e.preventDefault();
     createNewTemplate();
   }
-  
-  // Shortcut for going back to library (Escape in editor view)
-  if (e.key === 'Escape' && props.view === 'editor') {
-    e.preventDefault();
-    backToLibrary();
-  }
 };
 
-// Initialize theme and set up event listeners on component mount
+// Lifecycle hooks
 onMounted(() => {
   // Check for saved theme preference or use system preference
-  const savedTheme = localStorage.getItem('theme');
-  const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  const savedTheme = preferencesStore.editorTheme || 
+    (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
   
   // Set initial theme state
-  isDarkTheme.value = savedTheme === 'dark' || (savedTheme !== 'light' && prefersDark);
+  isDarkTheme.value = savedTheme === 'dark';
   
   // Apply theme
-  if (isDarkTheme.value) {
-    document.documentElement.setAttribute('data-theme', 'dark');
-    document.body.classList.add('dark-theme');
-  } else {
-    document.documentElement.setAttribute('data-theme', 'light');
-    document.body.classList.remove('dark-theme');
-  }
+  document.documentElement.setAttribute('data-theme', savedTheme);
+  document.body.classList.toggle('dark-theme', isDarkTheme.value);
   
   // Add keyboard shortcut listener
   document.addEventListener('keydown', handleKeyDown);
+});
+
+onBeforeUnmount(() => {
+  // Remove keyboard shortcut listener when component is unmounted
+  document.removeEventListener('keydown', handleKeyDown);
 });
 
 // Expose toast for other components to use
@@ -281,7 +282,7 @@ defineExpose({
 }
 
 .header-container {
-  max-width: 1200px;
+  max-width: 1400px;
   margin: 0 auto;
   padding: var(--spacing-sm) var(--spacing-md);
   display: flex;
@@ -318,6 +319,24 @@ defineExpose({
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
+}
+
+.back-button {
+  background: transparent;
+  border: none;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: var(--radius-sm);
+  margin-right: var(--spacing-md);
+  color: var(--color-text);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.back-button:hover {
+  background-color: var(--color-surface);
 }
 
 .actions {

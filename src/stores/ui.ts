@@ -1,14 +1,28 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 
+export type FocusMode = 'none' | 'editor' | 'preview'
+
 export const useUIStore = defineStore('ui', () => {
   // State
   const showMarkdownPreview = ref(false)
   const currentView = ref('editor')
-  const sidebarOpen = ref(true)
+  const sidebarHidden = ref(false)
   const isDragging = ref(false)
   const toastMessages = ref<{id: string; message: string; type: string; timeout: number}[]>([])
   const isLoading = ref(false)
+  const isModified = ref(false)
+  const editorWidth = ref(50) // Percentage of editor panel width
+  const focusMode = ref<FocusMode>('none')
+  
+  // Confirmation dialog state
+  const showConfirmDialog = ref(false)
+  const confirmDialogTitle = ref('')
+  const confirmDialogMessage = ref('')
+  const confirmDialogConfirmText = ref('Confirm')
+  const confirmDialogCancelText = ref('Cancel')
+  const confirmDialogConfirmCallback = ref<(() => void) | null>(null)
+  const confirmDialogCancelCallback = ref<(() => void) | null>(null)
 
   // Actions
   function toggleMarkdownPreview() {
@@ -22,12 +36,12 @@ export const useUIStore = defineStore('ui', () => {
   }
 
   function toggleSidebar() {
-    sidebarOpen.value = !sidebarOpen.value
+    sidebarHidden.value = !sidebarHidden.value
     saveUIPreferences()
   }
 
-  function setSidebarOpen(open: boolean) {
-    sidebarOpen.value = open
+  function setSidebarHidden(hidden: boolean) {
+    sidebarHidden.value = hidden
     saveUIPreferences()
   }
 
@@ -35,7 +49,7 @@ export const useUIStore = defineStore('ui', () => {
     isDragging.value = dragging
   }
 
-  function addToast(message: string, type: 'success' | 'error' | 'info' = 'info', timeout: number = 3000) {
+  function showToast(message: string, type: 'success' | 'error' | 'info' = 'info', timeout: number = 3000) {
     const id = Date.now().toString()
     toastMessages.value.push({ id, message, type, timeout })
     return id
@@ -48,13 +62,66 @@ export const useUIStore = defineStore('ui', () => {
   function setLoading(loading: boolean) {
     isLoading.value = loading
   }
+  
+  function setModified(modified: boolean) {
+    isModified.value = modified
+  }
+  
+  function setEditorWidth(width: number) {
+    editorWidth.value = width
+    saveUIPreferences()
+  }
+  
+  function setFocusMode(mode: FocusMode) {
+    focusMode.value = mode
+    saveUIPreferences()
+  }
+  
+  function showConfirmationDialog(
+    title: string, 
+    message: string, 
+    confirmText: string = 'Confirm', 
+    cancelText: string = 'Cancel',
+    onConfirm: (() => void) | null = null,
+    onCancel: (() => void) | null = null
+  ) {
+    confirmDialogTitle.value = title
+    confirmDialogMessage.value = message
+    confirmDialogConfirmText.value = confirmText
+    confirmDialogCancelText.value = cancelText
+    confirmDialogConfirmCallback.value = onConfirm
+    confirmDialogCancelCallback.value = onCancel
+    showConfirmDialog.value = true
+  }
+  
+  function handleConfirmDialogConfirm() {
+    if (confirmDialogConfirmCallback.value) {
+      confirmDialogConfirmCallback.value()
+    }
+    showConfirmDialog.value = false
+  }
+  
+  function handleConfirmDialogCancel() {
+    if (confirmDialogCancelCallback.value) {
+      confirmDialogCancelCallback.value()
+    }
+    showConfirmDialog.value = false
+  }
 
   function loadUIPreferences() {
     const preferences = localStorage.getItem('ui-preferences')
     if (preferences) {
-      const { showMarkdownPreview: showPreview, sidebarOpen: open } = JSON.parse(preferences)
-      showMarkdownPreview.value = showPreview
-      sidebarOpen.value = open
+      const { 
+        showMarkdownPreview: showPreview, 
+        sidebarHidden: hidden,
+        editorWidth: width,
+        focusMode: mode
+      } = JSON.parse(preferences)
+      
+      showMarkdownPreview.value = showPreview ?? false
+      sidebarHidden.value = hidden ?? false
+      editorWidth.value = width ?? 50
+      focusMode.value = mode ?? 'none'
     }
   }
 
@@ -63,7 +130,9 @@ export const useUIStore = defineStore('ui', () => {
       'ui-preferences',
       JSON.stringify({
         showMarkdownPreview: showMarkdownPreview.value,
-        sidebarOpen: sidebarOpen.value
+        sidebarHidden: sidebarHidden.value,
+        editorWidth: editorWidth.value,
+        focusMode: focusMode.value
       })
     )
   }
@@ -71,18 +140,32 @@ export const useUIStore = defineStore('ui', () => {
   return {
     showMarkdownPreview,
     currentView,
-    sidebarOpen,
+    sidebarHidden,
     isDragging,
     toastMessages,
     isLoading,
+    isModified,
+    editorWidth,
+    focusMode,
+    showConfirmDialog,
+    confirmDialogTitle,
+    confirmDialogMessage,
+    confirmDialogConfirmText,
+    confirmDialogCancelText,
     toggleMarkdownPreview,
     setMarkdownPreview,
     toggleSidebar,
-    setSidebarOpen,
+    setSidebarHidden,
     setIsDragging,
-    addToast,
+    showToast,
     removeToast,
     setLoading,
+    setModified,
+    setEditorWidth,
+    setFocusMode,
+    showConfirmationDialog,
+    handleConfirmDialogConfirm,
+    handleConfirmDialogCancel,
     loadUIPreferences,
     saveUIPreferences
   }
