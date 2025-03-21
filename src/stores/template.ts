@@ -3,25 +3,44 @@ import { ref, computed } from 'vue';
 import { v4 as uuidv4 } from 'uuid';
 import { useUIStore } from './ui';
 
-export interface TemplateSection {
-  id: string;
-  type: 'heading' | 'text' | 'list' | 'table' | 'code' | 'frontmatter';
-  content: string;
-  options?: Record<string, any>;
-}
+// Import the types directly from the type definitions file
+import { TemplateSection, SectionType, PluginType, SectionMetadata } from '@/types/TemplateSection';
 
+/**
+ * Interface defining the structure of a template
+ */
 export interface Template {
+  /** Unique identifier for the template */
   id: string;
+  
+  /** Name of the template */
   name: string;
+  
+  /** Description of the template */
   description: string;
+  
+  /** Sections that make up the template */
   sections: TemplateSection[];
+  
+  /** Tags for categorizing the template */
   tags: string[];
+  
+  /** Last modified timestamp */
   lastModified: number;
+  
+  /** Creation timestamp */
   createdAt: number;
+  
+  /** Whether the template is public or private */
   isPublic: boolean;
+  
+  /** User ID of the template creator */
   userId: string | null;
 }
 
+/**
+ * Pinia store for managing templates
+ */
 export const useTemplateStore = defineStore('template', () => {
   // State
   const templates = ref<Template[]>([]);
@@ -33,162 +52,80 @@ export const useTemplateStore = defineStore('template', () => {
   // Get UI store for status updates
   const uiStore = useUIStore();
 
-  // Mock templates for demo purposes
-  const mockTemplates: Template[] = [
-    {
-      id: '1',
-      name: 'Daily Note Template',
-      description: 'A template for daily notes with sections for tasks, notes, and reflections',
-      sections: [
-        {
-          id: uuidv4(),
-          type: 'frontmatter',
-          content: '---\ndate: {{date:YYYY-MM-DD}}\ntags: daily-note\n---'
-        },
-        {
-          id: uuidv4(),
-          type: 'heading',
-          content: '# Daily Note - {{date:dddd, MMMM Do YYYY}}'
-        },
-        {
-          id: uuidv4(),
-          type: 'heading',
-          content: '## Tasks'
-        },
-        {
-          id: uuidv4(),
-          type: 'list',
-          content: '- [ ] Task 1\n- [ ] Task 2\n- [ ] Task 3'
-        },
-        {
-          id: uuidv4(),
-          type: 'heading',
-          content: '## Notes'
-        },
-        {
-          id: uuidv4(),
-          type: 'text',
-          content: 'Enter your notes for the day here...'
-        },
-        {
-          id: uuidv4(),
-          type: 'heading',
-          content: '## Daily Reflection'
-        },
-        {
-          id: uuidv4(),
-          type: 'text',
-          content: '### What went well today?\n\n### What could have gone better?\n\n### What am I grateful for?'
-        }
-      ],
-      tags: ['daily', 'journal', 'productivity'],
-      lastModified: Date.now() - 3600000, // 1 hour ago
-      createdAt: Date.now() - 86400000, // 1 day ago
-      isPublic: false,
-      userId: '1'
-    },
-    {
-      id: '2',
-      name: 'Meeting Notes',
-      description: 'Template for capturing meeting notes with attendees, action items and decisions',
-      sections: [
-        {
-          id: uuidv4(),
-          type: 'frontmatter',
-          content: '---\ndate: {{date:YYYY-MM-DD}}\ntags: meeting\nattendees: \n---'
-        },
-        {
-          id: uuidv4(),
-          type: 'heading',
-          content: '# Meeting: {{title}}'
-        },
-        {
-          id: uuidv4(),
-          type: 'heading',
-          content: '## Details'
-        },
-        {
-          id: uuidv4(),
-          type: 'text',
-          content: '- **Date:** {{date:YYYY-MM-DD}}\n- **Time:** {{time}}\n- **Location:** {{location}}\n- **Attendees:** {{attendees}}'
-        },
-        {
-          id: uuidv4(),
-          type: 'heading',
-          content: '## Agenda'
-        },
-        {
-          id: uuidv4(),
-          type: 'list',
-          content: '1. Item 1\n2. Item 2\n3. Item 3'
-        },
-        {
-          id: uuidv4(),
-          type: 'heading',
-          content: '## Discussion Notes'
-        },
-        {
-          id: uuidv4(),
-          type: 'text',
-          content: 'Enter discussion notes here...'
-        },
-        {
-          id: uuidv4(),
-          type: 'heading',
-          content: '## Action Items'
-        },
-        {
-          id: uuidv4(),
-          type: 'list',
-          content: '- [ ] Action 1 - @person1 (Due: DATE)\n- [ ] Action 2 - @person2 (Due: DATE)'
-        },
-        {
-          id: uuidv4(),
-          type: 'heading',
-          content: '## Decisions'
-        },
-        {
-          id: uuidv4(),
-          type: 'list',
-          content: '- Decision 1\n- Decision 2'
-        }
-      ],
-      tags: ['meeting', 'work', 'notes'],
-      lastModified: Date.now() - 7200000, // 2 hours ago
-      createdAt: Date.now() - 604800000, // 1 week ago
-      isPublic: true,
-      userId: '1'
-    }
-  ];
-
   // Getters
   const templateById = computed(() => {
     return (id: string) => templates.value.find(t => t.id === id) || null;
   });
 
-  // Computed property for backwards compatibility
-  const currentSections = computed(() => {
+  // Computed property for current sections
+  const currentSections = computed((): TemplateSection[] => {
     return currentTemplate.value?.sections || [];
   });
 
-  // Actions
+  /**
+   * Ensures a section conforms to the TemplateSection interface
+   */
+  const normalizeSection = (section: Partial<TemplateSection>): TemplateSection => {
+    // Ensure content is always a string array
+    const content = Array.isArray(section.content) 
+      ? section.content 
+      : (section.content ? [section.content as unknown as string] : ['']);
+
+    return {
+      id: section.id || uuidv4(),
+      // Default to 'text' if no type is provided or type is invalid
+      type: section.type && isValidSectionType(section.type) 
+        ? section.type 
+        : 'text',
+      content,
+      // Default to null if no plugin type is provided or type is invalid
+      pluginType: section.pluginType && isValidPluginType(section.pluginType) 
+        ? section.pluginType 
+        : null,
+      // Include metadata if provided
+      ...(section.metadata ? { metadata: section.metadata } : {})
+    };
+  };
+
+  /**
+   * Validates if a section type is one of the allowed SectionType values
+   */
+  const isValidSectionType = (type: any): type is SectionType => {
+    const validTypes: SectionType[] = [
+      'header', 'checklist', 'table', 'text', 
+      'yaml', 'templaterField', 'dataviewQuery', 'kanban'
+    ];
+    return validTypes.includes(type as SectionType);
+  };
+
+  /**
+   * Validates if a plugin type is one of the allowed PluginType values
+   */
+  const isValidPluginType = (type: any): type is PluginType => {
+    const validTypes: PluginType[] = [null, 'templater', 'dataview', 'kanban'];
+    return validTypes.includes(type as PluginType);
+  };
+
+  /**
+   * Loads templates from localStorage
+   */
   const loadTemplates = async () => {
     isLoading.value = true;
     error.value = null;
     
     try {
-      // In production, this would be an API call
-      // For development, we'll just use mock templates
-      
-      // First, check localStorage for any saved templates
+      // Check localStorage for any saved templates
       const savedTemplates = localStorage.getItem('templates');
       if (savedTemplates) {
-        templates.value = JSON.parse(savedTemplates);
-      } else {
-        // If none found, use mock templates
-        templates.value = [...mockTemplates];
-        // Save mock templates to localStorage
-        localStorage.setItem('templates', JSON.stringify(mockTemplates));
+        const parsed = JSON.parse(savedTemplates);
+        
+        // Normalize all templates and sections to ensure type consistency
+        templates.value = parsed.map((template: any) => ({
+          ...template,
+          sections: Array.isArray(template.sections) 
+            ? template.sections.map(normalizeSection)
+            : []
+        }));
       }
       
       return true;
@@ -202,6 +139,9 @@ export const useTemplateStore = defineStore('template', () => {
     }
   };
 
+  /**
+   * Loads a specific template by ID
+   */
   const loadTemplate = (id: string) => {
     if (!id) {
       createNewTemplate();
@@ -210,7 +150,8 @@ export const useTemplateStore = defineStore('template', () => {
     
     const template = templateById.value(id);
     if (template) {
-      currentTemplate.value = JSON.parse(JSON.stringify(template)); // Deep copy
+      // Deep copy the template to prevent unintended mutations
+      currentTemplate.value = JSON.parse(JSON.stringify(template));
       currentTemplateId.value = id;
       return true;
     }
@@ -219,6 +160,9 @@ export const useTemplateStore = defineStore('template', () => {
     return false;
   };
 
+  /**
+   * Creates a new template with default content
+   */
   const createNewTemplate = () => {
     const newTemplate: Template = {
       id: uuidv4(),
@@ -227,20 +171,16 @@ export const useTemplateStore = defineStore('template', () => {
       sections: [
         {
           id: uuidv4(),
-          type: 'heading',
-          content: '# Untitled Template'
-        },
-        {
-          id: uuidv4(),
-          type: 'text',
-          content: 'Enter your template content here...'
+          type: 'header',
+          content: ['# Untitled Template'],
+          pluginType: null
         }
       ],
       tags: [],
       lastModified: Date.now(),
       createdAt: Date.now(),
       isPublic: false,
-      userId: '1' // Using mock user ID
+      userId: '1' // Default user ID
     };
     
     currentTemplate.value = newTemplate;
@@ -251,6 +191,9 @@ export const useTemplateStore = defineStore('template', () => {
     return newTemplate.id;
   };
 
+  /**
+   * Creates a template with custom name and description
+   */
   const createTemplate = (name: string = 'New Template', description: string = '') => {
     const id = uuidv4();
     const now = Date.now();
@@ -264,7 +207,7 @@ export const useTemplateStore = defineStore('template', () => {
       lastModified: now,
       createdAt: now,
       isPublic: false,
-      userId: '1' // Using mock user ID
+      userId: '1' // Default user ID
     };
     
     templates.value.push(newTemplate);
@@ -275,13 +218,27 @@ export const useTemplateStore = defineStore('template', () => {
     return id;
   };
 
+  /**
+   * Updates an existing template
+   */
   const updateTemplate = (template: Template) => {
     const index = templates.value.findIndex(t => t.id === template.id);
     
     if (index !== -1) {
+      // Update timestamp
       template.lastModified = Date.now();
+      
+      // Normalize sections to ensure type consistency
+      template.sections = template.sections.map(normalizeSection);
+      
+      // Update the template in the store
       templates.value[index] = template;
-      currentTemplate.value = JSON.parse(JSON.stringify(template));
+      
+      // Update current template if it's the same one
+      if (currentTemplate.value?.id === template.id) {
+        currentTemplate.value = JSON.parse(JSON.stringify(template));
+      }
+      
       saveTemplates();
       return true;
     }
@@ -289,6 +246,9 @@ export const useTemplateStore = defineStore('template', () => {
     return false;
   };
 
+  /**
+   * Updates the name of the current template
+   */
   const updateTemplateName = (name: string) => {
     if (currentTemplate.value) {
       currentTemplate.value.name = name;
@@ -297,6 +257,9 @@ export const useTemplateStore = defineStore('template', () => {
     }
   };
 
+  /**
+   * Updates the description of the current template
+   */
   const updateTemplateDescription = (description: string) => {
     if (currentTemplate.value) {
       currentTemplate.value.description = description;
@@ -305,6 +268,9 @@ export const useTemplateStore = defineStore('template', () => {
     }
   };
 
+  /**
+   * Deletes a template by ID
+   */
   const deleteTemplate = (id: string) => {
     const index = templates.value.findIndex(t => t.id === id);
     
@@ -323,15 +289,26 @@ export const useTemplateStore = defineStore('template', () => {
     return false;
   };
 
+  /**
+   * Duplicates a template
+   */
   const duplicateTemplate = async (id: string) => {
     const template = templateById.value(id);
     
     if (template) {
-      const newTemplate = JSON.parse(JSON.stringify(template));
-      newTemplate.id = uuidv4();
-      newTemplate.name = `${template.name} (Copy)`;
-      newTemplate.lastModified = Date.now();
-      newTemplate.createdAt = Date.now();
+      const newTemplate: Template = {
+        ...JSON.parse(JSON.stringify(template)),
+        id: uuidv4(),
+        name: `${template.name} (Copy)`,
+        lastModified: Date.now(),
+        createdAt: Date.now()
+      };
+      
+      // Ensure all sections have fresh IDs
+      newTemplate.sections = newTemplate.sections.map(section => ({
+        ...section,
+        id: uuidv4()
+      }));
       
       templates.value.push(newTemplate);
       saveTemplates();
@@ -342,6 +319,9 @@ export const useTemplateStore = defineStore('template', () => {
     throw new Error('Template not found');
   };
 
+  /**
+   * Saves templates to localStorage
+   */
   const saveTemplates = () => {
     try {
       localStorage.setItem('templates', JSON.stringify(templates.value));
@@ -351,6 +331,9 @@ export const useTemplateStore = defineStore('template', () => {
     }
   };
 
+  /**
+   * Clears all templates
+   */
   const clearAllTemplates = () => {
     templates.value = [];
     currentTemplate.value = null;
@@ -358,34 +341,56 @@ export const useTemplateStore = defineStore('template', () => {
     saveTemplates();
   };
 
-  // Section manipulation methods
-  const addSection = (section: TemplateSection) => {
+  /**
+   * Adds a section to the current template
+   */
+  const addSection = (section: Partial<TemplateSection>) => {
     // If no current template, create one
     if (!currentTemplate.value && currentTemplateId.value === '') {
       createTemplate();
     }
     
     if (currentTemplate.value) {
-      currentTemplate.value.sections.push(section);
+      // Normalize section to ensure type consistency
+      const normalizedSection = normalizeSection(section);
+      
+      // Add section to the template
+      currentTemplate.value.sections.push(normalizedSection);
       currentTemplate.value.lastModified = Date.now();
       updateTemplate(currentTemplate.value);
     }
   };
 
+  /**
+   * Updates a section in the current template
+   */
   const updateSection = (sectionId: string, updatedSection: Partial<TemplateSection>) => {
     if (currentTemplate.value) {
       const index = currentTemplate.value.sections.findIndex(s => s.id === sectionId);
       if (index !== -1) {
-        currentTemplate.value.sections[index] = {
+        // Merge the existing section with the updates
+        const mergedSection = {
           ...currentTemplate.value.sections[index],
-          ...updatedSection
+          ...updatedSection,
+          // Special handling for content to ensure it's always an array
+          content: updatedSection.content 
+            ? (Array.isArray(updatedSection.content) 
+                ? updatedSection.content 
+                : [updatedSection.content as unknown as string])
+            : currentTemplate.value.sections[index].content
         };
+        
+        // Normalize to ensure type consistency
+        currentTemplate.value.sections[index] = normalizeSection(mergedSection);
         currentTemplate.value.lastModified = Date.now();
         updateTemplate(currentTemplate.value);
       }
     }
   };
 
+  /**
+   * Deletes a section from the current template
+   */
   const deleteSection = (sectionId: string) => {
     if (currentTemplate.value) {
       const index = currentTemplate.value.sections.findIndex(s => s.id === sectionId);
@@ -397,35 +402,48 @@ export const useTemplateStore = defineStore('template', () => {
     }
   };
 
-  const updateSections = (newSections: TemplateSection[]) => {
+  /**
+   * Updates all sections in the current template
+   */
+  const updateSections = (newSections: Partial<TemplateSection>[]) => {
     if (currentTemplate.value) {
-      currentTemplate.value.sections = [...newSections];
+      // Normalize all sections to ensure type consistency
+      currentTemplate.value.sections = newSections.map(normalizeSection);
       currentTemplate.value.lastModified = Date.now();
       updateTemplate(currentTemplate.value);
     }
   };
 
+  /**
+   * Saves the current template
+   */
   const saveCurrentTemplate = async () => {
-    if (!currentTemplate.value) {
-      // No template loaded, create a new one
-      if (currentSections.value.length > 0) {
-        const id = createTemplate();
-        return id;
+    try {
+      if (!currentTemplate.value) {
+        // No template loaded, create a new one if there are sections
+        if (currentSections.value.length > 0) {
+          const id = createTemplate();
+          return id;
+        }
+        throw new Error('No template to save');
       }
-      throw new Error('No template to save');
+      
+      // Update timestamp
+      currentTemplate.value.lastModified = Date.now();
+      
+      // Return early if the update fails
+      if (!updateTemplate(currentTemplate.value)) {
+        throw new Error('Failed to update template');
+      }
+      
+      return currentTemplate.value.id;
+    } catch (error) {
+      console.error('Error in saveCurrentTemplate:', error);
+      throw error; // Re-throw for proper error handling upstream
     }
-    
-    // Update timestamp
-    currentTemplate.value.lastModified = Date.now();
-    updateTemplate(currentTemplate.value);
-    
-    // Reset modified state
-    uiStore.setModified(false);
-    
-    return currentTemplate.value.id;
   };
 
-  // Initialize
+  // Initialize by loading templates
   loadTemplates();
 
   return {

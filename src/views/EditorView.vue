@@ -3,14 +3,14 @@
     <!-- Top Toolbar (Metadata) -->
     <div class="editor-toolbar top-toolbar glass-card">
       <div class="metadata-form">
-        <input 
+        <input
           type="text"
           class="template-title-input"
           v-model="templateName"
           placeholder="Untitled Template"
           @input="markAsModified"
         />
-        <input 
+        <input
           type="text"
           class="template-description-input"
           v-model="templateDescription"
@@ -20,35 +20,46 @@
         <!-- Tags will be added in a future iteration -->
       </div>
     </div>
-    
+
     <!-- Main Content Area (Three Panels) -->
-    <div class="editor-content" :class="{ 'sidebar-collapsed': isSidebarCollapsed, 'focus-mode': isPreviewFocused }">
+    <div
+      class="editor-content"
+      :class="{
+        'sidebar-collapsed': isSidebarCollapsed,
+        'focus-mode': isPreviewFocused,
+      }"
+    >
       <!-- Left Panel: Section Library (Collapsible) -->
       <div class="section-library-panel">
         <div class="panel-header">
           <h2>Section Library</h2>
-          <button 
-            class="collapse-button" 
-            @click="toggleSidebar" 
+          <button
+            class="collapse-button"
+            @click="toggleSidebar"
             title="Toggle sidebar"
           >
-            <i class="fas" :class="isSidebarCollapsed ? 'fa-chevron-right' : 'fa-chevron-left'"></i>
+            <i
+              class="fas"
+              :class="
+                isSidebarCollapsed ? 'fa-chevron-right' : 'fa-chevron-left'
+              "
+            ></i>
           </button>
         </div>
-        
+
         <!-- Section Library Component -->
-        <SectionLibrary 
+        <SectionLibrary
           :collapsed="isSidebarCollapsed"
           @add-section="addSectionToCanvas"
         />
       </div>
-      
+
       <!-- Middle Panel: Main Canvas Editor -->
       <div class="editor-canvas-panel glass-card">
         <div class="panel-header">
           <h2>Template Editor</h2>
         </div>
-        
+
         <!-- Drag and Drop Editor Component -->
         <DragDropEditor
           :sections="templateStore.currentSections"
@@ -58,17 +69,20 @@
           ref="dragDropEditorRef"
         />
       </div>
-      
+
       <!-- Right Panel: Markdown Preview -->
-      <div class="preview-panel glass-card" :class="{ 'preview-focused': isPreviewFocused }">
+      <div
+        class="preview-panel glass-card"
+        :class="{ 'preview-focused': isPreviewFocused }"
+      >
         <div class="panel-header">
           <h2>Preview</h2>
-          
+
           <div class="preview-controls">
             <!-- View Mode Dropdown -->
             <div class="dropdown">
-              <button 
-                class="dropdown-trigger glass-button" 
+              <button
+                class="dropdown-trigger glass-button"
                 @click.stop="toggleViewModeMenu"
                 title="Change view mode"
               >
@@ -76,7 +90,7 @@
                 <i class="fas fa-chevron-down"></i>
               </button>
               <div class="dropdown-menu" v-if="showViewModeMenu">
-                <div 
+                <div
                   class="dropdown-item"
                   :class="{ active: currentViewMode === 'Rendered' }"
                   @click="setViewMode('Rendered')"
@@ -84,7 +98,7 @@
                   <i class="fas fa-eye"></i>
                   Rendered
                 </div>
-                <div 
+                <div
                   class="dropdown-item"
                   :class="{ active: currentViewMode === 'Markdown' }"
                   @click="setViewMode('Markdown')"
@@ -92,7 +106,7 @@
                   <i class="fas fa-code"></i>
                   Markdown
                 </div>
-                <div 
+                <div
                   class="dropdown-item"
                   :class="{ active: currentViewMode === 'Source' }"
                   @click="setViewMode('Source')"
@@ -102,22 +116,25 @@
                 </div>
               </div>
             </div>
-            
+
             <!-- Export Profile Dropdown -->
             <div class="dropdown">
-              <button 
-                class="dropdown-trigger glass-button" 
+              <button
+                class="dropdown-trigger glass-button"
                 @click.stop="toggleProfileMenu"
                 title="Change export profile"
               >
-                <span class="profile-badge" :class="`profile-${getCurrentProfileId()}`">
+                <span
+                  class="profile-badge"
+                  :class="`profile-${getCurrentProfileId()}`"
+                >
                   {{ getProfileName(getCurrentProfileId()) }}
                 </span>
                 <i class="fas fa-chevron-down"></i>
               </button>
               <div class="dropdown-menu" v-if="showProfileMenu">
-                <div 
-                  v-for="profile in exportProfiles" 
+                <div
+                  v-for="profile in exportProfiles"
                   :key="profile.id"
                   class="dropdown-item"
                   :class="{ active: getCurrentProfileId() === profile.id }"
@@ -128,18 +145,21 @@
                 </div>
               </div>
             </div>
-            
+
             <!-- Focus Mode Button -->
-            <button 
-              class="panel-action-button" 
+            <button
+              class="panel-action-button"
               @click="togglePreviewFocus"
               title="Toggle focus mode"
             >
-              <i class="fas" :class="isPreviewFocused ? 'fa-compress' : 'fa-expand'"></i>
+              <i
+                class="fas"
+                :class="isPreviewFocused ? 'fa-compress' : 'fa-expand'"
+              ></i>
             </button>
           </div>
         </div>
-        
+
         <!-- Markdown Preview Component -->
         <MarkdownPreview
           :sections="templateStore.currentSections"
@@ -149,20 +169,20 @@
         />
       </div>
     </div>
-    
+
     <!-- Bottom Toolbar (Actions) -->
     <div class="editor-toolbar bottom-toolbar glass-card">
       <div class="left-actions">
         <!-- Mobile View Toggle (only visible on small screens) -->
         <div class="mobile-view-toggle">
-          <button 
+          <button
             class="view-toggle-button"
             :class="{ active: mobileView === 'editor' }"
             @click="setMobileView('editor')"
           >
             <i class="fas fa-edit"></i> Editor
           </button>
-          <button 
+          <button
             class="view-toggle-button"
             :class="{ active: mobileView === 'preview' }"
             @click="setMobileView('preview')"
@@ -171,31 +191,28 @@
           </button>
         </div>
       </div>
-      
+
       <div class="right-actions">
-        <button 
-          class="action-button save-button" 
+        <button
+          class="action-button save-button"
           @click="saveTemplate"
           :disabled="!uiStore.isModified"
         >
           <i class="fas fa-save"></i> Save Changes
         </button>
-        
-        <button 
-          class="action-button export-button" 
-          @click="exportTemplate"
-        >
+
+        <button class="action-button export-button" @click="exportTemplate">
           <i class="fas fa-download"></i> Export
         </button>
       </div>
     </div>
-    
+
     <!-- Autosave indicator -->
     <div class="autosave-indicator" v-if="autoSaving">
       <i class="fas fa-sync-alt fa-spin"></i>
       <span>Autosaving...</span>
     </div>
-    
+
     <!-- Confirmation dialog for unsaved changes -->
     <ConfirmationDialog
       v-if="uiStore.showConfirmDialog"
@@ -210,20 +227,28 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, watch, inject } from 'vue';
-import { useRouter, useRoute } from 'vue-router';
-import { useTemplateStore } from '@/stores/template';
-import { useUIStore } from '@/stores/ui';
-import { usePreferencesStore } from '@/stores/preferences';
-import { debounce } from 'lodash-es';
-import { v4 as uuidv4 } from 'uuid';
-import { TemplateSection } from '@/types/TemplateSection';
+import {
+  ref,
+  computed,
+  onMounted,
+  onUnmounted,
+  watch,
+  inject,
+  nextTick,
+} from "vue";
+import { useRouter, useRoute } from "vue-router";
+import { useTemplateStore } from "@/stores/template";
+import { useUIStore } from "@/stores/ui";
+import { usePreferencesStore } from "@/stores/preferences";
+import { debounce } from "lodash-es";
+import { v4 as uuidv4 } from "uuid";
+import { TemplateSection } from "@/types/TemplateSection";
 
 // Import components
-import SectionLibrary from '@/components/TemplateCreator/SectionLibrary.vue';
-import DragDropEditor from '@/components/TemplateCreator/DragDropEditor.vue';
-import MarkdownPreview from '@/components/TemplateCreator/MarkdownPreview.vue';
-import ConfirmationDialog from '@/components/UI/ConfirmationDialog.vue';
+import SectionLibrary from "@/components/TemplateCreator/SectionLibrary.vue";
+import DragDropEditor from "@/components/TemplateCreator/DragDropEditor.vue";
+import MarkdownPreview from "@/components/TemplateCreator/MarkdownPreview.vue";
+import ConfirmationDialog from "@/components/UI/ConfirmationDialog.vue";
 
 // Router and stores
 const router = useRouter();
@@ -234,59 +259,59 @@ const preferencesStore = usePreferencesStore();
 
 // Props from route
 const props = defineProps<{
-  id?: string
+  id?: string;
 }>();
 
 // Local state
 const isSidebarCollapsed = ref(false);
 const autoSaving = ref(false);
-const mobileView = ref('editor'); // 'editor' or 'preview' for mobile view
+const mobileView = ref("editor"); // 'editor' or 'preview' for mobile view
 const showViewModeMenu = ref(false);
 const showProfileMenu = ref(false);
-const currentViewMode = ref('Rendered'); // 'Rendered', 'Markdown', or 'Source'
+const currentViewMode = ref("Rendered"); // 'Rendered', 'Markdown', or 'Source'
 const isPreviewFocused = ref(false);
 const dragDropEditorRef = ref<InstanceType<typeof DragDropEditor> | null>(null);
 
 // Theme
-const isDarkTheme = inject('theme', ref(true));
+const isDarkTheme = inject("theme", ref(true));
 
 // Template metadata
 const templateName = computed({
-  get: () => templateStore.currentTemplate?.name || '',
+  get: () => templateStore.currentTemplate?.name || "",
   set: (value) => {
     if (templateStore.currentTemplate) {
       templateStore.currentTemplate.name = value;
       markAsModified();
     }
-  }
+  },
 });
 
 const templateDescription = computed({
-  get: () => templateStore.currentTemplate?.description || '',
+  get: () => templateStore.currentTemplate?.description || "",
   set: (value) => {
     if (templateStore.currentTemplate) {
       templateStore.currentTemplate.description = value;
       markAsModified();
     }
-  }
+  },
 });
 
 // Export profiles
 const exportProfiles = [
-  { id: 'plain', name: 'Plain Markdown', icon: 'fas fa-file-alt' },
-  { id: 'templater', name: 'Templater', icon: 'fas fa-bolt' },
-  { id: 'dataview', name: 'Dataview', icon: 'fas fa-database' },
-  { id: 'full', name: 'Full Plugin Suite', icon: 'fas fa-plug' }
+  { id: "plain", name: "Plain Markdown", icon: "fas fa-file-alt" },
+  { id: "templater", name: "Templater", icon: "fas fa-bolt" },
+  { id: "dataview", name: "Dataview", icon: "fas fa-database" },
+  { id: "full", name: "Full Plugin Suite", icon: "fas fa-plug" },
 ];
 
 // Helper functions
 const getCurrentProfileId = () => {
-  return preferencesStore.activeExportProfileId || 'full';
+  return preferencesStore.activeExportProfileId || "full";
 };
 
 const getProfileName = (profileId: string) => {
-  const profile = exportProfiles.find(p => p.id === profileId);
-  return profile ? profile.name : 'Full Plugin Suite';
+  const profile = exportProfiles.find((p) => p.id === profileId);
+  return profile ? profile.name : "Full Plugin Suite";
 };
 
 // UI Interaction methods
@@ -324,15 +349,16 @@ const togglePreviewFocus = () => {
 
 // Section management methods
 const addSectionToCanvas = (section: TemplateSection) => {
-  console.log('Adding section to canvas:', section);
+  console.log("Adding section to canvas:", section);
   templateStore.addSection(section);
-  console.log('Current sections after add:', templateStore.currentSections);
+  console.log("Current sections after add:", templateStore.currentSections);
   markAsModified();
-  
+
   // Scroll to the new section after it's added
   setTimeout(() => {
     if (dragDropEditorRef.value) {
-      const container = dragDropEditorRef.value.$el.querySelector('.sections-list');
+      const container =
+        dragDropEditorRef.value.$el.querySelector(".sections-list");
       if (container) {
         container.scrollTop = container.scrollHeight;
       }
@@ -345,76 +371,218 @@ const addSectionToCanvas = (section: TemplateSection) => {
  * Called by DragDropEditor when sections are reordered via drag and drop
  */
 const updateSections = (sections: TemplateSection[]) => {
-  if (!sections || !Array.isArray(sections)) {
-    console.error('Invalid sections array provided to updateSections', sections);
+  // Guard against invalid parameters or unmounted component
+  if (!isMounted.value) {
     return;
   }
-  
-  console.log('Updating sections in EditorView:', sections.length, 'sections');
-  
-  // Update sections in the store
-  templateStore.updateSections(sections);
-  
-  // Mark template as modified
-  markAsModified();
+
+  try {
+    // Validate sections parameter
+    if (!sections || !Array.isArray(sections)) {
+      console.error(
+        "Invalid sections array provided to updateSections",
+        sections
+      );
+      return;
+    }
+
+    // Log for debugging (consider removing in production)
+    console.log(
+      "Updating sections in EditorView:",
+      sections.length,
+      "sections"
+    );
+
+    // Use nextTick to avoid Vue patching conflicts
+    nextTick(() => {
+      if (isMounted.value) {
+        // Create deep copy to avoid reference issues
+        const sectionsCopy = JSON.parse(JSON.stringify(sections));
+
+        // Update sections in the store
+        templateStore.updateSections(sectionsCopy);
+
+        // Mark template as modified
+        markAsModified();
+      }
+    });
+  } catch (error) {
+    console.error("Error updating sections:", error);
+  }
 };
 
 const deleteSection = (sectionId: string) => {
-  templateStore.deleteSection(sectionId);
-  markAsModified();
+  // Guard against unmounted component or invalid ID
+  if (!isMounted.value || !sectionId) {
+    return;
+  }
+
+  try {
+    // Wrap in nextTick to avoid DOM update conflicts
+    nextTick(() => {
+      if (isMounted.value) {
+        templateStore.deleteSection(sectionId);
+        markAsModified();
+      }
+    });
+  } catch (error) {
+    console.error("Error deleting section:", error);
+  }
 };
 
 const duplicateSection = (sectionId: string) => {
-  const sectionToDuplicate = templateStore.currentSections.find(s => s.id === sectionId);
-  if (sectionToDuplicate) {
+  // Guard against unmounted component or invalid ID
+  if (!isMounted.value || !sectionId) {
+    return;
+  }
+
+  try {
+    const sectionToDuplicate = templateStore.currentSections.find(
+      (s) => s.id === sectionId
+    );
+    if (!sectionToDuplicate) {
+      console.warn(`Section with ID ${sectionId} not found for duplication`);
+      return;
+    }
+
     // Create a deep copy with a new ID
-    const newSection: TemplateSection = {
+    const newSection = {
       ...JSON.parse(JSON.stringify(sectionToDuplicate)),
-      id: uuidv4()
+      id: uuidv4(),
     };
-    templateStore.addSection(newSection);
-    markAsModified();
+
+    // Use nextTick to avoid Vue patching conflicts
+    nextTick(() => {
+      if (isMounted.value) {
+        templateStore.addSection(newSection);
+        markAsModified();
+      }
+    });
+  } catch (error) {
+    console.error("Error duplicating section:", error);
   }
 };
 
 // Template management methods
 const saveTemplate = async () => {
+  // Guard against unmounted component
+  if (!isMounted.value) {
+    return;
+  }
+
   try {
+    // Set a flag to indicate a manual save is in progress
+    autoSaving.value = true;
+
+    // Attempt to save the template
     await templateStore.saveCurrentTemplate();
-    uiStore.showToast('Template saved successfully', 'success');
+
+    // Only update UI if component is still mounted
+    if (isMounted.value) {
+      uiStore.setModified(false);
+      uiStore.showToast("Template saved successfully", "success");
+    }
   } catch (error) {
-    uiStore.showToast(`Error saving template: ${error}`, 'error');
+    // Only show error if component is still mounted
+    if (isMounted.value) {
+      console.error("Error saving template:", error);
+      uiStore.showToast(`Error saving template: ${error}`, "error");
+    }
+  } finally {
+    // Clear flag if component is still mounted
+    if (isMounted.value) {
+      autoSaving.value = false;
+    }
   }
 };
 
 const exportTemplate = () => {
   // Will be implemented later
-  uiStore.showToast('Export functionality will be implemented soon', 'info');
+  uiStore.showToast("Export functionality will be implemented soon", "info");
 };
 
 const markAsModified = () => {
-  uiStore.setModified(true);
-  debouncedAutosave();
+  // Only perform updates if component is mounted
+  if (!isMounted.value) {
+    return;
+  }
+
+  try {
+    // Mark as modified in the UI store
+    uiStore.setModified(true);
+
+    // Trigger debounced autosave
+    debouncedAutosave();
+  } catch (error) {
+    console.error("Error marking template as modified:", error);
+  }
 };
 
-// Autosave functionality
-const debouncedAutosave = debounce(async () => {
-  if (!uiStore.isModified) return;
-  
-  autoSaving.value = true;
-  try {
-    await templateStore.saveCurrentTemplate();
-    uiStore.setModified(false);
-  } catch (error) {
-    console.error('Autosave failed:', error);
-  } finally {
-    autoSaving.value = false;
-  }
-}, 3000);
+// Track component mounted state for safer operations
+const isMounted = ref(false);
+
+// Handle ongoing autosave operations
+const autosavePromise = ref<Promise<any> | null>(null);
+const abortController = ref<AbortController | null>(null);
+
+// Improved autosave functionality with proper error handling and debouncing
+const debouncedAutosave = debounce(
+  async () => {
+    // Don't attempt to save if component is not mounted or if nothing was modified
+    if (!isMounted.value || !uiStore.isModified) return;
+
+    // Cancel any pending autosave operations
+    if (abortController.value) {
+      abortController.value.abort();
+    }
+
+    // Create a new abort controller for this save operation
+    abortController.value = new AbortController();
+    const signal = abortController.value.signal;
+
+    // Set autosaving state
+    autoSaving.value = true;
+
+    try {
+      // Create a promise that can be tracked
+      autosavePromise.value = templateStore.saveCurrentTemplate();
+
+      // Wait for save to complete, being mindful of abort signals
+      await Promise.race([
+        autosavePromise.value,
+        new Promise((_, reject) => {
+          signal.addEventListener("abort", () =>
+            reject(new Error("Autosave aborted"))
+          );
+        }),
+      ]);
+
+      // Only update UI state if save completed successfully and component is still mounted
+      if (isMounted.value && !signal.aborted) {
+        uiStore.setModified(false);
+        console.log("Autosave completed successfully");
+      }
+    } catch (error) {
+      // Only log errors if they're not just from an aborted save
+      if (isMounted.value && !signal.aborted) {
+        console.error("Autosave failed:", error);
+      }
+    } finally {
+      // Clear state if component is still mounted
+      if (isMounted.value && !signal.aborted) {
+        autoSaving.value = false;
+        autosavePromise.value = null;
+        abortController.value = null;
+      }
+    }
+  },
+  3000,
+  { maxWait: 10000 }
+); // Add maxWait to ensure saves happen at least every 10 seconds
 
 // Close dropdowns when clicking outside
 const closeDropdowns = (event: MouseEvent) => {
-  if (!event.target || !(event.target as Element).closest('.dropdown')) {
+  if (!event.target || !(event.target as Element).closest(".dropdown")) {
     showViewModeMenu.value = false;
     showProfileMenu.value = false;
   }
@@ -422,33 +590,76 @@ const closeDropdowns = (event: MouseEvent) => {
 
 // Watch for changes to update mobile view data attribute
 watch(mobileView, (newView) => {
-  document.querySelector('.editor-view')?.setAttribute('data-mobile-view', newView);
+  document
+    .querySelector(".editor-view")
+    ?.setAttribute("data-mobile-view", newView);
 });
 
 // Lifecycle hooks
 onMounted(async () => {
-  document.addEventListener('click', closeDropdowns);
-  
-  // Load template if ID is provided, otherwise create a new template
-  if (props.id) {
-    try {
-      await templateStore.loadTemplate(props.id);
-      uiStore.setModified(false);
-    } catch (error) {
-      uiStore.showToast(`Error loading template: ${error}`, 'error');
-      router.push({ name: 'editor' }); // Redirect to new template
+  try {
+    // Set component as mounted
+    isMounted.value = true;
+
+    // Add event listeners
+    document.addEventListener("click", closeDropdowns);
+
+    // Set data attribute for mobile view
+    const editorViewElement = document.querySelector(".editor-view");
+    if (editorViewElement) {
+      editorViewElement.setAttribute("data-mobile-view", mobileView.value);
     }
-  } else {
-    templateStore.createNewTemplate();
-    uiStore.setModified(false);
+
+    // Load template if ID is provided, otherwise create a new template
+    if (props.id) {
+      try {
+        await templateStore.loadTemplate(props.id);
+
+        // Only update state if still mounted
+        if (isMounted.value) {
+          uiStore.setModified(false);
+        }
+      } catch (error) {
+        // Only show error and redirect if still mounted
+        if (isMounted.value) {
+          uiStore.showToast(`Error loading template: ${error}`, "error");
+          router.push({ name: "editor" }); // Redirect to new template
+        }
+      }
+    } else {
+      templateStore.createNewTemplate();
+
+      // Only update state if still mounted
+      if (isMounted.value) {
+        uiStore.setModified(false);
+      }
+    }
+  } catch (error) {
+    console.error("Error in EditorView mount:", error);
   }
-  
-  // Set data attribute for mobile view
-  document.querySelector('.editor-view')?.setAttribute('data-mobile-view', mobileView.value);
 });
 
 onUnmounted(() => {
-  document.removeEventListener('click', closeDropdowns);
+  try {
+    // Set component as unmounted
+    isMounted.value = false;
+
+    // Remove event listeners
+    document.removeEventListener("click", closeDropdowns);
+
+    // Cancel any ongoing autosave
+    if (abortController.value) {
+      abortController.value.abort();
+      abortController.value = null;
+    }
+
+    // Cancel any pending debounced operations
+    if (typeof debouncedAutosave.cancel === "function") {
+      debouncedAutosave.cancel();
+    }
+  } catch (error) {
+    console.error("Error in EditorView unmount:", error);
+  }
 });
 </script>
 
@@ -762,7 +973,11 @@ onUnmounted(() => {
 }
 
 .save-button {
-  background: linear-gradient(135deg, var(--color-primary-light), var(--color-primary));
+  background: linear-gradient(
+    135deg,
+    var(--color-primary-light),
+    var(--color-primary)
+  );
   color: white;
   border: none;
   box-shadow: 0 2px 4px rgba(255, 171, 88, 0.2);
@@ -832,8 +1047,14 @@ onUnmounted(() => {
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(5px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* Responsive design for smaller screens */
@@ -841,17 +1062,17 @@ onUnmounted(() => {
   .editor-content {
     grid-template-columns: 200px 1fr 1fr;
   }
-  
+
   .sidebar-collapsed .editor-content {
     grid-template-columns: 40px 1fr 1fr;
   }
-  
+
   .metadata-form {
     flex-direction: column;
     align-items: flex-start;
     gap: var(--spacing-xs);
   }
-  
+
   .template-title-input,
   .template-description-input {
     width: 100%;
@@ -864,37 +1085,37 @@ onUnmounted(() => {
     grid-template-columns: 1fr;
     padding: var(--spacing-sm);
   }
-  
+
   .section-library-panel {
     display: none;
   }
-  
+
   .editor-canvas-panel,
   .preview-panel {
     grid-column: 1;
   }
-  
+
   .editor-canvas-panel {
     display: flex;
   }
-  
+
   .preview-panel {
     display: none;
   }
-  
+
   .mobile-view-toggle {
     display: flex;
   }
-  
+
   /* Show preview and hide editor when in preview mode */
   .editor-view[data-mobile-view="preview"] .editor-canvas-panel {
     display: none;
   }
-  
+
   .editor-view[data-mobile-view="preview"] .preview-panel {
     display: flex;
   }
-  
+
   /* Focus mode in mobile view */
   .focus-mode .preview-panel {
     display: flex;

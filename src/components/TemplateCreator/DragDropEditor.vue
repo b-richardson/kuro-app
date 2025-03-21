@@ -1,25 +1,40 @@
 <template>
   <div class="drag-drop-editor" @click.self="clearSelection">
-    <!-- Debug information -->
-    <div v-if="showDebugInfo" class="debug-info">
-      <p>Sections count: {{ sections.length }}</p>
-      <button @click="toggleUseDraggable">
-        {{ useDraggable ? 'Switch to Manual Render' : 'Switch to Draggable' }}
-      </button>
-      <pre>{{ JSON.stringify(sections, null, 2) }}</pre>
-    </div>
-    
     <div v-if="sections.length === 0" class="empty-template">
       <div class="empty-template-icon">
         <i class="fas fa-file-alt"></i>
       </div>
       <p class="empty-template-title">Your template is empty</p>
-      <p class="empty-template-subtitle">Add sections from the library or drag them here</p>
+      <p class="empty-template-subtitle">
+        Add sections from the library or drag them here
+      </p>
     </div>
 
-    <!-- Test with manual rendering -->
-    <div v-else-if="!useDraggable" class="sections-list">
-      <div v-for="section in sections" :key="section.id" class="section-wrapper">
+    <!-- Simple rendering of sections with move up/down buttons -->
+    <div v-else class="sections-list">
+      <div
+        v-for="(section, index) in sections"
+        :key="section.id"
+        class="section-wrapper"
+      >
+        <div class="section-controls">
+          <button
+            class="section-move-button"
+            @click.stop="moveSection(index, 'up')"
+            :disabled="index === 0"
+            title="Move section up"
+          >
+            <i class="fas fa-arrow-up"></i>
+          </button>
+          <button
+            class="section-move-button"
+            @click.stop="moveSection(index, 'down')"
+            :disabled="index === sections.length - 1"
+            title="Move section down"
+          >
+            <i class="fas fa-arrow-down"></i>
+          </button>
+        </div>
         <TemplateSection
           :section="section"
           :is-selected="selectedSectionId === section.id"
@@ -31,48 +46,7 @@
         />
       </div>
     </div>
-    
-    <!-- Draggable implementation -->
-    <draggable
-      v-else-if="sections.length > 0"
-      v-model="sectionsList"
-      item-key="id"
-      group="sections"
-      class="sections-list"
-      handle=".section-handle"
-      ghost-class="section-ghost"
-      chosen-class="section-chosen"
-      drag-class="is-dragging"
-      animation="200"
-      :delay="50"
-      :delayOnTouchOnly="true"
-      :force-fallback="true"
-      @change="updateSections"
-      @start="onDragStart"
-      @end="onDragEnd"
-      tag="transition-group"
-      :component-data="{
-        name: 'fade',
-        tag: 'div',
-        css: true,
-        'data-draggable': true
-      }"
-    >
-      <template #item="{element}">
-        <div class="section-wrapper">
-          <TemplateSection
-            :section="element"
-            :is-selected="selectedSectionId === element.id"
-            :auto-focus="element.id === autoFocusSectionId"
-            @update:content="updateSectionContent(element.id, $event)"
-            @delete="deleteSection(element.id)"
-            @select="selectSection(element.id)"
-            @duplicate="duplicateSection(element.id)"
-          />
-        </div>
-      </template>
-    </draggable>
-    
+
     <!-- Keyboard shortcuts help (toggled with Alt+?) -->
     <div v-if="showKeyboardHelp" class="keyboard-shortcuts-help">
       <div class="keyboard-shortcuts-header">
@@ -85,8 +59,11 @@
         <div class="keyboard-shortcut-group">
           <h4>General</h4>
           <div class="keyboard-shortcut">
-            <span class="keyboard-key">Alt</span> + <span class="keyboard-key">?</span>
-            <span class="keyboard-description">Show/hide keyboard shortcuts</span>
+            <span class="keyboard-key">Alt</span> +
+            <span class="keyboard-key">?</span>
+            <span class="keyboard-description"
+              >Show/hide keyboard shortcuts</span
+            >
           </div>
           <div class="keyboard-shortcut">
             <span class="keyboard-key">Esc</span>
@@ -96,32 +73,39 @@
         <div class="keyboard-shortcut-group">
           <h4>When section is selected</h4>
           <div class="keyboard-shortcut">
-            <span class="keyboard-key">Alt</span> + <span class="keyboard-key">A</span>
-            <span class="keyboard-description">Add line to current section</span>
+            <span class="keyboard-key">Alt</span> +
+            <span class="keyboard-key">A</span>
+            <span class="keyboard-description"
+              >Add line to current section</span
+            >
           </div>
           <div class="keyboard-shortcut">
-            <span class="keyboard-key">Alt</span> + <span class="keyboard-key">D</span>
+            <span class="keyboard-key">Alt</span> +
+            <span class="keyboard-key">D</span>
             <span class="keyboard-description">Duplicate section</span>
           </div>
           <div class="keyboard-shortcut">
-            <span class="keyboard-key">Alt</span> + <span class="keyboard-key">Delete</span>
+            <span class="keyboard-key">Alt</span> +
+            <span class="keyboard-key">Delete</span>
             <span class="keyboard-description">Delete section</span>
           </div>
         </div>
         <div class="keyboard-shortcut-group">
           <h4>Table section</h4>
           <div class="keyboard-shortcut">
-            <span class="keyboard-key">Alt</span> + <span class="keyboard-key">R</span>
+            <span class="keyboard-key">Alt</span> +
+            <span class="keyboard-key">R</span>
             <span class="keyboard-description">Add new row</span>
           </div>
           <div class="keyboard-shortcut">
-            <span class="keyboard-key">Alt</span> + <span class="keyboard-key">C</span>
+            <span class="keyboard-key">Alt</span> +
+            <span class="keyboard-key">C</span>
             <span class="keyboard-description">Add new column</span>
           </div>
         </div>
       </div>
     </div>
-    
+
     <!-- Toast notification system -->
     <Transition name="toast-fade">
       <div v-if="toast.show" class="editor-toast" :class="toast.type">
@@ -140,77 +124,74 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, onMounted, nextTick, watch } from 'vue';
-import { TemplateSection as ITemplateSection } from '@/types/TemplateSection';
-import TemplateSection from './TemplateSection.vue';
-import { v4 as uuidv4 } from 'uuid';
-// Import draggable directly from vue-draggable-next
-import { VueDraggableNext } from 'vue-draggable-next';
+import { computed, ref, onMounted, onUnmounted, nextTick, watch } from "vue";
+import { TemplateSection as ITemplateSection } from "@/types/TemplateSection";
+import TemplateSection from "./TemplateSection.vue";
+import { v4 as uuidv4 } from "uuid";
 
-// Define props first - this must come before any references to props
+// Component lifecycle state - define this FIRST
+const isComponentMounted = ref(false);
+
+// Define props
 const props = defineProps<{
-  sections: ITemplateSection[]
+  sections: ITemplateSection[];
 }>();
 
-// Define emits after props
+// Define emits
 const emit = defineEmits<{
-  (e: 'update', sections: ITemplateSection[]): void;
-  (e: 'delete', sectionId: string): void;
-  (e: 'section-change'): void;
+  (e: "update", sections: ITemplateSection[]): void;
+  (e: "delete", sectionId: string): void;
+  (e: "section-change"): void;
 }>();
 
-// Rename to draggable to make it easier to use
-const draggable = VueDraggableNext;
-
-// Debug variables
-const showDebugInfo = ref(true); // Set to true initially for debugging
-const useDraggable = ref(false); // Start with manual rendering for debugging
-
+// UI state
 const selectedSectionId = ref<string | null>(null);
 const autoFocusSectionId = ref<string | null>(null);
 const showKeyboardHelp = ref(false);
-
-// Function to toggle between draggable and manual rendering
-const toggleUseDraggable = () => {
-  useDraggable.value = !useDraggable.value;
-  console.log('Switched to:', useDraggable.value ? 'draggable' : 'manual rendering');
-};
 
 // Toast notification system
 interface ToastState {
   show: boolean;
   message: string;
-  type: 'success' | 'error' | 'info';
+  type: "success" | "error" | "info";
   timeout: ReturnType<typeof setTimeout> | null;
 }
 
 const toast = ref<ToastState>({
   show: false,
-  message: '',
-  type: 'info',
-  timeout: null
+  message: "",
+  type: "info",
+  timeout: null,
 });
 
 const toastIcon = computed(() => {
   switch (toast.value.type) {
-    case 'success': return 'fas fa-check-circle';
-    case 'error': return 'fas fa-exclamation-circle';
-    default: return 'fas fa-info-circle';
+    case "success":
+      return "fas fa-check-circle";
+    case "error":
+      return "fas fa-exclamation-circle";
+    default:
+      return "fas fa-info-circle";
   }
 });
 
-const showToast = (message: string, type: 'success' | 'error' | 'info' = 'info', duration = 3000) => {
+// Toast methods
+const showToast = (
+  message: string,
+  type: "success" | "error" | "info" = "info",
+  duration = 3000
+) => {
   // Clear any existing timeout
   if (toast.value.timeout) {
     clearTimeout(toast.value.timeout);
     toast.value.timeout = null;
   }
-  
+
   // Update toast properties
   toast.value.message = message;
   toast.value.type = type;
   toast.value.show = true;
-  
+
   // Set auto-hide timeout
   toast.value.timeout = setTimeout(() => {
     hideToast();
@@ -219,7 +200,7 @@ const showToast = (message: string, type: 'success' | 'error' | 'info' = 'info',
 
 const hideToast = () => {
   toast.value.show = false;
-  
+
   // Clear timeout
   if (toast.value.timeout) {
     clearTimeout(toast.value.timeout);
@@ -227,84 +208,90 @@ const hideToast = () => {
   }
 };
 
-// Create a computed property for the sections to support v-model with draggable
-const sectionsList = computed<ITemplateSection[]>({
-  get: () => props.sections,
-  set: (value) => {
-    // Add a console.log to debug updates
-    console.log('Sections updated via v-model:', value);
-    emit('update', value);
-  }
-});
-
 /**
- * Temporary adapter function to fix section type mismatches between 
+ * Adapter function to safely handle type mismatches between
  * store definition and component expectations
  */
 const adaptSectionTypes = () => {
-  if (!props.sections || props.sections.length === 0) return;
-  
-  // Create a mapping between store types and component expected types
-  const typeMap: Record<string, string> = {
-    'heading': 'header',
-    'list': 'checklist',
-    'text': 'text',
-    'table': 'table',
-    'code': 'text',
-    'frontmatter': 'yaml'
-  };
-  
-  // Check if any section needs adaptation
-  let needsAdaptation = false;
-  
-  props.sections.forEach(section => {
-    // Type-safe check
-    const sectionType = section.type as string;
-    if (typeMap[sectionType] && sectionType !== typeMap[sectionType]) {
-      needsAdaptation = true;
-      console.log(`Section type needs adaptation: ${sectionType} -> ${typeMap[sectionType]}`);
-    }
-    
-    // Also ensure content is an array (store might use string)
-    if (typeof section.content === 'string') {
-      needsAdaptation = true;
-      console.log(`Section content needs adaptation from string to array`);
-    }
-  });
-  
-  if (needsAdaptation) {
-    console.log('Adapting section types for compatibility...');
-    
-    // Create adapted sections with proper types
-    const adaptedSections = props.sections.map(section => {
-      // Create a new object to avoid mutating props directly
-      const adapted = { ...section };
-      
-      // Type-safe adaptation
+  // Guard against invalid parameters or unmounted component
+  if (
+    !isComponentMounted.value ||
+    !props.sections ||
+    props.sections.length === 0
+  ) {
+    return;
+  }
+
+  try {
+    // Create a mapping between store types and component expected types
+    const typeMap: Record<string, string> = {
+      heading: "header",
+      list: "checklist",
+      text: "text",
+      table: "table",
+      code: "text",
+      frontmatter: "yaml",
+    };
+
+    // Check if any section needs adaptation
+    let needsAdaptation = false;
+
+    props.sections.forEach((section) => {
+      if (!section) return; // Skip undefined/null sections
+
+      // Type-safe check
       const sectionType = section.type as string;
-      if (typeMap[sectionType]) {
-        // @ts-ignore - We need to convert types safely
-        adapted.type = typeMap[sectionType];
+      if (typeMap[sectionType] && sectionType !== typeMap[sectionType]) {
+        needsAdaptation = true;
       }
-      
-      // Ensure content is an array
-      if (typeof section.content === 'string') {
-        adapted.content = [section.content];
+
+      // Also ensure content is an array (store might use string)
+      if (typeof section.content === "string") {
+        needsAdaptation = true;
       }
-      
-      // Ensure pluginType exists
-      if (adapted.pluginType === undefined) {
-        adapted.pluginType = null;
+
+      // Check if pluginType is missing
+      if (section.pluginType === undefined) {
+        needsAdaptation = true;
       }
-      
-      return adapted;
     });
-    
-    // Use the adapted sections
-    console.log('Adapted sections:', adaptedSections);
-    
-    // Replace the sections in the computed property
-    emit('update', adaptedSections);
+
+    if (needsAdaptation) {
+      // Create adapted sections with proper types
+      const adaptedSections = props.sections.map((section) => {
+        if (!section) return section; // Skip undefined/null sections
+
+        // Create a new object to avoid mutating props directly
+        const adapted = { ...section };
+
+        // Type-safe adaptation
+        const sectionType = section.type as string;
+        if (typeMap[sectionType]) {
+          adapted.type = typeMap[sectionType] as any;
+        }
+
+        // Ensure content is an array
+        if (typeof section.content === "string") {
+          adapted.content = [section.content];
+        }
+
+        // Ensure pluginType exists
+        if (adapted.pluginType === undefined) {
+          adapted.pluginType = null;
+        }
+
+        return adapted;
+      });
+
+      // Replace the sections in the computed property - use nextTick for safety
+      nextTick(() => {
+        if (isComponentMounted.value) {
+          emit("update", adaptedSections);
+        }
+      });
+    }
+  } catch (error) {
+    console.error("Error adapting section types:", error);
   }
 };
 
@@ -313,115 +300,148 @@ const adaptSectionTypes = () => {
  */
 const handleGlobalKeydown = (event: KeyboardEvent) => {
   // Toggle keyboard shortcuts help with Alt+?
-  if (event.altKey && event.key === '/') {
+  if (event.altKey && event.key === "/") {
     event.preventDefault();
     showKeyboardHelp.value = !showKeyboardHelp.value;
     return;
   }
-  
+
   // Clear selection with Escape
-  if (event.key === 'Escape') {
+  if (event.key === "Escape") {
     clearSelection();
     showKeyboardHelp.value = false;
     return;
   }
-  
-  // More global shortcuts can be added here
-};
-
-// Drag state tracking
-const isDragging = ref(false);
-
-/**
- * Handle drag start event
- */
-const onDragStart = (evt: any) => {
-  isDragging.value = true;
-  document.body.classList.add('is-dragging');
-  
-  // Add a class to the dragged element for better styling
-  if (evt.item) {
-    evt.item.classList.add('being-dragged');
-  }
-  
-  // Log the drag start event for debugging
-  console.log('Drag started:', evt.oldIndex);
 };
 
 /**
- * Handle drag end event
+ * Move a section up or down in the list
+ * This function safely reorders sections with proper reactivity handling
  */
-const onDragEnd = (evt: any) => {
-  isDragging.value = false;
-  document.body.classList.remove('is-dragging');
-  
-  // Remove the dragging class
-  if (evt.item) {
-    evt.item.classList.remove('being-dragged');
+const moveSection = (index: number, direction: "up" | "down") => {
+  // Validate parameters to avoid runtime errors
+  if (index === undefined || index === null || !direction) {
+    console.error("Invalid parameters in moveSection:", { index, direction });
+    return;
   }
-  
-  // Log the drag end event for debugging
-  console.log('Drag ended. Old index:', evt.oldIndex, 'New index:', evt.newIndex);
-  
-  // If indices are different, we had a valid reordering
-  if (evt.oldIndex !== evt.newIndex) {
-    // Show a toast notification for user feedback
-    showToast('Section reordered successfully', 'success');
+
+  // Guard against operations on unmounted components
+  if (!props.sections || !Array.isArray(props.sections)) {
+    console.warn("moveSection called with invalid sections array");
+    return;
+  }
+
+  // Calculate the new index
+  const newIndex = direction === "up" ? index - 1 : index + 1;
+
+  // Ensure the new index is valid
+  if (newIndex < 0 || newIndex >= props.sections.length) {
+    return;
+  }
+
+  try {
+    // Create a fresh copy of the sections array to maintain Vue reactivity
+    const updatedSections = props.sections.map((section) => ({ ...section }));
+
+    // Store references to the sections we're swapping
+    const sectionA = updatedSections[index];
+    const sectionB = updatedSections[newIndex];
+
+    // Perform the swap with proper type safety
+    updatedSections[newIndex] = sectionA;
+    updatedSections[index] = sectionB;
+
+    // Update the sections - wrap in nextTick to avoid DOM update conflicts
+    nextTick(() => {
+      emit("update", updatedSections);
+      emit("section-change");
+
+      // Show a toast notification
+      showToast(`Section moved ${direction}`, "success");
+    });
+  } catch (error) {
+    console.error("Error moving section:", error);
+    showToast("Failed to move section", "error");
   }
 };
 
-// Add a watcher for sections prop to debug updates - after adaptSectionTypes is defined
-watch(() => props.sections, (newSections) => {
-  console.log('Sections updated:', newSections);
-  
-  // Apply section type adapter on updates
-  adaptSectionTypes();
-}, { immediate: true, deep: true });
+// Add a watcher for sections prop to apply adapters
+watch(
+  () => props.sections,
+  (newSections) => {
+    if (isComponentMounted.value) {
+      adaptSectionTypes();
+    }
+  },
+  { immediate: false, deep: true }
+);
 
-// Set up event listeners - after all functions are defined
+// Set up event listeners
 onMounted(() => {
   try {
+    // Mark component as mounted
+    isComponentMounted.value = true;
+
     // Add global keyboard event listener
-    document.addEventListener('keydown', handleGlobalKeydown);
-    
-    // Log for debugging
-    console.log('DragDropEditor mounted with direct vuedraggable implementation');
-    console.log('Sections received:', props.sections);
-    
+    document.addEventListener("keydown", handleGlobalKeydown);
+
     // Apply section type adapter on mount
     adaptSectionTypes();
   } catch (e) {
-    console.error('Error in DragDropEditor mount:', e);
+    console.error("Error in DragDropEditor mount:", e);
   }
 });
 
-/**
- * Updates sections after drag-drop events
- */
-const updateSections = (evt: any) => {
-  console.log('Update sections event:', evt);
-  
-  // The v-model binding should already update the props.sections via emit('update')
-  // We just need to trigger any additional events if we have a moved event
-  if (evt.moved) {
-    emit('section-change');
+// Clean up when component is unmounted
+onUnmounted(() => {
+  try {
+    // Mark component as unmounted
+    isComponentMounted.value = false;
+
+    // Remove event listeners
+    document.removeEventListener("keydown", handleGlobalKeydown);
+
+    // Clear any pending timeouts
+    if (toast.value.timeout) {
+      clearTimeout(toast.value.timeout);
+      toast.value.timeout = null;
+    }
+  } catch (e) {
+    console.error("Error in DragDropEditor unmount:", e);
   }
-};
+});
 
 /**
  * Updates content of a specific section
  */
 const updateSectionContent = (sectionId: string, newContent: string[]) => {
-  const sectionIndex = props.sections.findIndex(section => section.id === sectionId);
-  if (sectionIndex !== -1) {
-    // Create a new array to trigger reactivity
-    const updatedSections = [...props.sections];
-    updatedSections[sectionIndex] = {
-      ...updatedSections[sectionIndex],
-      content: newContent
-    };
-    emit('update', updatedSections);
-    emit('section-change');
+  // Guard against invalid parameters or unmounted component
+  if (!isComponentMounted.value || !sectionId || !Array.isArray(newContent)) {
+    return;
+  }
+
+  try {
+    const sectionIndex = props.sections.findIndex(
+      (section) => section.id === sectionId
+    );
+    if (sectionIndex !== -1) {
+      // Create a new array to trigger reactivity
+      const updatedSections = props.sections.map((section) => ({ ...section }));
+
+      // Update the specific section with the new content
+      updatedSections[sectionIndex] = {
+        ...updatedSections[sectionIndex],
+        content: [...newContent], // Create a new array for content
+      };
+
+      // Emit the update events
+      nextTick(() => {
+        emit("update", updatedSections);
+        emit("section-change");
+      });
+    }
+  } catch (error) {
+    console.error("Error updating section content:", error);
   }
 };
 
@@ -429,64 +449,118 @@ const updateSectionContent = (sectionId: string, newContent: string[]) => {
  * Deletes a section by ID
  */
 const deleteSection = (sectionId: string) => {
-  // If we're deleting the currently selected section, clear the selection
-  if (selectedSectionId.value === sectionId) {
-    selectedSectionId.value = null;
+  // Guard against invalid parameters or unmounted component
+  if (!isComponentMounted.value || !sectionId) {
+    return;
   }
-  
-  // Show a toast notification
-  showToast('Section deleted', 'info');
-  
-  emit('delete', sectionId);
-  emit('section-change');
+
+  try {
+    // If we're deleting the currently selected section, clear the selection
+    if (selectedSectionId.value === sectionId) {
+      selectedSectionId.value = null;
+    }
+
+    // Emit events safely wrapped in nextTick
+    nextTick(() => {
+      emit("delete", sectionId);
+      emit("section-change");
+
+      // Show a toast notification
+      showToast("Section deleted", "info");
+    });
+  } catch (error) {
+    console.error("Error deleting section:", error);
+  }
 };
 
 /**
  * Selects a section for editing
  */
 const selectSection = (sectionId: string) => {
-  selectedSectionId.value = sectionId;
-  
-  // Clear auto-focus since we're selecting explicitly
-  autoFocusSectionId.value = null;
+  // Guard against invalid parameters or unmounted component
+  if (!isComponentMounted.value || !sectionId) {
+    return;
+  }
+
+  try {
+    // Update selection state
+    selectedSectionId.value = sectionId;
+
+    // Clear auto-focus since we're selecting explicitly
+    autoFocusSectionId.value = null;
+  } catch (error) {
+    console.error("Error selecting section:", error);
+  }
 };
 
 /**
  * Clears the currently selected section
  */
 const clearSelection = () => {
-  selectedSectionId.value = null;
+  // Guard against unmounted component
+  if (!isComponentMounted.value) {
+    return;
+  }
+
+  try {
+    selectedSectionId.value = null;
+  } catch (error) {
+    console.error("Error clearing selection:", error);
+  }
 };
 
 /**
  * Duplicates a section
  */
 const duplicateSection = (sectionId: string) => {
-  const sectionIndex = props.sections.findIndex(section => section.id === sectionId);
-  if (sectionIndex !== -1) {
-    // Create a copy of the section with a new ID
+  // Guard against invalid parameters or unmounted component
+  if (
+    !isComponentMounted.value ||
+    !sectionId ||
+    !Array.isArray(props.sections)
+  ) {
+    return;
+  }
+
+  try {
+    const sectionIndex = props.sections.findIndex(
+      (section) => section.id === sectionId
+    );
+    if (sectionIndex === -1) {
+      return;
+    }
+
+    // Create a copy of the section with a new ID using a safe deep copy approach
     const originalSection = props.sections[sectionIndex];
     const newSection: ITemplateSection = {
       ...JSON.parse(JSON.stringify(originalSection)), // Deep copy
-      id: uuidv4() // Generate a new unique ID
+      id: uuidv4(), // Generate a new unique ID
     };
-    
-    // Insert the new section after the original
-    const updatedSections = [...props.sections];
+
+    // Create a new array and splice in the new section
+    const updatedSections = props.sections.map((section) => ({ ...section }));
     updatedSections.splice(sectionIndex + 1, 0, newSection);
-    
-    // Update sections and select the new section
-    emit('update', updatedSections);
-    emit('section-change');
-    
+
+    // First emit events to update sections
+    emit("update", updatedSections);
+    emit("section-change");
+
     // Show a toast notification
-    showToast('Section duplicated', 'success');
-    
-    // Select and auto-focus the new section
+    showToast("Section duplicated", "success");
+
+    // Use multiple nextTick calls to ensure proper rendering sequence
     nextTick(() => {
-      selectedSectionId.value = newSection.id;
-      autoFocusSectionId.value = newSection.id;
+      // Wait for section to be added to DOM
+      nextTick(() => {
+        // Then update selection state
+        if (isComponentMounted.value) {
+          selectedSectionId.value = newSection.id;
+          autoFocusSectionId.value = newSection.id;
+        }
+      });
     });
+  } catch (error) {
+    console.error("Error duplicating section:", error);
   }
 };
 </script>
@@ -500,40 +574,6 @@ const duplicateSection = (sectionId: string) => {
   box-sizing: border-box;
   padding: 0;
   margin: 0;
-}
-
-/* Debug info styling */
-.debug-info {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  background: rgba(0, 0, 0, 0.8);
-  color: white;
-  padding: 10px;
-  font-family: monospace;
-  z-index: 1000;
-  max-height: 300px;
-  overflow: auto;
-}
-
-.debug-info pre {
-  font-size: 12px;
-  white-space: pre-wrap;
-}
-
-.debug-info button {
-  background: #555;
-  color: white;
-  border: none;
-  padding: 5px 10px;
-  margin: 5px 0;
-  cursor: pointer;
-  border-radius: 4px;
-}
-
-.debug-info button:hover {
-  background: #777;
 }
 
 .empty-template {
@@ -610,14 +650,35 @@ const duplicateSection = (sectionId: string) => {
   position: static;
 }
 
-.section-ghost {
-  opacity: 0.4;
-  z-index: 2;
+/* Section controls for up/down buttons */
+.section-controls {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 8px;
 }
 
-.section-chosen {
-  box-shadow: 0 0 15px rgba(255, 171, 88, 0.2);
-  z-index: 3;
+.section-move-button {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--glass-border);
+  color: var(--color-text-secondary);
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.section-move-button:hover:not(:disabled) {
+  background: rgba(255, 171, 88, 0.1);
+  color: var(--color-primary);
+}
+
+.section-move-button:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
 }
 
 /* Keyboard shortcuts help */
@@ -831,11 +892,11 @@ const duplicateSection = (sectionId: string) => {
     max-height: none;
     position: fixed;
   }
-  
+
   .keyboard-shortcut {
     font-size: 0.8125rem;
   }
-  
+
   .editor-toast {
     width: calc(100% - 40px);
     max-width: none;
