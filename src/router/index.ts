@@ -1,38 +1,43 @@
-import { createRouter, createWebHistory } from 'vue-router'
+import { createRouter, createWebHistory } from "vue-router";
 
 // Import view components - using relative paths to ensure they're found
-import HomeView from '../views/HomeView.vue'
-import LibraryView from '../views/LibraryView.vue'
-import EditorView from '../views/EditorView.vue'
-import DesignView from '../views/DesignView.vue'
+import HomeView from "../views/HomeView.vue";
+import LibraryView from "../views/LibraryView.vue";
+import EditorView from "../views/EditorView.vue";
+import DesignView from "../views/DesignView.vue";
 
 const routes = [
   {
-    path: '/',
-    name: 'home',
-    component: HomeView
+    path: "/",
+    name: "home",
+    component: HomeView,
   },
   {
-    path: '/library',
-    name: 'library',
-    component: LibraryView
+    path: "/home",
+    name: "home-page",
+    component: HomeView,
   },
   {
-    path: '/editor/:id?',
-    name: 'editor',
+    path: "/library",
+    name: "library",
+    component: LibraryView,
+  },
+  {
+    path: "/editor/:id?",
+    name: "editor",
     component: EditorView,
-    props: true // Pass route params as props
+    props: true, // Pass route params as props
   },
   {
-    path: '/design',
-    name: 'design',
-    component: DesignView
-  }
-]
+    path: "/design",
+    name: "design",
+    component: DesignView,
+  },
+];
 
 const router = createRouter({
-  history: createWebHistory('/'),
-  routes
-})
+  history: createWebHistory("/"),
+  routes,
+});
 
-export default router
+export default router;

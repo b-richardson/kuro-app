@@ -1,72 +1,64 @@
 <template>
   <div class="editor-view">
-    <AppHeader
-      title="Template Editor"
+    <AppHeader 
+      :title="templateName || 'Untitled Template'" 
       :show-back-button="true"
       @back="handleBack"
     >
       <template #actions>
         <div class="editor-actions">
-          <PrimaryButton
-            @click="saveTemplate"
+          <PrimaryButton 
+            icon="fas fa-save" 
+            @click="saveTemplate" 
             :disabled="!uiStore.isModified"
-            icon="fas fa-save"
           >
             Save
           </PrimaryButton>
-
-          <ExportDropdown :sections="templateStore.currentSections" />
-
-          <button class="theme-toggle" @click="toggleSidebar">
-            <i
-              class="fas"
-              :class="uiStore.sidebarHidden ? 'fa-bars' : 'fa-times'"
-            ></i>
+          
+          <ExportDropdown />
+          
+          <button class="layout-button glass-button" @click="toggleSidebar" aria-label="Toggle sidebar">
+            <i class="fas" :class="uiStore.sidebarHidden ? 'fa-bars' : 'fa-times'"></i>
           </button>
         </div>
       </template>
     </AppHeader>
-
-    <div
-      class="editor-layout"
-      :class="{ 'sidebar-hidden': uiStore.sidebarHidden }"
-    >
+    
+    <div class="editor-layout" :class="{ 'sidebar-hidden': uiStore.sidebarHidden }">
       <!-- Section Library Sidebar -->
-      <div class="editor-sidebar" v-show="!uiStore.sidebarHidden">
+      <div class="editor-sidebar glass-card">
         <SectionLibrary @add-section="addSection" />
       </div>
-
+      
       <!-- Main content area with editor and preview -->
       <div class="editor-content">
         <div class="editor-grid" :style="editorGridStyle">
           <!-- Template Editor -->
-          <div
-            class="editor-panel"
-            :class="{ 'full-width': uiStore.focusMode === 'editor' }"
-          >
+          <div class="editor-panel glass-card" :class="{ 'full-width': uiStore.focusMode === 'editor' }">
             <div class="panel-header">
               <div class="panel-title">
                 <h2>Editor</h2>
-                <input
+                <input 
                   v-if="uiStore.focusMode !== 'preview'"
                   type="text"
                   class="template-title-input"
                   v-model="templateName"
                   placeholder="Untitled Template"
+                  @input="markAsModified"
                 />
               </div>
               <div class="panel-actions">
-                <button
-                  class="panel-action-button"
-                  @click="setFocusMode('editor')"
+                <button 
+                  class="panel-action-button" 
+                  @click="setFocusMode('editor')" 
                   v-if="uiStore.focusMode !== 'editor'"
                   title="Expand editor"
                 >
                   <i class="fas fa-expand"></i>
                 </button>
-                <button
+                <button 
                   class="panel-action-button"
-                  @click="setFocusMode('none')"
+                  @click="setFocusMode('none')" 
                   v-else
                   title="Restore split view"
                 >
@@ -74,7 +66,7 @@
                 </button>
               </div>
             </div>
-
+            
             <DragDropEditor
               :sections="templateStore.currentSections"
               @update="updateSections"
@@ -82,40 +74,34 @@
               @section-change="markAsModified"
             />
           </div>
-
+          
           <!-- Markdown Preview -->
-          <div
-            class="preview-panel"
-            :class="{
-              'full-width': uiStore.focusMode === 'preview',
-              hidden: uiStore.focusMode === 'editor',
-            }"
+          <div 
+            class="preview-panel glass-card" 
+            :class="{ 'full-width': uiStore.focusMode === 'preview', 'hidden': uiStore.focusMode === 'editor' }"
             v-show="uiStore.focusMode !== 'editor'"
           >
             <div class="panel-header">
               <div class="panel-title">
                 <h2>Preview</h2>
                 <div class="export-profile-indicator">
-                  <span
-                    class="profile-badge"
-                    :class="`profile-${getCurrentProfileId()}`"
-                  >
+                  <span class="profile-badge" :class="`profile-${getCurrentProfileId()}`">
                     {{ getProfileName(getCurrentProfileId()) }}
                   </span>
                 </div>
               </div>
               <div class="panel-actions">
-                <button
+                <button 
                   class="panel-action-button"
-                  @click="setFocusMode('preview')"
+                  @click="setFocusMode('preview')" 
                   v-if="uiStore.focusMode !== 'preview'"
                   title="Expand preview"
                 >
                   <i class="fas fa-expand"></i>
                 </button>
-                <button
+                <button 
                   class="panel-action-button"
-                  @click="setFocusMode('none')"
+                  @click="setFocusMode('none')" 
                   v-else
                   title="Restore split view"
                 >
@@ -123,16 +109,16 @@
                 </button>
               </div>
             </div>
-
+            
             <MarkdownPreview
               :sections="templateStore.currentSections"
               :export-profile="preferencesStore.currentExportProfile"
             />
           </div>
-
+          
           <!-- Resizer handle when both panels are visible -->
-          <div
-            class="resize-handle"
+          <div 
+            class="resize-handle" 
             v-show="uiStore.focusMode === 'none'"
             @mousedown="startResize"
             @touchstart="startTouchResize"
@@ -140,7 +126,13 @@
         </div>
       </div>
     </div>
-
+    
+    <!-- Autosave indicator -->
+    <div class="autosave-indicator" v-if="autoSaving">
+      <i class="fas fa-sync-alt fa-spin"></i>
+      <span>Autosaving...</span>
+    </div>
+    
     <!-- Confirmation dialog for unsaved changes -->
     <ConfirmationDialog
       v-if="uiStore.showConfirmDialog"
@@ -155,23 +147,24 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from "vue";
-import { useRouter, useRoute } from "vue-router";
-import { useTemplateStore } from "@/stores/template";
-import { useUIStore } from "@/stores/ui";
-import { usePreferencesStore } from "@/stores/preferences";
+import { computed, ref, onMounted, onUnmounted, watch } from 'vue';
+import { useRouter, useRoute } from 'vue-router';
+import { useTemplateStore } from '@/stores/template';
+import { useUIStore } from '@/stores/ui';
+import { usePreferencesStore } from '@/stores/preferences';
+import { debounce } from 'lodash-es';
 
-import AppHeader from "@/components/Layout/AppHeader.vue";
-import SectionLibrary from "@/components/TemplateCreator/SectionLibrary.vue";
-import DragDropEditor from "@/components/TemplateCreator/DragDropEditor.vue";
-import MarkdownPreview from "@/components/TemplateCreator/MarkdownPreview.vue";
-import ExportDropdown from "@/components/TemplateCreator/ExportDropdown.vue";
-import ConfirmationDialog from "@/components/UI/ConfirmationDialog.vue";
-import PrimaryButton from "@/components/UI/PrimaryButton.vue";
+import AppHeader from '@/components/Layout/AppHeader.vue';
+import PrimaryButton from '@/components/UI/PrimaryButton.vue';
+import SectionLibrary from '@/components/TemplateCreator/SectionLibrary.vue';
+import DragDropEditor from '@/components/TemplateCreator/DragDropEditor.vue';
+import MarkdownPreview from '@/components/TemplateCreator/MarkdownPreview.vue';
+import ExportDropdown from '@/components/TemplateCreator/ExportDropdown.vue';
+import ConfirmationDialog from '@/components/UI/ConfirmationDialog.vue';
 
 // Props from route
 const props = defineProps<{
-  id?: string;
+  id?: string
 }>();
 
 // Router and stores
@@ -181,18 +174,9 @@ const templateStore = useTemplateStore();
 const uiStore = useUIStore();
 const preferencesStore = usePreferencesStore();
 
-// Computed properties
-const editorGridStyle = computed(() => {
-  if (uiStore.focusMode !== "none") {
-    return {};
-  }
-  return {
-    gridTemplateColumns: `${uiStore.editorWidth}% ${
-      100 - uiStore.editorWidth
-    }%`,
-  };
-});
-
+// Local state
+const resizing = ref(false);
+const autoSaving = ref(false);
 const templateName = computed({
   get: () => templateStore.currentTemplate?.name || '',
   set: (value) => {
@@ -205,13 +189,23 @@ const templateName = computed({
   }
 });
 
+// Computed properties
+const editorGridStyle = computed(() => {
+  if (uiStore.focusMode !== 'none') {
+    return {};
+  }
+  return {
+    gridTemplateColumns: `${uiStore.editorWidth}% ${100 - uiStore.editorWidth}%`
+  };
+});
+
 // Helper functions for profiles
 const getProfileName = (profileId: string): string => {
   const profiles: Record<string, string> = {
     plain: "Plain Markdown",
     templater: "Templater",
     dataview: "Dataview",
-    full: "Full Plugin Suite",
+    full: "Full Plugin Suite"
   };
   return profiles[profileId] || "Unknown";
 };
@@ -220,8 +214,6 @@ const getCurrentProfileId = (): "plain" | "templater" | "dataview" | "full" => {
   if (!preferencesStore.currentExportProfile) return "full";
   return preferencesStore.currentExportProfile.id || "full";
 };
-
-// This function is no longer needed as the functionality is now in the templateName computed property
 
 // Methods
 const handleBack = () => {
@@ -278,51 +270,66 @@ const deleteSection = (sectionId) => {
 
 const markAsModified = () => {
   uiStore.setModified(true);
-  // We could implement autosave here if needed in the future
+  debouncedAutosave();
 };
 
-// Resize functionality with state tracking
-const resizing = ref(false);
+// Autosave functionality
+const debouncedAutosave = debounce(async () => {
+  if (!uiStore.isModified) return;
+  
+  autoSaving.value = true;
+  try {
+    await templateStore.saveCurrentTemplate();
+    uiStore.setModified(false);
+    uiStore.showToast('Template autosaved', 'success', 2000);
+  } catch (error) {
+    console.error('Autosave failed:', error);
+  } finally {
+    autoSaving.value = false;
+  }
+}, 5000);
 
+// Resize functionality
 const startResize = (e) => {
   e.preventDefault();
   resizing.value = true;
-
-  // Add resizing class for visual feedback
-  const container = document.querySelector(".editor-grid");
+  
+  // Add the classes for visual feedback
+  const container = document.querySelector('.editor-grid');
   if (container) {
-    container.classList.add("resizing");
+    container.classList.add('resizing');
   }
-
-  document.addEventListener("mousemove", handleResize);
-  document.addEventListener("mouseup", stopResize);
+  
+  document.addEventListener('mousemove', handleResize);
+  document.addEventListener('mouseup', stopResize);
 };
 
 const handleResize = (e) => {
   if (!resizing.value) return;
-
-  const container = document.querySelector(".editor-grid");
+  
+  const container = document.querySelector('.editor-grid');
   if (!container) return;
 
   const rect = container.getBoundingClientRect();
   const width = e.clientX - rect.left;
   const percent = Math.min(Math.max((width / rect.width) * 100, 20), 80);
+  
   uiStore.setEditorWidth(percent);
 };
 
 const stopResize = () => {
   resizing.value = false;
-
-  // Remove resizing class
-  const container = document.querySelector(".editor-grid");
+  
+  // Remove the resizing class
+  const container = document.querySelector('.editor-grid');
   if (container) {
-    container.classList.remove("resizing");
+    container.classList.remove('resizing');
   }
-
-  document.removeEventListener("mousemove", handleResize);
-  document.removeEventListener("mouseup", stopResize);
-
-  // Save preference
+  
+  document.removeEventListener('mousemove', handleResize);
+  document.removeEventListener('mouseup', stopResize);
+  
+  // Save the preference
   preferencesStore.saveEditorWidth(uiStore.editorWidth);
 };
 
@@ -331,10 +338,9 @@ const startTouchResize = (e) => {
   e.preventDefault();
   const touch = e.touches[0];
   startResize({ clientX: touch.clientX, preventDefault: () => {} });
-
-  // Add touch event listeners
-  document.addEventListener("touchmove", handleTouchResize, { passive: false });
-  document.addEventListener("touchend", stopTouchResize);
+  
+  document.addEventListener('touchmove', handleTouchResize, { passive: false });
+  document.addEventListener('touchend', stopTouchResize);
 };
 
 const handleTouchResize = (e) => {
@@ -344,29 +350,37 @@ const handleTouchResize = (e) => {
 };
 
 const stopTouchResize = () => {
-  document.removeEventListener("touchmove", handleTouchResize);
-  document.removeEventListener("touchend", stopTouchResize);
+  document.removeEventListener('touchmove', handleTouchResize);
+  document.removeEventListener('touchend', stopTouchResize);
   stopResize();
 };
+
+// Watch for changes in sections for autosave
+watch(() => templateStore.currentSections, () => {
+  if (!uiStore.isModified) {
+    uiStore.setModified(true);
+    debouncedAutosave();
+  }
+}, { deep: true });
 
 // Lifecycle hooks
 onMounted(async () => {
   // Load templates and preferences
-  templateStore.loadTemplates();
+  await templateStore.loadTemplates();
   preferencesStore.loadPreferences();
   uiStore.loadUIPreferences();
-
+  
   // Set last visited view
-  preferencesStore.setLastVisitedView("editor");
-
+  preferencesStore.setLastVisitedView('editor');
+  
   // Load template if ID is provided, otherwise create a new template
   if (props.id) {
     try {
       await templateStore.loadTemplate(props.id);
       uiStore.setModified(false);
     } catch (error) {
-      uiStore.showToast(`Error loading template: ${error}`, "error");
-      router.push({ name: "editor" }); // Redirect to new template
+      uiStore.showToast(`Error loading template: ${error}`, 'error');
+      router.push({ name: 'editor' }); // Redirect to new template
     }
   } else {
     templateStore.createNewTemplate();
@@ -375,11 +389,11 @@ onMounted(async () => {
 });
 
 onUnmounted(() => {
-  // Clean up all event listeners
-  document.removeEventListener("mousemove", handleResize);
-  document.removeEventListener("mouseup", stopResize);
-  document.removeEventListener("touchmove", handleTouchResize);
-  document.removeEventListener("touchend", stopTouchResize);
+  // Clean up resize event listeners
+  document.removeEventListener('mousemove', handleResize);
+  document.removeEventListener('mouseup', stopResize);
+  document.removeEventListener('touchmove', handleTouchResize);
+  document.removeEventListener('touchend', stopTouchResize);
 });
 </script>
 
@@ -401,19 +415,26 @@ onUnmounted(() => {
   display: flex;
   flex: 1;
   overflow: hidden;
+  padding: var(--spacing-md);
+  gap: var(--spacing-md);
 }
 
 .editor-sidebar {
   width: 250px;
-  border-right: 1px solid var(--glass-border);
-  background: var(--glass-background);
-  backdrop-filter: blur(var(--glass-blur));
   overflow-y: auto;
+  padding: 0;
+  flex-shrink: 0;
+  /* Special styling for sidebar */
+  background: rgba(30, 30, 46, 0.6);
+  border: 1px solid rgba(167, 139, 250, 0.15);
+  /* Add a subtle purple tint to the sidebar */
+  box-shadow: 0 4px 20px rgba(167, 139, 250, 0.1);
 }
 
 .editor-content {
   flex: 1;
   overflow: hidden;
+  position: relative;
 }
 
 .editor-grid {
@@ -421,13 +442,30 @@ onUnmounted(() => {
   grid-template-columns: 50% 50%;
   height: 100%;
   position: relative;
+  gap: var(--spacing-md);
 }
 
-.editor-panel,
-.preview-panel {
+.editor-panel, .preview-panel {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  transition: all var(--transition-standard);
+}
+
+/* Unique styling for the editor panel */
+.editor-panel {
+  background: rgba(30, 30, 46, 0.5);
+  border: 1px solid rgba(76, 205, 196, 0.15);
+  /* Add a subtle teal tint */
+  box-shadow: 0 4px 20px rgba(76, 205, 196, 0.05);
+}
+
+/* Unique styling for the preview panel */
+.preview-panel {
+  background: rgba(30, 30, 46, 0.5);
+  border: 1px solid rgba(52, 211, 153, 0.15);
+  /* Add a subtle green tint */
+  box-shadow: 0 4px 20px rgba(52, 211, 153, 0.05);
 }
 
 .panel-header {
@@ -436,12 +474,7 @@ onUnmounted(() => {
   justify-content: space-between;
   padding: var(--spacing-sm) var(--spacing-md);
   border-bottom: 1px solid var(--glass-border);
-  background: var(--glass-background);
-  backdrop-filter: blur(var(--glass-blur));
-  -webkit-backdrop-filter: blur(var(--glass-blur));
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  position: relative;
-  z-index: 10;
+  background: rgba(30, 30, 46, 0.7);
 }
 
 .panel-title {
@@ -450,15 +483,10 @@ onUnmounted(() => {
   gap: var(--spacing-sm);
 }
 
-.panel-header h2 {
+.panel-title h2 {
   margin: 0;
   font-size: 1rem;
-  font-weight: 600;
-  background: linear-gradient(135deg, var(--color-primary-light), var(--color-primary));
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.05);
+  font-weight: 500;
 }
 
 .panel-actions {
@@ -467,9 +495,9 @@ onUnmounted(() => {
 }
 
 .panel-action-button {
-  background: var(--glass-background);
-  border: 1px solid var(--glass-border);
-  color: var(--color-text-light);
+  background: transparent;
+  border: none;
+  color: var(--color-text-secondary);
   cursor: pointer;
   padding: var(--spacing-xs);
   border-radius: var(--radius-sm);
@@ -482,19 +510,15 @@ onUnmounted(() => {
 }
 
 .panel-action-button:hover {
-  background: rgba(255, 255, 255, 0.15);
-  color: var(--color-primary);
-  transform: translateY(-1px);
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+  background: var(--glass-background);
+  color: var(--color-text);
 }
 
 .template-title-input {
-  padding: var(--spacing-xs) var(--spacing-sm);
+  padding: 2px 6px;
   border: 1px solid var(--glass-border);
   border-radius: var(--radius-sm);
   background: var(--glass-background);
-  backdrop-filter: blur(var(--glass-blur));
-  -webkit-backdrop-filter: blur(var(--glass-blur));
   color: var(--color-text);
   font-size: 0.9rem;
   width: 200px;
@@ -504,7 +528,7 @@ onUnmounted(() => {
 .template-title-input:focus {
   outline: none;
   border-color: var(--color-primary);
-  box-shadow: 0 0 0 2px rgba(255, 171, 88, 0.2);
+  box-shadow: 0 0 0 2px rgba(255, 171, 88, 0.25);
 }
 
 .export-profile-indicator {
@@ -515,7 +539,7 @@ onUnmounted(() => {
 .profile-badge {
   font-size: 0.7rem;
   padding: 2px 6px;
-  border-radius: 100px;
+  border-radius: var(--radius-full);
   background: var(--glass-background);
   color: var(--color-text);
 }
@@ -558,21 +582,19 @@ onUnmounted(() => {
   cursor: col-resize;
   z-index: 10;
   transform: translateX(-50%);
-  transition: all var(--transition-fast);
+  transition: background-color var(--transition-fast);
 }
 
 .resize-handle:hover {
-  background: linear-gradient(to right, transparent, var(--color-primary), transparent);
-  opacity: 0.4;
-  width: 8px;
+  background: var(--color-primary);
+  opacity: 0.3;
 }
 
 .resize-handle:active,
 .resizing .resize-handle {
-  background: linear-gradient(to right, transparent, var(--color-primary), transparent);
-  opacity: 0.6;
-  width: 10px;
-  box-shadow: 0 0 10px var(--color-primary);
+  background: var(--color-primary);
+  opacity: 0.5;
+  width: 8px;
 }
 
 .resizing {
@@ -587,98 +609,88 @@ onUnmounted(() => {
   display: none;
 }
 
-.action-button {
-  padding: var(--spacing-xs) var(--spacing-md);
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--glass-border);
+.glass-button {
+  padding: var(--spacing-xs) var(--spacing-sm);
   background: var(--glass-background);
-  color: var(--color-text);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-xs);
-  font-weight: 500;
-  transition: all 0.2s ease;
-}
-
-.action-button:hover:not(:disabled) {
-  background: var(--color-surface);
-}
-
-.action-button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.save-button {
-  background: var(--color-primary);
-  color: white;
-  border: none;
-}
-
-.save-button:hover:not(:disabled) {
-  background: var(--color-primary-dark);
-}
-
-.layout-button {
-  padding: var(--spacing-xs);
-  border-radius: var(--radius-sm);
   border: 1px solid var(--glass-border);
-  background: var(--glass-background);
+  border-radius: var(--radius-sm);
   color: var(--color-text);
+  font-size: 0.875rem;
   cursor: pointer;
   width: 36px;
   height: 36px;
   display: flex;
   align-items: center;
   justify-content: center;
+  transition: all var(--transition-fast);
 }
 
+.glass-button:hover {
+  background: rgba(255, 255, 255, 0.15);
+  transform: translateY(-1px);
+}
+
+.autosave-indicator {
+  position: fixed;
+  bottom: var(--spacing-md);
+  right: var(--spacing-md);
+  background: var(--glass-background);
+  backdrop-filter: blur(var(--glass-blur));
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-sm);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  font-size: 0.8rem;
+  color: var(--color-text-secondary);
+  animation: fadeIn 0.3s ease-out;
+  z-index: 100;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Responsive adjustments */
 @media (max-width: 768px) {
+  .editor-layout {
+    flex-direction: column;
+    padding: var(--spacing-sm);
+    gap: var(--spacing-sm);
+  }
+  
+  .editor-sidebar {
+    width: auto;
+    height: 200px;
+  }
+  
   .editor-grid {
     grid-template-columns: 1fr !important;
     grid-template-rows: 1fr 1fr;
+    gap: var(--spacing-sm);
   }
-
+  
   .editor-panel:not(.full-width),
   .preview-panel:not(.full-width) {
     grid-column: 1;
   }
-
+  
   .editor-panel:not(.full-width) {
     grid-row: 1;
   }
-
+  
   .preview-panel:not(.full-width) {
     grid-row: 2;
   }
-
+  
   .resize-handle {
-    top: 50%;
-    left: 0;
-    right: 0;
-    bottom: auto;
-    width: 100%;
-    height: 5px;
-    transform: translateY(-50%);
-    cursor: row-resize;
+    display: none;
   }
-
-  .editor-sidebar {
-    position: absolute;
-    z-index: 100;
-    height: 100%;
-    box-shadow: var(--glass-shadow);
-    transform: translateX(-100%);
-    transition: transform 0.3s ease;
-  }
-
-  .editor-layout:not(.sidebar-hidden) .editor-sidebar {
-    transform: translateX(0);
-  }
-
+  
   .template-title-input {
-    width: 150px;
+    width: 120px;
   }
 }
 </style>
