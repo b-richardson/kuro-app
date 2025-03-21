@@ -9,11 +9,22 @@
         <p class="home-subtitle">Create and manage your Obsidian templates with powerful editing tools</p>
         
         <div class="home-actions">
-          <router-link to="/library" class="btn btn-primary">
-            <i class="fas fa-book-open"></i> Browse Templates
+          <router-link to="/library" custom v-slot="{ navigate }">
+            <PrimaryButton @click="navigate" icon="fas fa-book-open" size="large">
+              Browse Templates
+            </PrimaryButton>
           </router-link>
-          <router-link to="/editor" class="btn btn-secondary">
-            <i class="fas fa-plus"></i> Create New Template
+          
+          <router-link to="/editor" custom v-slot="{ navigate }">
+            <button @click="navigate" class="btn btn-secondary">
+              <i class="fas fa-plus"></i> Create New Template
+            </button>
+          </router-link>
+          
+          <router-link to="/design" custom v-slot="{ navigate }">
+            <button @click="navigate" class="btn btn-outline">
+              <i class="fas fa-palette"></i> Design System
+            </button>
           </router-link>
         </div>
       </div>
@@ -69,6 +80,7 @@
 <script setup lang="ts">
 import { onMounted } from 'vue'
 import { usePreferencesStore } from '../stores'
+import PrimaryButton from '../components/UI/PrimaryButton.vue'
 
 // Get the preferences store
 const preferenceStore = usePreferencesStore()
@@ -83,7 +95,8 @@ onMounted(() => {
 .home {
   height: 100vh;
   overflow-y: auto;
-  background: linear-gradient(135deg, #f5f7ff 0%, #f0f4ff 100%);
+  /* No background here, using the GradientBackground component in App.vue */
+  position: relative;
 }
 
 .home-container {
@@ -116,7 +129,7 @@ onMounted(() => {
   font-size: 2.5rem;
   font-weight: 700;
   margin-bottom: 1rem;
-  background: linear-gradient(to right, #1e293b, #4f46e5);
+  background: linear-gradient(to right, var(--color-primary-light), var(--color-primary-dark));
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
@@ -124,7 +137,7 @@ onMounted(() => {
 
 .home-subtitle {
   font-size: 1.25rem;
-  color: #64748b;
+  color: var(--color-text-secondary);
   max-width: 600px;
   margin: 0 auto 2rem;
 }
@@ -148,26 +161,40 @@ onMounted(() => {
 }
 
 .btn-primary {
-  background-color: #4f46e5;
-  color: white;
+  background-color: var(--color-primary);
+  color: var(--color-text-dark);
   border: none;
-  box-shadow: 0 4px 6px rgba(79, 70, 229, 0.2);
+  box-shadow: 0 4px 6px rgba(255, 171, 88, 0.2);
 }
 
 .btn-primary:hover {
-  background-color: #4338ca;
+  background-color: var(--color-primary-light);
   transform: translateY(-2px);
-  box-shadow: 0 6px 8px rgba(79, 70, 229, 0.3);
+  box-shadow: 0 6px 8px rgba(255, 171, 88, 0.3);
 }
 
 .btn-secondary {
-  background-color: white;
-  color: #4f46e5;
-  border: 1px solid #4f46e5;
+  background-color: var(--glass-background);
+  color: var(--color-text);
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
 }
 
 .btn-secondary:hover {
-  background-color: rgba(79, 70, 229, 0.1);
+  background-color: rgba(255, 255, 255, 0.15);
+  transform: translateY(-2px);
+}
+
+.btn-outline {
+  background-color: transparent;
+  color: var(--color-text-secondary);
+  border: 1px solid var(--glass-border);
+}
+
+.btn-outline:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary-light);
   transform: translateY(-2px);
 }
 
@@ -178,8 +205,14 @@ onMounted(() => {
 .home-section-title {
   text-align: center;
   font-size: 1.75rem;
-  color: #1e293b;
+  color: var(--color-text);
   margin-bottom: 2rem;
+  background: linear-gradient(to right, var(--color-text), var(--color-primary-light));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  display: inline-block;
+  padding: 0 1rem;
 }
 
 .features-grid {
@@ -189,18 +222,22 @@ onMounted(() => {
 }
 
 .feature-card {
-  background-color: white;
+  /* Use the glass-card class from our design system */
   padding: 2rem;
-  border-radius: 0.75rem;
+  border-radius: var(--radius-md);
   text-align: center;
-  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.05);
+  box-shadow: var(--glass-shadow);
   transition: all 0.3s ease;
-  border: 1px solid rgba(230, 235, 245, 0.8);
+  border: 1px solid var(--glass-border);
+  background: var(--glass-background);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
 }
 
 .feature-card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 12px 20px rgba(0, 0, 0, 0.1);
+  transform: translateY(-5px) scale(1.02);
+  box-shadow: 0 12px 28px -6px rgba(0, 0, 0, 0.4);
+  border-color: var(--color-primary);
 }
 
 .feature-icon {
@@ -209,25 +246,25 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%);
+  background: linear-gradient(135deg, rgba(255, 171, 88, 0.2) 0%, rgba(255, 204, 112, 0.2) 100%);
   border-radius: 50%;
   margin: 0 auto 1.25rem;
 }
 
 .feature-icon i {
   font-size: 1.5rem;
-  color: #4f46e5;
+  color: var(--color-primary);
 }
 
 .feature-title {
   font-size: 1.25rem;
-  color: #1e293b;
+  color: var(--color-text);
   margin-bottom: 0.5rem;
 }
 
 .feature-description {
   font-size: 0.95rem;
-  color: #64748b;
+  color: var(--color-text-secondary);
   line-height: 1.5;
 }
 

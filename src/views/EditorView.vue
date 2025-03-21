@@ -7,17 +7,17 @@
     >
       <template #actions>
         <div class="editor-actions">
-          <button
-            class="action-button save-button"
+          <PrimaryButton
             @click="saveTemplate"
             :disabled="!uiStore.isModified"
+            icon="fas fa-save"
           >
-            <i class="fas fa-save"></i> Save
-          </button>
+            Save
+          </PrimaryButton>
 
           <ExportDropdown :sections="templateStore.currentSections" />
 
-          <button class="layout-button" @click="toggleSidebar">
+          <button class="theme-toggle" @click="toggleSidebar">
             <i
               class="fas"
               :class="uiStore.sidebarHidden ? 'fa-bars' : 'fa-times'"
@@ -167,6 +167,7 @@ import DragDropEditor from "@/components/TemplateCreator/DragDropEditor.vue";
 import MarkdownPreview from "@/components/TemplateCreator/MarkdownPreview.vue";
 import ExportDropdown from "@/components/TemplateCreator/ExportDropdown.vue";
 import ConfirmationDialog from "@/components/UI/ConfirmationDialog.vue";
+import PrimaryButton from "@/components/UI/PrimaryButton.vue";
 
 // Props from route
 const props = defineProps<{
@@ -435,6 +436,12 @@ onUnmounted(() => {
   justify-content: space-between;
   padding: var(--spacing-sm) var(--spacing-md);
   border-bottom: 1px solid var(--glass-border);
+  background: var(--glass-background);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  position: relative;
+  z-index: 10;
 }
 
 .panel-title {
@@ -446,7 +453,12 @@ onUnmounted(() => {
 .panel-header h2 {
   margin: 0;
   font-size: 1rem;
-  font-weight: 500;
+  font-weight: 600;
+  background: linear-gradient(135deg, var(--color-primary-light), var(--color-primary));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.05);
 }
 
 .panel-actions {
@@ -455,8 +467,8 @@ onUnmounted(() => {
 }
 
 .panel-action-button {
-  background: transparent;
-  border: none;
+  background: var(--glass-background);
+  border: 1px solid var(--glass-border);
   color: var(--color-text-light);
   cursor: pointer;
   padding: var(--spacing-xs);
@@ -466,28 +478,33 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
+  transition: all var(--transition-fast);
 }
 
 .panel-action-button:hover {
-  background: var(--glass-background);
+  background: rgba(255, 255, 255, 0.15);
   color: var(--color-primary);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
 }
 
 .template-title-input {
-  padding: 2px 6px;
+  padding: var(--spacing-xs) var(--spacing-sm);
   border: 1px solid var(--glass-border);
   border-radius: var(--radius-sm);
   background: var(--glass-background);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
   color: var(--color-text);
   font-size: 0.9rem;
   width: 200px;
-  transition: all 0.2s ease;
+  transition: all var(--transition-fast);
 }
 
 .template-title-input:focus {
   outline: none;
   border-color: var(--color-primary);
-  box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.1);
+  box-shadow: 0 0 0 2px rgba(255, 171, 88, 0.2);
 }
 
 .export-profile-indicator {
@@ -541,19 +558,21 @@ onUnmounted(() => {
   cursor: col-resize;
   z-index: 10;
   transform: translateX(-50%);
-  transition: background-color 0.15s ease;
+  transition: all var(--transition-fast);
 }
 
 .resize-handle:hover {
-  background: var(--color-primary);
+  background: linear-gradient(to right, transparent, var(--color-primary), transparent);
   opacity: 0.4;
+  width: 8px;
 }
 
 .resize-handle:active,
 .resizing .resize-handle {
-  background: var(--color-primary);
+  background: linear-gradient(to right, transparent, var(--color-primary), transparent);
   opacity: 0.6;
-  width: 8px;
+  width: 10px;
+  box-shadow: 0 0 10px var(--color-primary);
 }
 
 .resizing {

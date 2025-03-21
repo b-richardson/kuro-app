@@ -1,14 +1,15 @@
 <template>
-  <header class="app-header glass">
+  <header class="app-header glass-card">
     <div class="header-container">
       <!-- Back Button (if enabled) -->
       <button 
         v-if="showBackButton"
         @click="handleBack"
-        class="back-button"
+        class="app-header__back-button"
         aria-label="Go back"
       >
         <i class="fas fa-arrow-left"></i>
+        <span>Back</span>
       </button>
       
       <!-- App Logo and Title -->
@@ -16,7 +17,7 @@
         <div class="app-logo">
           <i class="fas fa-file-alt"></i>
         </div>
-        <h1 class="app-title">{{ title || 'Obsidian Template Builder' }}</h1>
+        <h1 class="app-header__title">{{ title || 'Obsidian Template Builder' }}</h1>
       </div>
       
       <!-- Actions Toolbar -->
@@ -277,17 +278,42 @@ defineExpose({
 .app-header {
   position: sticky;
   top: 0;
-  z-index: 50;
+  z-index: 100;
   border-bottom: 1px solid var(--glass-border);
+  
+  /* Enhanced glassmorphism effect */
+  background: rgba(30, 30, 46, 0.7) !important;
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  
+  /* Remove border radius for header */
+  border-radius: 0;
+  
+  /* Animation for header appearance */
+  animation: headerAppear 0.3s ease-out;
+}
+
+/* Animation for header appearance */
+@keyframes headerAppear {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .header-container {
   max-width: 1400px;
   margin: 0 auto;
-  padding: var(--spacing-sm) var(--spacing-md);
+  padding: var(--spacing-sm) var(--spacing-lg);
   display: flex;
   align-items: center;
   justify-content: space-between;
+  height: 64px;
 }
 
 .app-branding {
@@ -312,31 +338,15 @@ defineExpose({
   color: var(--color-background);
 }
 
-.app-title {
-  font-size: 1.4rem;
-  font-weight: 700;
-  background: linear-gradient(to right, var(--color-text), var(--color-primary-light));
+.app-header__title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin: 0;
+  background: linear-gradient(135deg, var(--color-primary-light), var(--color-primary));
   -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
   background-clip: text;
-  color: transparent;
-}
-
-.back-button {
-  background: transparent;
-  border: none;
-  padding: var(--spacing-xs) var(--spacing-sm);
-  border-radius: var(--radius-sm);
-  margin-right: var(--spacing-md);
-  color: var(--color-text);
-  cursor: pointer;
-  transition: all 0.2s ease;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.back-button:hover {
-  background-color: var(--color-surface);
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.1);
 }
 
 .actions {
@@ -350,6 +360,30 @@ defineExpose({
   justify-content: center;
 }
 
+.app-header__back-button {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  background: var(--glass-background);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-text);
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: all var(--transition-fast);
+  margin-right: var(--spacing-md);
+}
+
+.app-header__back-button:hover {
+  background: rgba(255, 255, 255, 0.15);
+  transform: translateY(-1px);
+}
+
+.app-header__back-button:active {
+  transform: translateY(0);
+}
+
 .theme-toggle {
   width: 36px;
   height: 36px;
@@ -357,7 +391,7 @@ defineExpose({
   display: flex;
   align-items: center;
   justify-content: center;
-  background: transparent;
+  background: var(--glass-background);
   border: 1px solid var(--glass-border);
   color: var(--color-text);
   cursor: pointer;
@@ -366,7 +400,9 @@ defineExpose({
 }
 
 .theme-toggle:hover {
-  background: var(--color-surface);
+  background: var(--glass-background);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
 }
 
 .theme-toggle.theme-dark i {
@@ -383,6 +419,7 @@ defineExpose({
     flex-direction: column;
     gap: var(--spacing-sm);
     padding: var(--spacing-sm);
+    height: auto;
   }
   
   .actions {
@@ -396,12 +433,20 @@ defineExpose({
     min-width: 0;
   }
   
-  .app-title {
-    font-size: 1.25rem;
+  .app-header__title {
+    font-size: 1.125rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 200px;
   }
   
   .theme-toggle {
     margin-left: var(--spacing-sm);
+  }
+  
+  .app-header__back-button span {
+    display: none;
   }
 }
 
@@ -411,8 +456,8 @@ defineExpose({
     height: 32px;
   }
   
-  .app-title {
-    font-size: 1.1rem;
+  .app-header__title {
+    font-size: 1rem;
   }
   
   .actions {

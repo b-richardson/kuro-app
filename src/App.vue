@@ -1,5 +1,8 @@
 <template>
   <div class="app">
+    <!-- Global background -->
+    <GradientBackground />
+    
     <!-- Global toast notifications -->
     <ToastNotification ref="toastRef" position="top-right" />
     
@@ -16,6 +19,7 @@
 import { ref, onMounted, watchEffect } from 'vue';
 import { useRouter } from 'vue-router';
 import ToastNotification from './components/UI/ToastNotification.vue';
+import GradientBackground from './components/UI/GradientBackground.vue';
 import { useUIStore, usePreferencesStore, useTemplateStore } from './stores';
 
 // Component references
@@ -32,6 +36,12 @@ onMounted(() => {
   preferencesStore.loadPreferences();
   templateStore.loadTemplates();
   uiStore.loadUIPreferences();
+  
+  // Set theme - default to dark
+  const savedTheme = localStorage.getItem('theme') || 
+    (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+  
+  document.documentElement.setAttribute('data-theme', savedTheme);
   
   // Navigate based on last visited view
   const lastView = preferencesStore.lastVisitedView;
@@ -107,5 +117,7 @@ defineExpose({
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  position: relative;
+  color: var(--color-text);
 }
 </style>

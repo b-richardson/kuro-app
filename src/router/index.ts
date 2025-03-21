@@ -4,6 +4,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import HomeView from '../views/HomeView.vue'
 import LibraryView from '../views/LibraryView.vue'
 import EditorView from '../views/EditorView.vue'
+import DesignView from '../views/DesignView.vue'
 
 const routes = [
   {
@@ -21,6 +22,11 @@ const routes = [
     name: 'editor',
     component: EditorView,
     props: true // Pass route params as props
+  },
+  {
+    path: '/design',
+    name: 'design',
+    component: DesignView
   }
 ]
 
