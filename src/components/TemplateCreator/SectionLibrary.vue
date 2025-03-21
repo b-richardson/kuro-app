@@ -247,44 +247,44 @@ const allSections = computed(() => [
 // In a real app, these would be loaded from a service or configuration
 const yamlPresets = [
   {
-    id: 'daily',
-    name: 'Daily Note',
-    description: 'Standard daily note frontmatter with date and tags',
+    id: "daily",
+    name: "Daily Note",
+    description: "Standard daily note frontmatter with date and tags",
     frontmatter: {
-      type: 'daily',
-      date: new Date().toISOString().split('T')[0],
-      tags: ['daily']
-    }
+      type: "daily",
+      date: new Date().toISOString().split("T")[0],
+      tags: ["daily"],
+    },
   },
   {
-    id: 'meeting',
-    name: 'Meeting Note',
-    description: 'Meeting template with attendees and agenda',
+    id: "meeting",
+    name: "Meeting Note",
+    description: "Meeting template with attendees and agenda",
     frontmatter: {
-      type: 'meeting',
-      date: new Date().toISOString().split('T')[0],
+      type: "meeting",
+      date: new Date().toISOString().split("T")[0],
       attendees: [],
-      tags: ['meeting']
-    }
-  }
+      tags: ["meeting"],
+    },
+  },
 ];
 
 // Function to get preset by ID
 const getPresetById = (id) => {
-  return yamlPresets.find(preset => preset.id === id);
+  return yamlPresets.find((preset) => preset.id === id);
 };
 
 // Function to convert YAML object to lines
 const yamlObjectToLines = (obj) => {
-  const lines = ['---'];
-  
+  const lines = ["---"];
+
   for (const [key, value] of Object.entries(obj)) {
     if (Array.isArray(value)) {
       if (value.length === 0) {
         lines.push(`${key}: []`);
       } else {
         lines.push(`${key}:`);
-        value.forEach(item => {
+        value.forEach((item) => {
           lines.push(`  - ${item}`);
         });
       }
@@ -292,8 +292,8 @@ const yamlObjectToLines = (obj) => {
       lines.push(`${key}: ${value}`);
     }
   }
-  
-  lines.push('---');
+
+  lines.push("---");
   return lines;
 };
 
@@ -331,10 +331,10 @@ const addSection = (type: SectionType, pluginType: PluginType) => {
 const addYamlPreset = (presetId: string) => {
   const preset = getPresetById(presetId);
   if (!preset) return;
-  
+
   // Convert the preset frontmatter to YAML lines
   const yamlLines = yamlObjectToLines(preset.frontmatter);
-  
+
   // Create a new section with a unique ID
   const newSection: TemplateSection = {
     id: uuidv4(),
@@ -342,7 +342,7 @@ const addYamlPreset = (presetId: string) => {
     content: yamlLines,
     pluginType: null,
   };
-  
+
   // Emit the add-section event
   emit("add-section", newSection);
 };
@@ -355,7 +355,7 @@ const addYamlPreset = (presetId: string) => {
   gap: var(--spacing-md);
   height: 100%;
   overflow-y: auto;
-  padding-right: var(--spacing-xs);
+  padding: var(--spacing-md);
 }
 
 .section-library-title {
@@ -443,7 +443,11 @@ const addYamlPreset = (presetId: string) => {
 
 /* Basic section icons */
 .section-library-item--header .section-library-item-icon {
-  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-light) 100%);
+  background: linear-gradient(
+    135deg,
+    var(--color-primary) 0%,
+    var(--color-primary-light) 100%
+  );
 }
 
 .section-library-item--checklist .section-library-item-icon {
@@ -455,7 +459,11 @@ const addYamlPreset = (presetId: string) => {
 }
 
 .section-library-item--text .section-library-item-icon {
-  background: linear-gradient(135deg, var(--color-primary-light) 0%, var(--color-primary) 100%);
+  background: linear-gradient(
+    135deg,
+    var(--color-primary-light) 0%,
+    var(--color-primary) 100%
+  );
 }
 
 .section-library-item--yaml .section-library-item-icon,
