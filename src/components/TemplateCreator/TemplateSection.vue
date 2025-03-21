@@ -1,11 +1,13 @@
 <template>
-  <div 
-    class="template-section" 
+  <div
+    class="template-section"
     :class="[
-      `template-section--${section.type}`, 
-      section.pluginType ? `template-section--plugin-${section.pluginType}` : '',
+      `template-section--${section.type}`,
+      section.pluginType
+        ? `template-section--plugin-${section.pluginType}`
+        : '',
       { 'template-section--selected': isSelected },
-      { 'template-section--editing': isEditing }
+      { 'template-section--editing': isEditing },
     ]"
     @click="handleSectionClick"
     @keydown="handleKeyboardShortcut"
@@ -14,7 +16,10 @@
   >
     <!-- Section header with drag handle and actions -->
     <div class="template-section-header">
-      <div class="template-section-handle section-handle" title="Drag to reorder">
+      <div
+        class="template-section-handle section-handle"
+        title="Drag to reorder"
+      >
         <i class="fas fa-grip-vertical"></i>
         <span class="drag-hint">Drag</span>
       </div>
@@ -27,22 +32,22 @@
         </span>
       </div>
       <div class="template-section-actions">
-        <button 
-          class="template-section-action" 
+        <button
+          class="template-section-action"
           title="Add line (Alt+A)"
           @click.stop="addContentLine"
         >
           <i class="fas fa-plus"></i>
         </button>
-        <button 
-          class="template-section-action template-section-action--duplicate" 
+        <button
+          class="template-section-action template-section-action--duplicate"
           title="Duplicate section (Alt+D)"
           @click.stop="$emit('duplicate')"
         >
           <i class="fas fa-copy"></i>
         </button>
-        <button 
-          class="template-section-action template-section-action--delete" 
+        <button
+          class="template-section-action template-section-action--delete"
           title="Delete section (Alt+Delete)"
           @click.stop="confirmDeleteSection"
         >
@@ -50,30 +55,39 @@
         </button>
       </div>
     </div>
-    
+
     <!-- Validation error alert -->
     <div v-if="validationError" class="template-section-validation-error">
       <i class="fas fa-exclamation-triangle"></i>
       {{ validationError }}
     </div>
-    
+
     <!-- Section content based on type -->
     <div class="template-section-content">
       <!-- Header section -->
       <template v-if="section.type === 'header'">
-        <div 
-          v-for="(line, index) in section.content" 
+        <div
+          v-for="(line, index) in section.content"
           :key="index"
           class="template-section-line"
         >
           <div class="template-section-input-group">
-            <select 
+            <select
               class="template-section-select"
               :value="getHeaderLevel(line)"
-              @change="debouncedUpdateHeaderLevel(index, $event.target.value)"
+              @input="
+                debouncedUpdateHeaderLevel(
+                  index,
+                  ($event.target as HTMLSelectElement).value
+                )
+              "
               @focus="setEditing(true)"
               @blur="setEditing(false)"
-              :ref="el => { if (index === 0 && autoFocus) setInputRef(el) }"
+              :ref="
+                (el) => {
+                  if (index === 0 && autoFocus) setInputRef(el as HTMLElement);
+                }
+              "
             >
               <option value="1">H1</option>
               <option value="2">H2</option>
@@ -86,14 +100,19 @@
               type="text"
               class="template-section-input"
               :value="getHeaderText(line)"
-              @input="debouncedUpdateHeaderText(index, $event.target.value)"
+              @input="
+                debouncedUpdateHeaderLevel(
+                  index,
+                  ($event.target as HTMLInputElement).value
+                )
+              "
               @focus="setEditing(true)"
               @blur="setEditing(false)"
               placeholder="Header text"
             />
-            <button 
+            <button
               v-if="section.content.length > 1"
-              class="template-section-line-action" 
+              class="template-section-line-action"
               title="Delete line"
               @click.stop="deleteContentLine(index)"
             >
@@ -102,11 +121,11 @@
           </div>
         </div>
       </template>
-      
+
       <!-- Checklist section -->
       <template v-else-if="section.type === 'checklist'">
-        <div 
-          v-for="(line, index) in section.content" 
+        <div
+          v-for="(line, index) in section.content"
           :key="index"
           class="template-section-line"
         >
@@ -124,15 +143,24 @@
               type="text"
               class="template-section-input"
               :value="getChecklistText(line)"
-              @input="debouncedUpdateChecklistText(index, $event.target.value)"
+              @input="
+                debouncedUpdateHeaderLevel(
+                  index,
+                  ($event.target as HTMLInputElement).value
+                )
+              "
               @focus="setEditing(true)"
               @blur="setEditing(false)"
               placeholder="Checklist item"
-              :ref="el => { if (index === 0 && autoFocus) setInputRef(el) }"
+              :ref="
+                (el) => {
+                  if (index === 0 && autoFocus) setInputRef(el as HTMLElement);
+                }
+              "
             />
-            <button 
+            <button
               v-if="section.content.length > 1"
-              class="template-section-line-action" 
+              class="template-section-line-action"
               title="Delete line"
               @click.stop="deleteContentLine(index)"
             >
@@ -141,17 +169,17 @@
           </div>
         </div>
       </template>
-      
+
       <!-- Table section -->
       <template v-else-if="section.type === 'table'">
         <div class="template-section-table">
-          <div 
-            v-for="(row, rowIndex) in tableData" 
+          <div
+            v-for="(row, rowIndex) in tableData"
             :key="rowIndex"
             class="template-section-table-row"
           >
-            <div 
-              v-for="(cell, colIndex) in row" 
+            <div
+              v-for="(cell, colIndex) in row"
               :key="colIndex"
               class="template-section-table-cell"
             >
@@ -159,18 +187,29 @@
                 type="text"
                 class="template-section-table-input"
                 :value="cell"
-                @input="debouncedUpdateTableCell(rowIndex, colIndex, $event.target.value)"
+                @input="
+                  debouncedUpdateTableCell(
+                    rowIndex,
+                    colIndex,
+                    ($event.target as HTMLInputElement).value
+                  )
+                "
                 @focus="setEditing(true)"
                 @blur="setEditing(false)"
                 :placeholder="rowIndex === 0 ? 'Header' : 'Cell'"
-                :ref="el => { if (rowIndex === 0 && colIndex === 0 && autoFocus) setInputRef(el) }"
+                :ref="
+                  (el) => {
+                    if (rowIndex === 0 && colIndex === 0 && autoFocus)
+                      setInputRef(el as HTMLElement);
+                  }
+                "
               />
             </div>
-            
+
             <div class="template-section-table-actions">
-              <button 
+              <button
                 v-if="tableData.length > 2"
-                class="template-section-line-action" 
+                class="template-section-line-action"
                 title="Delete row"
                 @click.stop="deleteTableRow(rowIndex)"
               >
@@ -178,17 +217,17 @@
               </button>
             </div>
           </div>
-          
+
           <div class="template-section-table-controls">
-            <button 
-              class="template-section-table-button" 
+            <button
+              class="template-section-table-button"
               @click.stop="addTableRow"
               title="Add new row (Alt+R)"
             >
               <i class="fas fa-plus"></i> Add Row
             </button>
-            <button 
-              class="template-section-table-button" 
+            <button
+              class="template-section-table-button"
               @click.stop="addTableColumn"
               title="Add new column (Alt+C)"
             >
@@ -197,11 +236,11 @@
           </div>
         </div>
       </template>
-      
+
       <!-- Text section -->
       <template v-else-if="section.type === 'text'">
-        <div 
-          v-for="(line, index) in section.content" 
+        <div
+          v-for="(line, index) in section.content"
           :key="index"
           class="template-section-line"
         >
@@ -209,16 +248,25 @@
             <textarea
               class="template-section-textarea"
               :value="line"
-              @input="debouncedUpdateContentLine(index, $event.target.value)"
+              @input="
+                debouncedUpdateHeaderLevel(
+                  index,
+                  ($event.target as HTMLTextAreaElement).value
+                )
+              "
               @focus="setEditing(true)"
               @blur="setEditing(false)"
               placeholder="Enter text..."
               rows="4"
-              :ref="el => { if (index === 0 && autoFocus) setInputRef(el) }"
+              :ref="
+                (el) => {
+                  if (index === 0 && autoFocus) setInputRef(el as HTMLElement);
+                }
+              "
             ></textarea>
-            <button 
+            <button
               v-if="section.content.length > 1"
-              class="template-section-line-action" 
+              class="template-section-line-action"
               title="Delete line"
               @click.stop="deleteContentLine(index)"
             >
@@ -227,7 +275,7 @@
           </div>
         </div>
       </template>
-      
+
       <!-- YAML Frontmatter section -->
       <template v-else-if="section.type === 'yaml'">
         <YamlEditor
@@ -238,7 +286,7 @@
           :auto-focus="autoFocus"
         />
       </template>
-      
+
       <!-- Templater Field section -->
       <template v-else-if="section.type === 'templaterField'">
         <TemplaterFieldEditor
@@ -249,7 +297,7 @@
           :auto-focus="autoFocus"
         />
       </template>
-      
+
       <!-- Dataview Query section -->
       <template v-else-if="section.type === 'dataviewQuery'">
         <DataviewQueryBuilder
@@ -260,7 +308,7 @@
           :auto-focus="autoFocus"
         />
       </template>
-      
+
       <!-- Kanban Board section -->
       <template v-else-if="section.type === 'kanban'">
         <KanbanBoardBuilder
@@ -272,7 +320,7 @@
         />
       </template>
     </div>
-    
+
     <!-- Toast for feedback messages -->
     <Transition name="toast">
       <div v-if="showToast" class="template-section-toast" :class="toastType">
@@ -284,28 +332,36 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, onMounted, watch, nextTick } from 'vue';
-import { TemplateSection, PluginType } from '@/types/TemplateSection';
-import { TEMPLATER, DATAVIEW, KANBAN, getPluginDisplayName, getSectionIcon, validatePluginSyntax } from '@/utils/pluginTemplates';
-import { v4 as uuidv4 } from 'uuid';
-import YamlEditor from './YamlEditor.vue';
-import TemplaterFieldEditor from './TemplaterFieldEditor.vue';
-import DataviewQueryBuilder from './DataviewQueryBuilder.vue';
-import KanbanBoardBuilder from './KanbanBoardBuilder.vue';
+import { computed, ref, onMounted, watch, nextTick } from "vue";
+import { TemplateSection, PluginType } from "@/types/TemplateSection";
+import {
+  TEMPLATER,
+  DATAVIEW,
+  KANBAN,
+  getPluginDisplayName,
+  getSectionIcon,
+  validatePluginSyntax,
+  getPluginIcon,
+} from "@/utils/pluginTemplates";
+import { v4 as uuidv4 } from "uuid";
+import YamlEditor from "./YamlEditor.vue";
+import TemplaterFieldEditor from "./TemplaterFieldEditor.vue";
+import DataviewQueryBuilder from "./DataviewQueryBuilder.vue";
+import KanbanBoardBuilder from "./KanbanBoardBuilder.vue";
 
 // Define props
 const props = defineProps<{
-  section: TemplateSection,
-  isSelected?: boolean,
-  autoFocus?: boolean
+  section: TemplateSection;
+  isSelected?: boolean;
+  autoFocus?: boolean;
 }>();
 
 // Define emits
 const emit = defineEmits<{
-  (e: 'update:content', content: string[]): void;
-  (e: 'delete'): void;
-  (e: 'select'): void;
-  (e: 'duplicate'): void;
+  (e: "update:content", content: string[]): void;
+  (e: "delete"): void;
+  (e: "select"): void;
+  (e: "duplicate"): void;
 }>();
 
 // Component state
@@ -315,8 +371,8 @@ const lastActiveElement = ref<HTMLElement | null>(null);
 
 // Toast feedback state
 const showToast = ref(false);
-const toastMessage = ref('');
-const toastType = ref<'success' | 'error' | 'info'>('info');
+const toastMessage = ref("");
+const toastType = ref<"success" | "error" | "info">("info");
 const toastTimeout = ref<ReturnType<typeof setTimeout> | null>(null);
 
 // Focus management
@@ -337,14 +393,14 @@ onMounted(() => {
       firstInputRef.value?.focus();
     });
   }
-  
+
   // Add event handler for outside clicks to deselect
-  document.addEventListener('click', handleOutsideClick);
+  document.addEventListener("click", handleOutsideClick);
 });
 
 // Handle section selection/deselection
 const handleSectionClick = () => {
-  emit('select');
+  emit("select");
 };
 
 // Handle click outside the section
@@ -361,7 +417,7 @@ const handleOutsideClick = (event: MouseEvent) => {
 // Set editing state
 const setEditing = (editing: boolean) => {
   isEditing.value = editing;
-  
+
   // Store the last active element if we're starting to edit
   if (editing) {
     lastActiveElement.value = document.activeElement as HTMLElement;
@@ -372,72 +428,77 @@ const setEditing = (editing: boolean) => {
 const handleKeyboardShortcut = (event: KeyboardEvent) => {
   // Don't intercept shortcuts when editing text fields
   const target = event.target as HTMLElement;
-  const isEditingInput = ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName);
-  
+  const isEditingInput = ["INPUT", "TEXTAREA", "SELECT"].includes(
+    target.tagName
+  );
+
   // Check for Alt+key shortcuts that can be used while editing
   if (event.altKey) {
-    if (event.key === 'a') {
+    if (event.key === "a") {
       event.preventDefault();
       addContentLine();
-      displayToast('Line added', 'success');
+      displayToast("Line added", "success");
       return;
     }
-    
-    if (event.key === 'd') {
+
+    if (event.key === "d") {
       event.preventDefault();
-      emit('duplicate');
-      displayToast('Section duplicated', 'success');
+      emit("duplicate");
+      displayToast("Section duplicated", "success");
       return;
     }
-    
-    if (event.key === 'Delete' || event.key === 'Backspace') {
+
+    if (event.key === "Delete" || event.key === "Backspace") {
       event.preventDefault();
       confirmDeleteSection();
       return;
     }
-    
+
     // Table-specific shortcuts
-    if (props.section.type === 'table') {
-      if (event.key === 'r') {
+    if (props.section.type === "table") {
+      if (event.key === "r") {
         event.preventDefault();
         addTableRow();
-        displayToast('Row added', 'success');
+        displayToast("Row added", "success");
         return;
       }
-      
-      if (event.key === 'c') {
+
+      if (event.key === "c") {
         event.preventDefault();
         addTableColumn();
-        displayToast('Column added', 'success');
+        displayToast("Column added", "success");
         return;
       }
     }
   }
-  
+
   // Don't process other shortcuts if editing an input
   if (isEditingInput) return;
-  
+
   // Regular shortcuts when not editing
-  if (event.key === 'Delete' || event.key === 'Backspace') {
+  if (event.key === "Delete" || event.key === "Backspace") {
     event.preventDefault();
     confirmDeleteSection();
   }
-  
+
   // Add more keyboard shortcuts as needed
 };
 
 // Toast management
-const displayToast = (message: string, type: 'success' | 'error' | 'info' = 'info') => {
+const displayToast = (
+  message: string,
+  type: "success" | "error" | "info" = "info"
+) => {
   // Clear any existing toast timeout
   if (toastTimeout.value) {
     clearTimeout(toastTimeout.value);
   }
-  
+
   // Set toast properties
   toastMessage.value = message;
   toastType.value = type;
   showToast.value = true;
-  
+
   // Auto-hide the toast after 3 seconds
   toastTimeout.value = setTimeout(() => {
     showToast.value = false;
@@ -446,9 +507,12 @@ const displayToast = (message: string, type: 'success' | 'error' | 'info' = 'inf
 
 const toastIcon = computed(() => {
   switch (toastType.value) {
-    case 'success': return 'fas fa-check-circle';
-    case 'error': return 'fas fa-exclamation-circle';
-    default: return 'fas fa-info-circle';
+    case "success":
+      return "fas fa-check-circle";
+    case "error":
+      return "fas fa-exclamation-circle";
+    default:
+      return "fas fa-info-circle";
   }
 });
 
@@ -466,21 +530,21 @@ const debounce = (fn: Function, delay = 300) => {
 // Confirm section deletion
 const confirmDeleteSection = () => {
   if (confirm("Are you sure you want to delete this section?")) {
-    emit('delete');
+    emit("delete");
   }
 };
 
 // Get section type label
 const sectionTypeLabel = computed(() => {
   const labels = {
-    header: 'Header',
-    checklist: 'Checklist',
-    table: 'Table',
-    text: 'Text',
-    yaml: 'YAML Frontmatter',
-    templaterField: 'Templater Field',
-    dataviewQuery: 'Dataview Query',
-    kanban: 'Kanban Board'
+    header: "Header",
+    checklist: "Checklist",
+    table: "Table",
+    text: "Text",
+    yaml: "YAML Frontmatter",
+    templaterField: "Templater Field",
+    dataviewQuery: "Dataview Query",
+    kanban: "Kanban Board",
   };
   return labels[props.section.type] || props.section.type;
 });
@@ -492,58 +556,63 @@ const sectionIcon = computed(() => {
 
 // Get plugin display name and icon
 const pluginTypeLabel = computed(() => {
-  return props.section.pluginType ? getPluginDisplayName(props.section.pluginType) : '';
+  return props.section.pluginType
+    ? getPluginDisplayName(props.section.pluginType)
+    : "";
 });
 
 const pluginIcon = computed(() => {
-  const icons = {
-    templater: 'fas fa-calendar-alt',
-    dataview: 'fas fa-database',
-    kanban: 'fas fa-columns'
-  };
-  return icons[props.section.pluginType || ''] || '';
+  return props.section.pluginType
+    ? getPluginIcon(props.section.pluginType)
+    : "";
 });
 
 // Validation error handling
 const validationError = ref<string | null>(null);
 
 // Validate plugin syntax when content changes
-watch(() => props.section.content, (newContent) => {
-  if (props.section.pluginType) {
-    const result = validatePluginSyntax(props.section.pluginType, newContent);
-    validationError.value = result.isValid ? null : result.error || null;
-  } else {
-    validationError.value = null;
-  }
-}, { deep: true });
+watch(
+  () => props.section.content,
+  (newContent) => {
+    if (props.section.pluginType) {
+      const result = validatePluginSyntax(props.section.pluginType, newContent);
+      validationError.value = result.isValid ? null : result.error || null;
+    } else {
+      validationError.value = null;
+    }
+  },
+  { deep: true }
+);
 
 // Basic section methods ------------------------------------------------------
 
 // Add a new line to the content
 const addContentLine = () => {
   const newContent = [...props.section.content];
-  
+
   switch (props.section.type) {
-    case 'header':
-      newContent.push('# New Header');
+    case "header":
+      newContent.push("# New Header");
       break;
-    case 'checklist':
-      newContent.push('- [ ] New item');
+    case "checklist":
+      newContent.push("- [ ] New item");
       break;
-    case 'text':
-      newContent.push('New paragraph');
+    case "text":
+      newContent.push("New paragraph");
       break;
     default:
-      newContent.push('');
+      newContent.push("");
   }
-  
-  emit('update:content', newContent);
-  
+
+  emit("update:content", newContent);
+
   // Focus the new item on the next tick
   nextTick(() => {
-    const inputs = sectionRef.value?.querySelectorAll('input, textarea, select');
+    const inputs = sectionRef.value?.querySelectorAll<HTMLElement>(
+      "input, textarea, select"
+    );
     if (inputs && inputs.length > 0) {
-      (inputs[inputs.length - 1] as HTMLElement).focus();
+      inputs[inputs.length - 1].focus();
     }
   });
 };
@@ -552,15 +621,15 @@ const addContentLine = () => {
 const deleteContentLine = (index: number) => {
   const newContent = [...props.section.content];
   newContent.splice(index, 1);
-  emit('update:content', newContent);
-  displayToast('Line deleted', 'info');
+  emit("update:content", newContent);
+  displayToast("Line deleted", "info");
 };
 
 // Update a line in the content
 const updateContentLine = (index: number, newValue: string) => {
   const newContent = [...props.section.content];
   newContent[index] = newValue;
-  emit('update:content', newContent);
+  emit("update:content", newContent);
 };
 
 // Create debounced versions of update methods
@@ -569,22 +638,22 @@ const debouncedUpdateContentLine = debounce(updateContentLine, 300);
 // Header-specific methods
 const getHeaderLevel = (line: string): string => {
   const match = line.match(/^(#+)\s/);
-  return match ? match[1].length.toString() : '1';
+  return match ? match[1].length.toString() : "1";
 };
 
 const getHeaderText = (line: string): string => {
-  return line.replace(/^#+\s/, '');
+  return line.replace(/^#+\s/, "");
 };
 
 const updateHeaderLevel = (index: number, level: string) => {
   const headerText = getHeaderText(props.section.content[index]);
-  const newHeader = '#'.repeat(parseInt(level)) + ' ' + headerText;
+  const newHeader = "#".repeat(parseInt(level)) + " " + headerText;
   updateContentLine(index, newHeader);
 };
 
 const updateHeaderText = (index: number, text: string) => {
   const level = getHeaderLevel(props.section.content[index]);
-  const newHeader = '#'.repeat(parseInt(level)) + ' ' + text;
+  const newHeader = "#".repeat(parseInt(level)) + " " + text;
   updateContentLine(index, newHeader);
 };
 
@@ -594,11 +663,11 @@ const debouncedUpdateHeaderText = debounce(updateHeaderText, 300);
 
 // Checklist-specific methods
 const isCheckboxChecked = (line: string): boolean => {
-  return line.includes('- [x]');
+  return line.includes("- [x]");
 };
 
 const getChecklistText = (line: string): string => {
-  return line.replace(/^- \[([ x])\]\s/, '');
+  return line.replace(/^- \[([ x])\]\s/, "");
 };
 
 const toggleCheckbox = (index: number) => {
@@ -610,7 +679,7 @@ const toggleCheckbox = (index: number) => {
 
 const updateChecklistText = (index: number, text: string) => {
   const isChecked = isCheckboxChecked(props.section.content[index]);
-  const prefix = isChecked ? '- [x] ' : '- [ ] ';
+  const prefix = isChecked ? "- [x] " : "- [ ] ";
   updateContentLine(index, prefix + text);
 };
 
@@ -620,46 +689,48 @@ const debouncedUpdateChecklistText = debounce(updateChecklistText, 300);
 // Table-specific methods
 const tableData = computed(() => {
   // Parse the markdown table into a 2D array
-  return props.section.content.map(line => {
-    // Skip separator line (the one with dashes)
-    if (line.includes('---')) return [];
-    
-    // Split the line by pipe and remove empty elements from start/end
-    const cells = line.split('|').filter(cell => cell.trim() !== '');
-    return cells.map(cell => cell.trim());
-  }).filter(row => row.length > 0);
+  return props.section.content
+    .map((line) => {
+      // Skip separator line (the one with dashes)
+      if (line.includes("---")) return [];
+
+      // Split the line by pipe and remove empty elements from start/end
+      const cells = line.split("|").filter((cell) => cell.trim() !== "");
+      return cells.map((cell) => cell.trim());
+    })
+    .filter((row) => row.length > 0);
 });
 
 const updateTableData = () => {
   // Convert the 2D array back to markdown table format
   const headers = tableData.value[0] || [];
   const data = tableData.value.slice(1);
-  
+
   // Create header row
-  const headerRow = '| ' + headers.join(' | ') + ' |';
-  
+  const headerRow = "| " + headers.join(" | ") + " |";
+
   // Create separator row
-  const separatorRow = '|' + headers.map(() => '----------|').join('') + '|';
-  
+  const separatorRow = "|" + headers.map(() => "----------|").join("") + "|";
+
   // Create data rows
-  const dataRows = data.map(row => {
+  const dataRows = data.map((row) => {
     // Pad the row if it has fewer cells than headers
     const paddedRow = [...row];
     while (paddedRow.length < headers.length) {
-      paddedRow.push('');
+      paddedRow.push("");
     }
-    return '| ' + paddedRow.join(' | ') + ' |';
+    return "| " + paddedRow.join(" | ") + " |";
   });
-  
+
   // Combine all rows
   const newContent = [headerRow, separatorRow, ...dataRows];
-  emit('update:content', newContent);
+  emit("update:content", newContent);
 };
 
 const updateTableCell = (rowIndex: number, colIndex: number, value: string) => {
   const newTableData = JSON.parse(JSON.stringify(tableData.value));
   newTableData[rowIndex][colIndex] = value;
-  
+
   // Update the computed property manually since we can't directly set it
   tableData.value.forEach((row, i) => {
     row.forEach((_, j) => {
@@ -668,7 +739,7 @@ const updateTableCell = (rowIndex: number, colIndex: number, value: string) => {
       }
     });
   });
-  
+
   updateTableData();
 };
 
@@ -677,24 +748,26 @@ const debouncedUpdateTableCell = debounce(updateTableCell, 300);
 
 const addTableRow = () => {
   const columnCount = tableData.value[0]?.length || 3;
-  const newRow = Array(columnCount).fill('');
-  
+  const newRow = Array(columnCount).fill("");
+
   // Add the row to our data structure
   const newTableData = [...tableData.value, newRow];
-  
+
   // Convert back to markdown and update
   const headers = newTableData[0] || [];
   const data = newTableData.slice(1);
-  
-  const headerRow = '| ' + headers.join(' | ') + ' |';
-  const separatorRow = '|' + headers.map(() => '----------|').join('') + '|';
-  const dataRows = data.map(row => '| ' + row.join(' | ') + ' |');
-  
-  emit('update:content', [headerRow, separatorRow, ...dataRows]);
-  
+
+  const headerRow = "| " + headers.join(" | ") + " |";
+  const separatorRow = "|" + headers.map(() => "----------|").join("") + "|";
+  const dataRows = data.map((row) => "| " + row.join(" | ") + " |");
+
+  emit("update:content", [headerRow, separatorRow, ...dataRows]);
+
   // Focus the new row on next tick
   nextTick(() => {
-    const inputs = sectionRef.value?.querySelectorAll('.template-section-table-input');
+    const inputs = sectionRef.value?.querySelectorAll(
+      ".template-section-table-input"
+    );
     if (inputs && inputs.length > 0) {
       // Focus the first cell of the new row
       const index = (newTableData.length - 1) * headers.length;
@@ -706,21 +779,23 @@ const addTableRow = () => {
 };
 
 const addTableColumn = () => {
-  const newTableData = tableData.value.map(row => [...row, '']);
-  
+  const newTableData = tableData.value.map((row) => [...row, ""]);
+
   // Convert back to markdown and update
   const headers = newTableData[0] || [];
   const data = newTableData.slice(1);
-  
-  const headerRow = '| ' + headers.join(' | ') + ' |';
-  const separatorRow = '|' + headers.map(() => '----------|').join('') + '|';
-  const dataRows = data.map(row => '| ' + row.join(' | ') + ' |');
-  
-  emit('update:content', [headerRow, separatorRow, ...dataRows]);
-  
+
+  const headerRow = "| " + headers.join(" | ") + " |";
+  const separatorRow = "|" + headers.map(() => "----------|").join("") + "|";
+  const dataRows = data.map((row) => "| " + row.join(" | ") + " |");
+
+  emit("update:content", [headerRow, separatorRow, ...dataRows]);
+
   // Focus the new column header on next tick
   nextTick(() => {
-    const inputs = sectionRef.value?.querySelectorAll('.template-section-table-input');
+    const inputs = sectionRef.value?.querySelectorAll(
+      ".template-section-table-input"
+    );
     if (inputs && inputs.length > 0) {
       // Focus the header of the new column
       const index = headers.length - 1;
@@ -734,25 +809,25 @@ const addTableColumn = () => {
 const deleteTableRow = (rowIndex: number) => {
   // Make sure we don't delete the header row
   if (rowIndex === 0) return;
-  
+
   const newTableData = [...tableData.value];
   newTableData.splice(rowIndex, 1);
-  
+
   // Convert back to markdown and update
   const headers = newTableData[0] || [];
   const data = newTableData.slice(1);
-  
-  const headerRow = '| ' + headers.join(' | ') + ' |';
-  const separatorRow = '|' + headers.map(() => '----------|').join('') + '|';
-  const dataRows = data.map(row => '| ' + row.join(' | ') + ' |');
-  
-  emit('update:content', [headerRow, separatorRow, ...dataRows]);
-  displayToast('Row deleted', 'info');
+
+  const headerRow = "| " + headers.join(" | ") + " |";
+  const separatorRow = "|" + headers.map(() => "----------|").join("") + "|";
+  const dataRows = data.map((row) => "| " + row.join(" | ") + " |");
+
+  emit("update:content", [headerRow, separatorRow, ...dataRows]);
+  displayToast("Row deleted", "info");
 };
 
 // Update section content - used by editor components
 const updateSectionContent = (newContent: string[]) => {
-  emit('update:content', newContent);
+  emit("update:content", newContent);
 };
 </script>
 
@@ -1206,16 +1281,16 @@ button[title]:hover::after {
   .template-section-header {
     padding: var(--spacing-xs) var(--spacing-sm);
   }
-  
+
   .template-section-content {
     padding: var(--spacing-sm);
   }
-  
+
   .template-section-action {
     width: 28px;
     height: 28px;
   }
-  
+
   .template-section-toast {
     font-size: 0.75rem;
     padding: 6px 10px;
