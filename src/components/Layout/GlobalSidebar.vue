@@ -53,6 +53,16 @@
         <i class="fas fa-book"></i>
         <span>Template Library</span>
       </router-link>
+      
+      <router-link
+        to="/obsidian-explorer"
+        class="nav-item"
+        :class="{ active: currentRoute === 'obsidian-explorer' }"
+        v-if="obsidianStore.isConnected"
+      >
+        <i class="fas fa-mountain"></i>
+        <span>Obsidian Explorer</span>
+      </router-link>
 
       <router-link
         to="/settings"
@@ -133,7 +143,7 @@ import { computed, ref, onMounted } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import SectionLibrary from "@/components/TemplateCreator/SectionLibrary.vue";
 import ObsidianStatusIndicator from "@/components/Layout/ObsidianStatusIndicator.vue";
-import { useUIStore, usePreferencesStore } from "@/stores";
+import { useUIStore, usePreferencesStore, useObsidianStore } from "@/stores";
 import { useAuthStore } from "@/stores/auth";
 
 // Props
@@ -157,6 +167,7 @@ const emit = defineEmits([
 const uiStore = useUIStore();
 const preferencesStore = usePreferencesStore();
 const authStore = useAuthStore();
+const obsidianStore = useObsidianStore();
 const router = useRouter();
 
 // Get current route
@@ -167,6 +178,7 @@ const currentRoute = computed(() => {
   if (route.path === "/library") return "library";
   if (route.path === "/template-library") return "templateLibrary";
   if (route.path === "/settings") return "settings";
+  if (route.path === "/obsidian-explorer") return "obsidian-explorer";
   return "";
 });
 

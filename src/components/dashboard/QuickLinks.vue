@@ -22,10 +22,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 import { useRouter } from 'vue-router';
+import { useObsidianStore } from '@/stores/obsidian';
 
 const router = useRouter();
+const obsidianStore = useObsidianStore();
 
 interface Resource {
   id: string;
@@ -36,8 +38,8 @@ interface Resource {
   isExternal: boolean;
 }
 
-// Resource data
-const resources = ref<Resource[]>([
+// Base resources
+const baseResources = ref<Resource[]>([
   {
     id: 'docs',
     title: 'Documentation',
@@ -63,6 +65,34 @@ const resources = ref<Resource[]>([
     isExternal: false
   }
 ]);
+
+// Add Obsidian resources if connected
+const resources = computed(() => {
+  const allResources = [...baseResources.value];
+  
+  // Add Obsidian Explorer link if connected
+  if (obsidianStore.isConnected) {
+    allResources.push({
+      id: 'obsidian-explorer',
+      title: 'Obsidian Explorer',
+      description: 'Browse your connected Obsidian vault and create templates',
+      icon: 'fas fa-mountain',
+      url: '/obsidian-explorer',
+      isExternal: false
+    });
+  } else {
+    allResources.push({
+      id: 'connect-obsidian',
+      title: 'Connect Obsidian',
+      description: 'Link your Obsidian vault to create templates from your notes',
+      icon: 'fas fa-plug',
+      url: '/obsidian-connect',
+      isExternal: false
+    });
+  }
+  
+  return allResources;
+});
 
 // Open resource URL
 const openResource = (resource: Resource) => {
