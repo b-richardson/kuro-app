@@ -12,8 +12,8 @@
     
     <div class="template-creator__content">
       <div class="template-creator__sidebar" :class="{ 'hidden': currentView === 'preview' }">
-        <!-- Section library with available template sections -->
-        <SectionLibrary @add-section="addSection" />
+        <!-- Template module library with available modules -->
+        <TemplateModuleLibrary @add-module="addModule" />
         
         <!-- Template Manager -->
         <div class="template-creator__manager">
@@ -34,8 +34,8 @@
         <DragDropEditor 
           :sections="sections" 
           @update="updateSections"
-          @delete="deleteSection"
-          @section-change="handleSectionChange"
+          @delete="deleteModule"
+          @module-change="handleModuleChange"
         />
       </div>
       
@@ -60,7 +60,7 @@ import { ExportProfileId } from './ExportProfileSelector.vue';
 
 // Import components
 import AppHeader from '@/components/Layout/AppHeader.vue';
-import SectionLibrary from './SectionLibrary.vue';
+import TemplateModuleLibrary from './TemplateModuleLibrary.vue';
 import DragDropEditor from './DragDropEditor.vue';
 import MarkdownPreview from './MarkdownPreview.vue';
 import TemplateManager from './TemplateManager.vue';
@@ -78,10 +78,10 @@ const initialState = ref<string>('[]'); // JSON string of initial state for chan
 const currentView = ref<'editor' | 'preview' | 'editor-only'>('editor');
 
 /**
- * Adds a new section to the template
+ * Adds a new module to the template
  */
-const addSection = (section: TemplateSection) => {
-  sections.push(section);
+const addModule = (module: TemplateSection) => {
+  sections.push(module);
   updateModifiedState();
 };
 
@@ -95,10 +95,10 @@ const updateSections = (updatedSections: TemplateSection[]) => {
 };
 
 /**
- * Deletes a section by ID
+ * Deletes a module by ID
  */
-const deleteSection = (sectionId: string) => {
-  const index = sections.findIndex(s => s.id === sectionId);
+const deleteModule = (moduleId: string) => {
+  const index = sections.findIndex(s => s.id === moduleId);
   if (index !== -1) {
     sections.splice(index, 1);
     updateModifiedState();
@@ -114,9 +114,9 @@ const updateExportProfile = (profile: ExportProfileId) => {
 };
 
 /**
- * Handles changes to individual section content
+ * Handles changes to individual module content
  */
-const handleSectionChange = () => {
+const handleModuleChange = () => {
   updateModifiedState();
 };
 

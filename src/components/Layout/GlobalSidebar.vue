@@ -141,7 +141,7 @@
 <script setup lang="ts">
 import { computed, ref, onMounted } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import SectionLibrary from "@/components/TemplateCreator/SectionLibrary.vue";
+import SectionLibrary from "@/components/TemplateCreator/TemplateModuleLibrary.vue";
 import ObsidianStatusIndicator from "@/components/Layout/ObsidianStatusIndicator.vue";
 import { useUIStore, usePreferencesStore, useObsidianStore } from "@/stores";
 import { useAuthStore } from "@/stores/auth";

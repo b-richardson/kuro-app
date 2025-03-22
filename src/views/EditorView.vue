@@ -29,10 +29,10 @@
         'focus-mode': isPreviewFocused,
       }"
     >
-      <!-- Left Panel: Section Library (Collapsible) -->
-      <div class="section-library-panel">
+      <!-- Left Panel: Module Library (Collapsible) -->
+      <div class="module-library-panel">
         <div class="panel-header">
-          <h2>Section Library</h2>
+          <h2>Module Library</h2>
           <button
             class="collapse-button"
             @click="toggleSidebar"
@@ -47,25 +47,25 @@
           </button>
         </div>
 
-        <!-- Section Library Component -->
-        <SectionLibrary
+        <!-- Template Module Library Component -->
+        <TemplateModuleLibrary
           :collapsed="isSidebarCollapsed"
-          @add-section="addSectionToCanvas"
+          @add-module="addModuleToCanvas"
         />
       </div>
 
       <!-- Middle Panel: Main Canvas Editor -->
       <div class="editor-canvas-panel glass-card">
         <div class="panel-header">
-          <h2>Template Editor</h2>
+          <h2>Template Module Editor</h2>
         </div>
 
         <!-- Drag and Drop Editor Component -->
         <DragDropEditor
           :sections="templateStore.currentSections"
           @update="updateSections"
-          @delete="deleteSection"
-          @section-change="markAsModified"
+          @delete="deleteModule"
+          @module-change="markAsModified"
           ref="dragDropEditorRef"
         />
       </div>
@@ -307,7 +307,7 @@ import { useUIStore } from "@/stores/ui";
 import { usePreferencesStore } from "@/stores/preferences";
 import debounce from "lodash-es/debounce";
 import { v4 as uuidv4 } from "uuid";
-import { TemplateSection } from "@/types/TemplateSection";
+import { TemplateModule } from "@/types/TemplateModule";
 import {
   ViewMode,
   ExportProfile,
@@ -316,7 +316,7 @@ import {
 } from "@/types/Editor";
 
 // Import components
-import SectionLibrary from "@/components/TemplateCreator/SectionLibrary.vue";
+import TemplateModuleLibrary from "@/components/TemplateCreator/TemplateModuleLibrary.vue";
 import DragDropEditor from "@/components/TemplateCreator/DragDropEditor.vue";
 import MarkdownPreview from "@/components/TemplateCreator/MarkdownPreview.vue";
 import ConfirmationDialog from "@/components/UI/ConfirmationDialog.vue";
@@ -442,13 +442,13 @@ const togglePreviewFocus = () => {
 };
 
 // Section management methods
-const addSectionToCanvas = (section: TemplateSection) => {
-  console.log("Adding section to canvas:", section);
-  templateStore.addSection(section);
-  console.log("Current sections after add:", templateStore.currentSections);
+const addModuleToCanvas = (module: TemplateSection) => {
+  console.log("Adding module to canvas:", module);
+  templateStore.addSection(module);
+  console.log("Current modules after add:", templateStore.currentSections);
   markAsModified();
 
-  // Scroll to the new section after it's added
+  // Scroll to the new module after it's added
   setTimeout(() => {
     if (dragDropEditorRef.value) {
       const container =
@@ -461,10 +461,10 @@ const addSectionToCanvas = (section: TemplateSection) => {
 };
 
 /**
- * Update sections in the template store
- * Called by DragDropEditor when sections are reordered via drag and drop
+ * Update modules in the template store
+ * Called by DragDropEditor when modules are reordered via drag and drop
  */
-const updateSections = (sections: TemplateSection[]) => {
+const updateSections = (sections: TemplateModule[]) => {
   // Guard against invalid parameters or unmounted component
   if (!isMounted.value) {
     return;
@@ -474,7 +474,7 @@ const updateSections = (sections: TemplateSection[]) => {
     // Validate sections parameter
     if (!sections || !Array.isArray(sections)) {
       console.error(
-        "Invalid sections array provided to updateSections",
+        "Invalid modules array provided to updateSections",
         sections
       );
       return;
@@ -483,35 +483,35 @@ const updateSections = (sections: TemplateSection[]) => {
     // Use nextTick to avoid Vue patching conflicts
     nextTick(() => {
       if (isMounted.value) {
-        // Create a proper reactive copy of the sections before updating the store
+        // Create a proper reactive copy of the modules before updating the store
         // This ensures reactivity is maintained throughout the whole chain
-        const reactiveSections = sections.map((section) => ({
-          ...section,
+        const reactiveModules = sections.map((module) => ({
+          ...module,
           // Ensure content array is properly copied for reactivity
-          content: Array.isArray(section.content)
-            ? [...section.content]
-            : [section.content as string],
+          content: Array.isArray(module.content)
+            ? [...module.content]
+            : [module.content as string],
           // Ensure metadata is properly copied if it exists
-          metadata: section.metadata ? { ...section.metadata } : undefined,
+          metadata: module.metadata ? { ...module.metadata } : undefined,
         }));
 
-        // Update the sections in the store
-        templateStore.updateSections(reactiveSections);
+        // Update the modules in the store
+        templateStore.updateSections(reactiveModules);
 
         // Mark template as modified
         markAsModified();
 
-        console.log("Sections updated successfully with reactivity preserved");
+        console.log("Modules updated successfully with reactivity preserved");
       }
     });
   } catch (error) {
-    console.error("Error updating sections:", error);
+    console.error("Error updating modules:", error);
   }
 };
 
-const deleteSection = (sectionId: string) => {
+const deleteModule = (moduleId: string) => {
   // Guard against unmounted component or invalid ID
-  if (!isMounted.value || !sectionId) {
+  if (!isMounted.value || !moduleId) {
     return;
   }
 
@@ -519,45 +519,45 @@ const deleteSection = (sectionId: string) => {
     // Wrap in nextTick to avoid DOM update conflicts
     nextTick(() => {
       if (isMounted.value) {
-        templateStore.deleteSection(sectionId);
+        templateStore.deleteSection(moduleId);
         markAsModified();
       }
     });
   } catch (error) {
-    console.error("Error deleting section:", error);
+    console.error("Error deleting module:", error);
   }
 };
 
-const duplicateSection = (sectionId: string) => {
+const duplicateModule = (moduleId: string) => {
   // Guard against unmounted component or invalid ID
-  if (!isMounted.value || !sectionId) {
+  if (!isMounted.value || !moduleId) {
     return;
   }
 
   try {
-    const sectionToDuplicate = templateStore.currentSections.find(
-      (s) => s.id === sectionId
+    const moduleToDuplicate = templateStore.currentSections.find(
+      (s) => s.id === moduleId
     );
-    if (!sectionToDuplicate) {
-      console.warn(`Section with ID ${sectionId} not found for duplication`);
+    if (!moduleToDuplicate) {
+      console.warn(`Module with ID ${moduleId} not found for duplication`);
       return;
     }
 
     // Create a deep copy with a new ID
-    const newSection = {
-      ...JSON.parse(JSON.stringify(sectionToDuplicate)),
+    const newModule = {
+      ...JSON.parse(JSON.stringify(moduleToDuplicate)),
       id: uuidv4(),
     };
 
     // Use nextTick to avoid Vue patching conflicts
     nextTick(() => {
       if (isMounted.value) {
-        templateStore.addSection(newSection);
+        templateStore.addSection(newModule);
         markAsModified();
       }
     });
   } catch (error) {
-    console.error("Error duplicating section:", error);
+    console.error("Error duplicating module:", error);
   }
 };
 
@@ -854,7 +854,7 @@ onUnmounted(() => {
 }
 
 /* Panels */
-.section-library-panel,
+.module-library-panel,
 .editor-canvas-panel,
 .preview-panel {
   display: flex;
@@ -863,7 +863,7 @@ onUnmounted(() => {
   transition: opacity 0.3s ease, transform 0.3s ease;
 }
 
-.section-library-panel {
+.module-library-panel {
   background: rgba(30, 30, 46, 0.6);
   border: 1px solid rgba(167, 139, 250, 0.15);
   border-radius: var(--radius-md);
@@ -871,7 +871,7 @@ onUnmounted(() => {
 }
 
 /* Hide panels in focus mode */
-.focus-mode .section-library-panel,
+.focus-mode .module-library-panel,
 .focus-mode .editor-canvas-panel {
   width: 0;
   opacity: 0;

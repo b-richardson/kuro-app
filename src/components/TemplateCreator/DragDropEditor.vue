@@ -6,43 +6,43 @@
       </div>
       <p class="empty-template-title">Your template is empty</p>
       <p class="empty-template-subtitle">
-        Add sections from the library or drag them here
+        Add modules from the library or drag them here
       </p>
     </div>
 
-    <!-- Simple rendering of sections with move up/down buttons -->
-    <div v-else class="sections-list">
+    <!-- Simple rendering of modules with move up/down buttons -->
+    <div v-else class="modules-list">
       <div
         v-for="(section, index) in sections"
         :key="section.id"
-        class="section-wrapper"
+        class="module-wrapper"
       >
-        <div class="section-controls">
+        <div class="module-controls">
           <button
-            class="section-move-button"
-            @click.stop="moveSection(index, 'up')"
+            class="module-move-button"
+            @click.stop="moveModule(index, 'up')"
             :disabled="index === 0"
-            title="Move section up"
+            title="Move module up"
           >
             <i class="fas fa-arrow-up"></i>
           </button>
           <button
-            class="section-move-button"
-            @click.stop="moveSection(index, 'down')"
+            class="module-move-button"
+            @click.stop="moveModule(index, 'down')"
             :disabled="index === sections.length - 1"
-            title="Move section down"
+            title="Move module down"
           >
             <i class="fas fa-arrow-down"></i>
           </button>
         </div>
-        <TemplateSection
+        <TemplateModuleEditor
           :section="section"
-          :is-selected="selectedSectionId === section.id"
-          :auto-focus="section.id === autoFocusSectionId"
-          @update:content="updateSectionContent(section.id, $event)"
-          @delete="deleteSection(section.id)"
-          @select="selectSection(section.id)"
-          @duplicate="duplicateSection(section.id)"
+          :is-selected="selectedModuleId === section.id"
+          :auto-focus="section.id === autoFocusModuleId"
+          @update:content="updateModuleContent(section.id, $event)"
+          @delete="deleteModule(section.id)"
+          @select="selectModule(section.id)"
+          @duplicate="duplicateModule(section.id)"
         />
       </div>
     </div>
@@ -71,27 +71,25 @@
           </div>
         </div>
         <div class="keyboard-shortcut-group">
-          <h4>When section is selected</h4>
+          <h4>When module is selected</h4>
           <div class="keyboard-shortcut">
             <span class="keyboard-key">Alt</span> +
             <span class="keyboard-key">A</span>
-            <span class="keyboard-description"
-              >Add line to current section</span
-            >
+            <span class="keyboard-description">Add line to current module</span>
           </div>
           <div class="keyboard-shortcut">
             <span class="keyboard-key">Alt</span> +
             <span class="keyboard-key">D</span>
-            <span class="keyboard-description">Duplicate section</span>
+            <span class="keyboard-description">Duplicate module</span>
           </div>
           <div class="keyboard-shortcut">
             <span class="keyboard-key">Alt</span> +
             <span class="keyboard-key">Delete</span>
-            <span class="keyboard-description">Delete section</span>
+            <span class="keyboard-description">Delete module</span>
           </div>
         </div>
         <div class="keyboard-shortcut-group">
-          <h4>Table section</h4>
+          <h4>Table module</h4>
           <div class="keyboard-shortcut">
             <span class="keyboard-key">Alt</span> +
             <span class="keyboard-key">R</span>
@@ -125,8 +123,8 @@
 
 <script setup lang="ts">
 import { computed, ref, onMounted, onUnmounted, nextTick, watch } from "vue";
-import { TemplateSection as ITemplateSection } from "@/types/TemplateSection";
-import TemplateSection from "./TemplateSection.vue";
+import { TemplateModule as ITemplateModule } from "@/types/TemplateModule";
+import TemplateModuleEditor from "@/components/TemplateCreator/TemplateModuleEditor.vue";
 import { v4 as uuidv4 } from "uuid";
 
 // Component lifecycle state - define this FIRST
@@ -134,19 +132,19 @@ const isComponentMounted = ref(false);
 
 // Define props
 const props = defineProps<{
-  sections: ITemplateSection[];
+  sections: ITemplateModule[];
 }>();
 
 // Define emits
 const emit = defineEmits<{
-  (e: "update", sections: ITemplateSection[]): void;
-  (e: "delete", sectionId: string): void;
-  (e: "section-change"): void;
+  (e: "update", sections: ITemplateModule[]): void;
+  (e: "delete", moduleId: string): void;
+  (e: "module-change"): void;
 }>();
 
 // UI state
-const selectedSectionId = ref<string | null>(null);
-const autoFocusSectionId = ref<string | null>(null);
+const selectedModuleId = ref<string | null>(null);
+const autoFocusModuleId = ref<string | null>(null);
 const showKeyboardHelp = ref(false);
 
 // Toast notification system
@@ -218,10 +216,10 @@ const hideToast = () => {
 // Define a flag to track initial adaptation
 const hasPerformedInitialAdaptation = ref(false);
 
-// Define a flag to track active section editing
-const isUserEditingSection = ref(false);
+// Define a flag to track active module editing
+const isUserEditingModule = ref(false);
 
-const adaptSectionTypes = () => {
+const adaptModuleTypes = () => {
   // Guard against invalid parameters or unmounted component
   if (
     !isComponentMounted.value ||
@@ -244,7 +242,7 @@ const adaptSectionTypes = () => {
   if (
     hasPerformedInitialAdaptation.value &&
     isEditingInput &&
-    isUserEditingSection.value
+    isUserEditingModule.value
   ) {
     return; // Skip adaptation during active editing
   }
@@ -260,58 +258,58 @@ const adaptSectionTypes = () => {
       frontmatter: "yaml",
     };
 
-    // Check if any section needs adaptation
-    // Only identify sections that TRULY need adaptation
-    const sectionsNeedingAdaptation = props.sections.reduce(
-      (acc, section, index) => {
-        if (!section) return acc; // Skip undefined/null sections
+    // Check if any module needs adaptation
+    // Only identify modules that TRULY need adaptation
+    const modulesNeedingAdaptation = props.sections.reduce(
+      (acc, module, index) => {
+        if (!module) return acc; // Skip undefined/null modules
 
         let needsAdaptation = false;
         const adaptations = {};
 
         // Type-safe check - only adapt if needed
-        const sectionType = section.type as string;
-        if (typeMap[sectionType] && sectionType !== typeMap[sectionType]) {
-          adaptations["type"] = typeMap[sectionType];
+        const moduleType = module.type as string;
+        if (typeMap[moduleType] && moduleType !== typeMap[moduleType]) {
+          adaptations["type"] = typeMap[moduleType];
           needsAdaptation = true;
         }
 
         // Check content format - only convert string to array if needed
-        if (typeof section.content === "string") {
-          adaptations["content"] = [section.content]; // Preserve the content value
+        if (typeof module.content === "string") {
+          adaptations["content"] = [module.content]; // Preserve the content value
           needsAdaptation = true;
         }
 
         // Check if pluginType is missing - only set if undefined
-        if (section.pluginType === undefined) {
+        if (module.pluginType === undefined) {
           adaptations["pluginType"] = null;
           needsAdaptation = true;
         }
 
-        // Only include sections that need adaptation
+        // Only include modules that need adaptation
         if (needsAdaptation) {
-          acc.push({ index, section, adaptations });
+          acc.push({ index, module, adaptations });
         }
 
         return acc;
       },
       [] as Array<{
         index: number;
-        section: any;
+        module: any;
         adaptations: Record<string, any>;
       }>
     );
 
-    // Only perform adaptation if sections actually need it
-    if (sectionsNeedingAdaptation.length > 0) {
+    // Only perform adaptation if modules actually need it
+    if (modulesNeedingAdaptation.length > 0) {
       // Create copy of sections array to work with
       const adaptedSections = [...props.sections];
 
-      // Apply targeted adaptations to only the sections that need them
-      sectionsNeedingAdaptation.forEach(({ index, section, adaptations }) => {
-        // Create adapted section with minimal changes
+      // Apply targeted adaptations to only the modules that need them
+      modulesNeedingAdaptation.forEach(({ index, module, adaptations }) => {
+        // Create adapted module with minimal changes
         adaptedSections[index] = {
-          ...section, // Keep all original properties
+          ...module, // Keep all original properties
           ...adaptations, // Apply only the needed adaptations
         };
       });
@@ -331,7 +329,7 @@ const adaptSectionTypes = () => {
       hasPerformedInitialAdaptation.value = true;
     }
   } catch (error) {
-    console.error("Error adapting section types:", error);
+    console.error("Error adapting module types:", error);
   }
 };
 
@@ -355,19 +353,19 @@ const handleGlobalKeydown = (event: KeyboardEvent) => {
 };
 
 /**
- * Move a section up or down in the list
- * This function safely reorders sections with proper reactivity handling
+ * Move a module up or down in the list
+ * This function safely reorders modules with proper reactivity handling
  */
-const moveSection = (index: number, direction: "up" | "down") => {
+const moveModule = (index: number, direction: "up" | "down") => {
   // Validate parameters to avoid runtime errors
   if (index === undefined || index === null || !direction) {
-    console.error("Invalid parameters in moveSection:", { index, direction });
+    console.error("Invalid parameters in moveModule:", { index, direction });
     return;
   }
 
   // Guard against operations on unmounted components
   if (!props.sections || !Array.isArray(props.sections)) {
-    console.warn("moveSection called with invalid sections array");
+    console.warn("moveModule called with invalid sections array");
     return;
   }
 
@@ -383,25 +381,25 @@ const moveSection = (index: number, direction: "up" | "down") => {
     // Create a fresh copy of the sections array to maintain Vue reactivity
     const updatedSections = props.sections.map((section) => ({ ...section }));
 
-    // Store references to the sections we're swapping
-    const sectionA = updatedSections[index];
-    const sectionB = updatedSections[newIndex];
+    // Store references to the modules we're swapping
+    const moduleA = updatedSections[index];
+    const moduleB = updatedSections[newIndex];
 
     // Perform the swap with proper type safety
-    updatedSections[newIndex] = sectionA;
-    updatedSections[index] = sectionB;
+    updatedSections[newIndex] = moduleA;
+    updatedSections[index] = moduleB;
 
     // Update the sections - wrap in nextTick to avoid DOM update conflicts
     nextTick(() => {
       emit("update", updatedSections);
-      emit("section-change");
+      emit("module-change");
 
       // Show a toast notification
-      showToast(`Section moved ${direction}`, "success");
+      showToast(`Module moved ${direction}`, "success");
     });
   } catch (error) {
-    console.error("Error moving section:", error);
-    showToast("Failed to move section", "error");
+    console.error("Error moving module:", error);
+    showToast("Failed to move module", "error");
   }
 };
 
@@ -412,17 +410,17 @@ const moveSection = (index: number, direction: "up" | "down") => {
 
 // Event listener for focus events on input elements
 const handleInputFocus = () => {
-  isUserEditingSection.value = true;
+  isUserEditingModule.value = true;
 };
 
 // Event listener for blur events on input elements
 const handleInputBlur = () => {
-  isUserEditingSection.value = false;
+  isUserEditingModule.value = false;
 };
 
 // Set up event listeners
 // Define new function that only runs once rather than on every content change
-const adaptSectionTypesOnce = () => {
+const adaptModuleTypesOnce = () => {
   if (!props.sections || props.sections.length === 0) return;
 
   // Create a mapping between store types and component expected types
@@ -435,40 +433,40 @@ const adaptSectionTypesOnce = () => {
     frontmatter: "yaml",
   };
 
-  // Check if any section needs adaptation
+  // Check if any module needs adaptation
   let needsAdaptation = false;
 
-  props.sections.forEach((section) => {
+  props.sections.forEach((module) => {
     // Type-safe check
-    const sectionType = section.type as string;
-    if (typeMap[sectionType] && sectionType !== typeMap[sectionType]) {
+    const moduleType = module.type as string;
+    if (typeMap[moduleType] && moduleType !== typeMap[moduleType]) {
       needsAdaptation = true;
     }
 
     // Also ensure content is an array (store might use string)
-    if (typeof section.content === "string") {
+    if (typeof module.content === "string") {
       needsAdaptation = true;
     }
   });
 
   if (needsAdaptation) {
-    console.log("Adapting sections types once on mount...");
+    console.log("Adapting module types once on mount...");
 
-    // Create adapted sections with proper types
-    const adaptedSections = props.sections.map((section) => {
+    // Create adapted modules with proper types
+    const adaptedModules = props.sections.map((module) => {
       // Create a new object to avoid mutating props directly
-      const adapted = { ...section };
+      const adapted = { ...module };
 
       // Type-safe adaptation
-      const sectionType = section.type as string;
-      if (typeMap[sectionType]) {
+      const moduleType = module.type as string;
+      if (typeMap[moduleType]) {
         // @ts-ignore - We need to convert types safely
-        adapted.type = typeMap[sectionType];
+        adapted.type = typeMap[moduleType];
       }
 
       // Ensure content is an array
-      if (typeof section.content === "string") {
-        adapted.content = [section.content];
+      if (typeof module.content === "string") {
+        adapted.content = [module.content];
       }
 
       // Ensure pluginType exists
@@ -479,7 +477,7 @@ const adaptSectionTypesOnce = () => {
       return adapted;
     });
 
-    emit("update", adaptedSections);
+    emit("update", adaptedModules);
   }
 };
 
@@ -495,9 +493,9 @@ onMounted(() => {
     document.addEventListener("focusin", handleInputFocus);
     document.addEventListener("focusout", handleInputBlur);
 
-    // Apply section type adapter ONLY ONCE on mount instead of watching for changes
-    // This fixes the reactivity issues with sections resetting during editing
-    adaptSectionTypesOnce();
+    // Apply module type adapter ONLY ONCE on mount instead of watching for changes
+    // This fixes the reactivity issues with modules resetting during editing
+    adaptModuleTypesOnce();
 
     // Log successful initialization
     console.log(
@@ -530,108 +528,108 @@ onUnmounted(() => {
 });
 
 /**
- * Updates content of a specific section
+ * Updates content of a specific module
  * IMPROVED: Optimized to minimize unnecessary object recreation
  * and preserve reactivity during editing
  */
-const updateSectionContent = (sectionId: string, newContent: string[]) => {
+const updateModuleContent = (moduleId: string, newContent: string[]) => {
   // Guard against invalid parameters or unmounted component
-  if (!isComponentMounted.value || !sectionId || !Array.isArray(newContent)) {
+  if (!isComponentMounted.value || !moduleId || !Array.isArray(newContent)) {
     return;
   }
 
-  // Set a flag that we're actively editing this section
-  // This prevents adaptSectionTypes from running during editing
-  isUserEditingSection.value = true;
+  // Set a flag that we're actively editing this module
+  // This prevents adaptModuleTypes from running during editing
+  isUserEditingModule.value = true;
 
   try {
-    const sectionIndex = props.sections.findIndex(
-      (section) => section.id === sectionId
+    const moduleIndex = props.sections.findIndex(
+      (section) => section.id === moduleId
     );
-    if (sectionIndex !== -1) {
+    if (moduleIndex !== -1) {
       // Create a targeted update that preserves reactivity but minimizes cloning
       const updatedSections = [...props.sections];
 
-      // Get the current section
-      const currentSection = updatedSections[sectionIndex];
+      // Get the current module
+      const currentModule = updatedSections[moduleIndex];
 
-      // Create a new section object with minimal changes
-      const updatedSection = {
-        ...currentSection,
+      // Create a new module object with minimal changes
+      const updatedModule = {
+        ...currentModule,
         // Only copy the content that actually changed
         content: [...newContent],
         // Keep existing metadata if any
-        metadata: currentSection.metadata
-          ? { ...currentSection.metadata }
+        metadata: currentModule.metadata
+          ? { ...currentModule.metadata }
           : undefined,
       };
 
-      // Update only the specific section in the array
-      updatedSections[sectionIndex] = updatedSection;
+      // Update only the specific module in the array
+      updatedSections[moduleIndex] = updatedModule;
 
       // Emit the update events
       nextTick(() => {
         if (isComponentMounted.value) {
           emit("update", updatedSections);
-          emit("section-change");
+          emit("module-change");
         }
       });
     }
   } catch (error) {
-    console.error("Error updating section content:", error);
+    console.error("Error updating module content:", error);
   }
 };
 
 /**
- * Deletes a section by ID
+ * Deletes a module by ID
  */
-const deleteSection = (sectionId: string) => {
+const deleteModule = (moduleId: string) => {
   // Guard against invalid parameters or unmounted component
-  if (!isComponentMounted.value || !sectionId) {
+  if (!isComponentMounted.value || !moduleId) {
     return;
   }
 
   try {
-    // If we're deleting the currently selected section, clear the selection
-    if (selectedSectionId.value === sectionId) {
-      selectedSectionId.value = null;
+    // If we're deleting the currently selected module, clear the selection
+    if (selectedModuleId.value === moduleId) {
+      selectedModuleId.value = null;
     }
 
     // Emit events safely wrapped in nextTick
     nextTick(() => {
-      emit("delete", sectionId);
-      emit("section-change");
+      emit("delete", moduleId);
+      emit("module-change");
 
       // Show a toast notification
-      showToast("Section deleted", "info");
+      showToast("Module deleted", "info");
     });
   } catch (error) {
-    console.error("Error deleting section:", error);
+    console.error("Error deleting module:", error);
   }
 };
 
 /**
- * Selects a section for editing
+ * Selects a module for editing
  */
-const selectSection = (sectionId: string) => {
+const selectModule = (moduleId: string) => {
   // Guard against invalid parameters or unmounted component
-  if (!isComponentMounted.value || !sectionId) {
+  if (!isComponentMounted.value || !moduleId) {
     return;
   }
 
   try {
     // Update selection state
-    selectedSectionId.value = sectionId;
+    selectedModuleId.value = moduleId;
 
     // Clear auto-focus since we're selecting explicitly
-    autoFocusSectionId.value = null;
+    autoFocusModuleId.value = null;
   } catch (error) {
-    console.error("Error selecting section:", error);
+    console.error("Error selecting module:", error);
   }
 };
 
 /**
- * Clears the currently selected section
+ * Clears the currently selected module
  */
 const clearSelection = () => {
   // Guard against unmounted component
@@ -640,64 +638,64 @@ const clearSelection = () => {
   }
 
   try {
-    selectedSectionId.value = null;
+    selectedModuleId.value = null;
   } catch (error) {
     console.error("Error clearing selection:", error);
   }
 };
 
 /**
- * Duplicates a section
+ * Duplicates a module
  */
-const duplicateSection = (sectionId: string) => {
+const duplicateModule = (moduleId: string) => {
   // Guard against invalid parameters or unmounted component
   if (
     !isComponentMounted.value ||
-    !sectionId ||
+    !moduleId ||
     !Array.isArray(props.sections)
   ) {
     return;
   }
 
   try {
-    const sectionIndex = props.sections.findIndex(
-      (section) => section.id === sectionId
+    const moduleIndex = props.sections.findIndex(
+      (section) => section.id === moduleId
     );
-    if (sectionIndex === -1) {
+    if (moduleIndex === -1) {
       return;
     }
 
-    // Create a copy of the section with a new ID using a safe deep copy approach
-    const originalSection = props.sections[sectionIndex];
-    const newSection: ITemplateSection = {
-      ...JSON.parse(JSON.stringify(originalSection)), // Deep copy
+    // Create a copy of the module with a new ID using a safe deep copy approach
+    const originalModule = props.sections[moduleIndex];
+    const newModule: ITemplateModule = {
+      ...JSON.parse(JSON.stringify(originalModule)), // Deep copy
       id: uuidv4(), // Generate a new unique ID
     };
 
-    // Create a new array and splice in the new section
+    // Create a new array and splice in the new module
     const updatedSections = props.sections.map((section) => ({ ...section }));
-    updatedSections.splice(sectionIndex + 1, 0, newSection);
+    updatedSections.splice(moduleIndex + 1, 0, newModule);
 
     // First emit events to update sections
     emit("update", updatedSections);
-    emit("section-change");
+    emit("module-change");
 
     // Show a toast notification
-    showToast("Section duplicated", "success");
+    showToast("Module duplicated", "success");
 
     // Use multiple nextTick calls to ensure proper rendering sequence
     nextTick(() => {
-      // Wait for section to be added to DOM
+      // Wait for module to be added to DOM
       nextTick(() => {
         // Then update selection state
         if (isComponentMounted.value) {
-          selectedSectionId.value = newSection.id;
-          autoFocusSectionId.value = newSection.id;
+          selectedModuleId.value = newModule.id;
+          autoFocusModuleId.value = newModule.id;
         }
       });
     });
   } catch (error) {
-    console.error("Error duplicating section:", error);
+    console.error("Error duplicating module:", error);
   }
 };
 </script>
@@ -759,7 +757,7 @@ const duplicateSection = (sectionId: string) => {
   max-width: 90%;
 }
 
-.sections-list {
+.modules-list {
   position: relative;
   width: 100%;
   height: 100%;
@@ -771,13 +769,13 @@ const duplicateSection = (sectionId: string) => {
   scroll-behavior: smooth;
 }
 
-.sections-list > div {
+.modules-list > div {
   display: flex;
   flex-direction: column;
   gap: var(--spacing-md);
 }
 
-.section-wrapper {
+.module-wrapper {
   width: 100%;
   box-sizing: border-box;
   margin-bottom: var(--spacing-md);
@@ -788,14 +786,14 @@ const duplicateSection = (sectionId: string) => {
   position: static;
 }
 
-/* Section controls for up/down buttons */
-.section-controls {
+/* Module controls for up/down buttons */
+.module-controls {
   display: flex;
   gap: 4px;
   margin-bottom: 8px;
 }
 
-.section-move-button {
+.module-move-button {
   background: rgba(255, 255, 255, 0.1);
   border: 1px solid var(--glass-border);
   color: var(--color-text-secondary);
@@ -809,12 +807,12 @@ const duplicateSection = (sectionId: string) => {
   transition: all 0.2s;
 }
 
-.section-move-button:hover:not(:disabled) {
+.module-move-button:hover:not(:disabled) {
   background: rgba(255, 171, 88, 0.1);
   color: var(--color-primary);
 }
 
-.section-move-button:disabled {
+.module-move-button:disabled {
   opacity: 0.3;
   cursor: not-allowed;
 }
