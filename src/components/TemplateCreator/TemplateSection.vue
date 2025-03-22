@@ -173,67 +173,124 @@
       <!-- Table section -->
       <template v-else-if="section.type === 'table'">
         <div class="template-section-table">
-          <div
-            v-for="(row, rowIndex) in tableData"
-            :key="rowIndex"
-            class="template-section-table-row"
-          >
-            <div
-              v-for="(cell, colIndex) in row"
-              :key="colIndex"
-              class="template-section-table-cell"
+          <!-- Empty table state -->
+          <div v-if="tableIsEmpty" class="template-section-table-empty">
+            <i class="fas fa-table"></i>
+            <p>Add data to create your table</p>
+            <button 
+              class="template-section-table-button template-section-empty-table-button"
+              @click.stop="initializeEmptyTable"
             >
-              <input
-                type="text"
-                class="template-section-table-input"
-                :value="cell"
-                @input="
-                  updateTableCell(
-                    rowIndex,
-                    colIndex,
-                    ($event.target as HTMLInputElement).value
-                  )
-                "
-                @focus="setEditing(true)"
-                @blur="setEditing(false)"
-                :placeholder="rowIndex === 0 ? 'Header' : 'Cell'"
-                :ref="
-                  (el) => {
-                    if (rowIndex === 0 && colIndex === 0 && autoFocus)
-                      setInputRef(el as HTMLElement);
-                  }
-                "
-              />
+              <i class="fas fa-plus"></i> Create Table
+            </button>
+          </div>
+
+          <template v-else>
+            <!-- Table header row with column delete buttons -->
+            <div class="template-section-table-header">
+              <div
+                v-for="(header, colIndex) in tableData[0]"
+                :key="`header-${colIndex}`"
+                class="template-section-table-header-cell"
+              >
+                <div class="template-section-table-cell-container">
+                  <input
+                    type="text"
+                    class="template-section-table-header-input"
+                    :value="header"
+                    @input="
+                      updateTableCell(
+                        0,
+                        colIndex,
+                        ($event.target as HTMLInputElement).value
+                      )
+                    "
+                    @keydown="handleTableKeyboardNavigation($event, 0, colIndex)"
+                    @focus="setEditing(true)"
+                    @blur="setEditing(false)"
+                    placeholder="Header"
+                    :ref="
+                      (el) => {
+                        if (colIndex === 0 && autoFocus)
+                          setInputRef(el as HTMLElement);
+                      }
+                    "
+                  />
+                  <button
+                    v-if="tableData[0].length > 1"
+                    class="template-section-column-delete"
+                    title="Delete column"
+                    @click.stop="deleteTableColumn(colIndex)"
+                  >
+                    <i class="fas fa-times"></i>
+                  </button>
+                </div>
+              </div>
             </div>
 
-            <div class="template-section-table-actions">
+            <!-- Table data rows -->
+            <div
+              v-for="(row, rowIndex) in tableData"
+              :key="rowIndex"
+              class="template-section-table-row"
+            >
+              <!-- Skip rendering the header row here since we now have a separate header -->
+              <template v-if="rowIndex > 0">
+                <div
+                  v-for="(cell, colIndex) in row"
+                  :key="colIndex"
+                  class="template-section-table-cell"
+                >
+                  <input
+                    type="text"
+                    class="template-section-table-input"
+                    :value="cell"
+                    @input="
+                      updateTableCell(
+                        rowIndex,
+                        colIndex,
+                        ($event.target as HTMLInputElement).value
+                      )
+                    "
+                    @keydown="handleTableKeyboardNavigation($event, rowIndex, colIndex)"
+                    @focus="setEditing(true)"
+                    @blur="setEditing(false)"
+                    placeholder="Cell"
+                  />
+                </div>
+
+                <div class="template-section-table-actions">
+                  <button
+                    v-if="tableData.length > 2"
+                    class="template-section-line-action"
+                    title="Delete row"
+                    @click.stop="deleteTableRow(rowIndex)"
+                  >
+                    <i class="fas fa-times"></i>
+                  </button>
+                </div>
+              </template>
+            </div>
+
+            <div class="template-section-table-controls">
               <button
-                v-if="tableData.length > 2"
-                class="template-section-line-action"
-                title="Delete row"
-                @click.stop="deleteTableRow(rowIndex)"
+                class="template-section-table-button"
+                @click.stop="addTableRow"
+                title="Add new row (Alt+R)"
+                :disabled="tableData.length >= MAX_ROWS"
               >
-                <i class="fas fa-times"></i>
+                <i class="fas fa-plus"></i> Add Row
+              </button>
+              <button
+                class="template-section-table-button"
+                @click.stop="addTableColumn"
+                title="Add new column (Alt+C)"
+                :disabled="tableData[0].length >= MAX_COLUMNS"
+              >
+                <i class="fas fa-plus"></i> Add Column
               </button>
             </div>
-          </div>
-
-          <div class="template-section-table-controls">
-            <button
-              class="template-section-table-button"
-              @click.stop="addTableRow"
-              title="Add new row (Alt+R)"
-            >
-              <i class="fas fa-plus"></i> Add Row
-            </button>
-            <button
-              class="template-section-table-button"
-              @click.stop="addTableColumn"
-              title="Add new column (Alt+C)"
-            >
-              <i class="fas fa-plus"></i> Add Column
-            </button>
-          </div>
+          </template>
         </div>
       </template>
 
@@ -665,10 +722,19 @@ const updateChecklistText = (index: number, text: string) => {
   updateContentLine(index, prefix + text);
 };
 
-// Table-specific methods
+// Constants for table limits
+const MAX_ROWS = 200;
+const MAX_COLUMNS = 50;
+
+// Table-specific methods and computed properties
+const tableIsEmpty = computed(() => {
+  return tableData.value.length <= 1 && 
+         (tableData.value.length === 0 || tableData.value[0]?.length === 0);
+});
+
 const tableData = computed(() => {
   // Parse the markdown table into a 2D array
-  return props.section.content
+  const result = props.section.content
     .map((line) => {
       // Skip separator line (the one with dashes)
       if (line.includes("---")) return [];
@@ -678,27 +744,39 @@ const tableData = computed(() => {
       return cells.map((cell) => cell.trim());
     })
     .filter((row) => row.length > 0);
+  
+  // Return at least an empty structure
+  return result.length > 0 ? result : [[]];
 });
 
 const updateTableData = () => {
-  // Convert the 2D array back to markdown table format
-  const headers = tableData.value[0] || [];
+  // Handle empty table case
+  if (tableData.value.length === 0 || tableData.value[0].length === 0) {
+    // Create a default minimal table with one empty cell
+    emit("update:content", ["| Header |", "|--------|", "| |"]);
+    return;
+  }
+
+  // Get headers and ensure they're not empty
+  const headers = tableData.value[0].map(header => header.trim() || "Header");
   const data = tableData.value.slice(1);
 
-  // Create header row
+  // Create header row with consistent spacing
   const headerRow = "| " + headers.join(" | ") + " |";
 
-  // Create separator row
-  const separatorRow = "|" + headers.map(() => "----------|").join("") + "|";
+  // Create separator row with proper alignment
+  const separatorRow = "|" + headers.map(() => "--------|").join("");
 
-  // Create data rows
-  const dataRows = data.map((row) => {
-    // Pad the row if it has fewer cells than headers
+  // Create data rows with proper padding
+  const dataRows = data.map(row => {
+    // Ensure each row has the correct number of cells
     const paddedRow = [...row];
     while (paddedRow.length < headers.length) {
       paddedRow.push("");
     }
-    return "| " + paddedRow.join(" | ") + " |";
+    // Trim cells and handle empty ones
+    const formattedRow = paddedRow.map(cell => cell.trim());
+    return "| " + formattedRow.join(" | ") + " |";
   });
 
   // Combine all rows
@@ -723,6 +801,12 @@ const updateTableCell = (rowIndex: number, colIndex: number, value: string) => {
 };
 
 const addTableRow = () => {
+  // Check row limit
+  if (tableData.value.length >= MAX_ROWS) {
+    displayToast(`Maximum of ${MAX_ROWS} rows reached`, "error");
+    return;
+  }
+
   const columnCount = tableData.value[0]?.length || 3;
   const newRow = Array(columnCount).fill("");
 
@@ -734,8 +818,8 @@ const addTableRow = () => {
   const data = newTableData.slice(1);
 
   const headerRow = "| " + headers.join(" | ") + " |";
-  const separatorRow = "|" + headers.map(() => "----------|").join("") + "|";
-  const dataRows = data.map((row) => "| " + row.join(" | ") + " |");
+  const separatorRow = "|" + headers.map(() => "--------|").join("");
+  const dataRows = data.map(row => "| " + row.join(" | ") + " |");
 
   emit("update:content", [headerRow, separatorRow, ...dataRows]);
 
@@ -746,7 +830,7 @@ const addTableRow = () => {
     );
     if (inputs && inputs.length > 0) {
       // Focus the first cell of the new row
-      const index = (newTableData.length - 1) * headers.length;
+      const index = (data.length - 1) * headers.length;
       if (inputs[index]) {
         (inputs[index] as HTMLElement).focus();
       }
@@ -755,6 +839,12 @@ const addTableRow = () => {
 };
 
 const addTableColumn = () => {
+  // Check column limit
+  if (tableData.value[0]?.length >= MAX_COLUMNS) {
+    displayToast(`Maximum of ${MAX_COLUMNS} columns reached`, "error");
+    return;
+  }
+
   const newTableData = tableData.value.map((row) => [...row, ""]);
 
   // Convert back to markdown and update
@@ -762,15 +852,15 @@ const addTableColumn = () => {
   const data = newTableData.slice(1);
 
   const headerRow = "| " + headers.join(" | ") + " |";
-  const separatorRow = "|" + headers.map(() => "----------|").join("") + "|";
-  const dataRows = data.map((row) => "| " + row.join(" | ") + " |");
+  const separatorRow = "|" + headers.map(() => "--------|").join("");
+  const dataRows = data.map(row => "| " + row.join(" | ") + " |");
 
   emit("update:content", [headerRow, separatorRow, ...dataRows]);
 
   // Focus the new column header on next tick
   nextTick(() => {
     const inputs = sectionRef.value?.querySelectorAll(
-      ".template-section-table-input"
+      ".template-section-table-header-input"
     );
     if (inputs && inputs.length > 0) {
       // Focus the header of the new column
@@ -782,9 +872,44 @@ const addTableColumn = () => {
   });
 };
 
+const deleteTableColumn = (colIndex: number) => {
+  // Ensure we have more than one column
+  if (tableData.value[0].length <= 1) {
+    displayToast("Cannot delete the last column", "error");
+    return;
+  }
+  
+  // Remove the column from each row
+  const newTableData = tableData.value.map(row => {
+    const newRow = [...row];
+    newRow.splice(colIndex, 1);
+    return newRow;
+  });
+  
+  // Update the table data
+  // We need to manually update this since tableData is a computed property
+  for (let i = 0; i < newTableData.length; i++) {
+    if (tableData.value[i]) {
+      tableData.value[i] = newTableData[i].slice();
+    }
+  }
+  
+  // Update the markdown
+  updateTableData();
+  
+  // Show success toast
+  displayToast("Column deleted", "info");
+};
+
 const deleteTableRow = (rowIndex: number) => {
   // Make sure we don't delete the header row
   if (rowIndex === 0) return;
+
+  // Ensure we have more than one data row
+  if (tableData.value.length <= 2) {
+    displayToast("Cannot delete the last data row", "error");
+    return;
+  }
 
   const newTableData = [...tableData.value];
   newTableData.splice(rowIndex, 1);
@@ -794,11 +919,136 @@ const deleteTableRow = (rowIndex: number) => {
   const data = newTableData.slice(1);
 
   const headerRow = "| " + headers.join(" | ") + " |";
-  const separatorRow = "|" + headers.map(() => "----------|").join("") + "|";
-  const dataRows = data.map((row) => "| " + row.join(" | ") + " |");
+  const separatorRow = "|" + headers.map(() => "--------|").join("");
+  const dataRows = data.map(row => "| " + row.join(" | ") + " |");
 
   emit("update:content", [headerRow, separatorRow, ...dataRows]);
   displayToast("Row deleted", "info");
+};
+
+// Method to initialize an empty table
+const initializeEmptyTable = () => {
+  // Create a basic 3x3 table
+  const headers = ["Header 1", "Header 2", "Header 3"];
+  const rows = [
+    ["Cell 1", "Cell 2", "Cell 3"],
+    ["Cell 4", "Cell 5", "Cell 6"]
+  ];
+  
+  const headerRow = "| " + headers.join(" | ") + " |";
+  const separatorRow = "|" + headers.map(() => "--------|").join("");
+  const dataRows = rows.map(row => "| " + row.join(" | ") + " |");
+  
+  emit("update:content", [headerRow, separatorRow, ...dataRows]);
+  displayToast("Table created", "success");
+};
+
+// Handle keyboard navigation for the table
+const handleTableKeyboardNavigation = (event: KeyboardEvent, rowIndex: number, colIndex: number) => {
+  // Get current dimensions
+  const maxRow = tableData.value.length - 1;
+  const maxCol = tableData.value[rowIndex].length - 1;
+  
+  switch (event.key) {
+    case 'Tab':
+      // Handle tab navigation
+      if (!event.shiftKey) {
+        // Move right
+        if (colIndex < maxCol) {
+          event.preventDefault();
+          focusCell(rowIndex, colIndex + 1);
+        } else if (rowIndex < maxRow) {
+          // End of row, move to next row
+          event.preventDefault();
+          focusCell(rowIndex + 1, 0);
+        }
+      } else {
+        // Move left with shift+tab
+        if (colIndex > 0) {
+          event.preventDefault();
+          focusCell(rowIndex, colIndex - 1);
+        } else if (rowIndex > 0) {
+          // Beginning of row, move to previous row
+          event.preventDefault();
+          focusCell(rowIndex - 1, tableData.value[rowIndex - 1].length - 1);
+        }
+      }
+      break;
+      
+    case 'ArrowDown':
+      if (rowIndex < maxRow) {
+        event.preventDefault();
+        focusCell(rowIndex + 1, colIndex);
+      }
+      break;
+      
+    case 'ArrowUp':
+      if (rowIndex > 0) {
+        event.preventDefault();
+        focusCell(rowIndex - 1, colIndex);
+      }
+      break;
+      
+    case 'ArrowRight':
+      if (event.ctrlKey || event.metaKey || 
+          (event.target as HTMLInputElement).selectionStart === (event.target as HTMLInputElement).value.length) {
+        if (colIndex < maxCol) {
+          event.preventDefault();
+          focusCell(rowIndex, colIndex + 1);
+        }
+      }
+      break;
+      
+    case 'ArrowLeft':
+      if (event.ctrlKey || event.metaKey || 
+          (event.target as HTMLInputElement).selectionStart === 0) {
+        if (colIndex > 0) {
+          event.preventDefault();
+          focusCell(rowIndex, colIndex - 1);
+        }
+      }
+      break;
+      
+    case 'Enter':
+      if (event.ctrlKey || event.metaKey) {
+        // Create new row with Ctrl/Cmd+Enter
+        event.preventDefault();
+        addTableRow();
+        // Focus the new row
+        nextTick(() => {
+          focusCell(tableData.value.length - 1, colIndex);
+        });
+      }
+      break;
+  }
+};
+
+// Helper method to focus a specific cell
+const focusCell = (rowIndex: number, colIndex: number) => {
+  nextTick(() => {
+    // For header row (rowIndex === 0), use header inputs
+    if (rowIndex === 0) {
+      const headerInputs = sectionRef.value?.querySelectorAll('.template-section-table-header-input');
+      if (headerInputs && headerInputs[colIndex]) {
+        (headerInputs[colIndex] as HTMLElement).focus();
+      }
+      return;
+    }
+    
+    // For data rows
+    const cells = sectionRef.value?.querySelectorAll('.template-section-table-input');
+    if (!cells) return;
+    
+    // Calculate index in the nodelist based on current row and column
+    // We need to account for the header row being separate
+    const rowOffset = rowIndex - 1; // Adjust for header row
+    const columnCount = tableData.value[0]?.length || 0;
+    const cellIndex = (rowOffset * columnCount) + colIndex;
+    
+    if (cells[cellIndex]) {
+      (cells[cellIndex] as HTMLElement).focus();
+    }
+  });
 };
 
 // Update section content - used by editor components
@@ -1086,6 +1336,72 @@ const updateSectionContent = (newContent: string[]) => {
   margin-bottom: var(--spacing-md);
 }
 
+/* Table header row styling */
+.template-section-table-header {
+  display: flex;
+  margin-bottom: var(--spacing-xs);
+  position: relative;
+}
+
+.template-section-table-header-cell {
+  flex: 1;
+  padding: 0 var(--spacing-xs);
+  position: relative;
+}
+
+.template-section-table-cell-container {
+  position: relative;
+}
+
+.template-section-column-delete {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+  cursor: pointer;
+  opacity: 0;
+  transition: all 0.2s;
+  z-index: 2;
+}
+
+.template-section-table-header-cell:hover .template-section-column-delete {
+  opacity: 0.7;
+}
+
+.template-section-column-delete:hover {
+  opacity: 1 !important;
+  background: rgba(239, 68, 68, 0.2);
+}
+
+/* Header cell styling */
+.template-section-table-header-input {
+  width: 100%;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border: 1px solid var(--color-surface);
+  border-radius: var(--radius-sm);
+  font-size: 0.875rem;
+  font-weight: 600;
+  background-color: rgba(255, 255, 255, 0.08);
+  color: var(--color-text);
+  transition: all 0.2s;
+}
+
+.template-section-table-header-input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px rgba(255, 171, 88, 0.2);
+}
+
+/* Table rows and cells */
 .template-section-table-row {
   display: flex;
   margin-bottom: var(--spacing-xs);
@@ -1145,6 +1461,46 @@ const updateSectionContent = (newContent: string[]) => {
 
 .template-section-table-button i {
   font-size: 0.75rem;
+}
+
+.template-section-table-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background-color: rgba(255, 171, 88, 0.03);
+}
+
+.template-section-table-button:disabled:hover {
+  background-color: rgba(255, 171, 88, 0.03);
+  transform: none;
+}
+
+/* Empty table state */
+.template-section-table-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 2rem;
+  text-align: center;
+  color: var(--color-text-muted);
+  border: 1px dashed var(--color-surface);
+  border-radius: var(--radius-md);
+  background-color: rgba(255, 255, 255, 0.02);
+}
+
+.template-section-table-empty i {
+  font-size: 2rem;
+  margin-bottom: 1rem;
+  opacity: 0.6;
+}
+
+.template-section-table-empty p {
+  margin-bottom: 1.5rem;
+  font-size: 0.9375rem;
+}
+
+.template-section-empty-table-button {
+  padding: var(--spacing-xs) var(--spacing-md);
 }
 
 /* Type-specific styles */

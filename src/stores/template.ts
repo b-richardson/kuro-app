@@ -2,6 +2,7 @@ import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import { v4 as uuidv4 } from 'uuid';
 import { useUIStore } from './ui';
+import { useActivityStore } from './activity';
 
 // Import the types directly from the type definitions file
 import { TemplateSection, SectionType, PluginType, SectionMetadata } from '@/types/TemplateSection';
@@ -51,6 +52,9 @@ export const useTemplateStore = defineStore('template', () => {
 
   // Get UI store for status updates
   const uiStore = useUIStore();
+  
+  // Get activity store for logging actions
+  const activityStore = useActivityStore();
 
   // Getters
   const templateById = computed(() => {
@@ -200,6 +204,14 @@ export const useTemplateStore = defineStore('template', () => {
     templates.value.push(newTemplate);
     saveTemplates();
     
+    // Log activity
+    activityStore.addActivity(
+      'create',
+      newTemplate.id,
+      newTemplate.name,
+      newTemplate.userId || '1'
+    );
+    
     return newTemplate.id;
   };
 
@@ -272,6 +284,20 @@ export const useTemplateStore = defineStore('template', () => {
         });
       }
       
+      // Log activity - but only for significant updates
+      // We don't want to log every single keystroke
+      // The lastModified check helps avoid duplicate logging
+      const lastUpdateTime = parseInt(localStorage.getItem(`last-update-log-${template.id}`) || '0');
+      if (Date.now() - lastUpdateTime > 60000) { // Only log once per minute
+        activityStore.addActivity(
+          'update',
+          template.id,
+          template.name,
+          template.userId || '1'
+        );
+        localStorage.setItem(`last-update-log-${template.id}`, Date.now().toString());
+      }
+      
       saveTemplates();
       return true;
     }
@@ -308,12 +334,23 @@ export const useTemplateStore = defineStore('template', () => {
     const index = templates.value.findIndex(t => t.id === id);
     
     if (index !== -1) {
+      const templateName = templates.value[index].name;
+      const templateUserId = templates.value[index].userId || '1';
+      
       templates.value.splice(index, 1);
       
       if (currentTemplate.value?.id === id) {
         currentTemplate.value = null;
         currentTemplateId.value = '';
       }
+      
+      // Log activity
+      activityStore.addActivity(
+        'delete',
+        id,
+        templateName,
+        templateUserId
+      );
       
       saveTemplates();
       return true;
@@ -350,6 +387,15 @@ export const useTemplateStore = defineStore('template', () => {
       }));
       
       templates.value.push(newTemplate);
+      
+      // Log activity
+      activityStore.addActivity(
+        'duplicate',
+        newTemplate.id,
+        newTemplate.name,
+        newTemplate.userId || '1'
+      );
+      
       saveTemplates();
       
       return newTemplate.id;
