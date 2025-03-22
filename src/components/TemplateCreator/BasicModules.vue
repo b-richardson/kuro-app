@@ -21,6 +21,7 @@ import { ref } from 'vue';
 import ModuleCard from './ModuleCard.vue';
 import { generateDefaultContent, getSectionIcon } from '@/utils/pluginTemplates';
 import { v4 as uuidv4 } from 'uuid';
+import { TemplateModule } from '@/types/TemplateModule';
 
 // Define props
 const props = defineProps({

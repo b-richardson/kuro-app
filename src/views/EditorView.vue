@@ -441,8 +441,8 @@ const togglePreviewFocus = () => {
   isPreviewFocused.value = !isPreviewFocused.value;
 };
 
-// Section management methods
-const addModuleToCanvas = (module: TemplateSection) => {
+// Module management methods
+const addModuleToCanvas = (module: TemplateModule) => {
   console.log("Adding module to canvas:", module);
   templateStore.addSection(module);
   console.log("Current modules after add:", templateStore.currentSections);
@@ -452,7 +452,7 @@ const addModuleToCanvas = (module: TemplateSection) => {
   setTimeout(() => {
     if (dragDropEditorRef.value) {
       const container =
-        dragDropEditorRef.value.$el.querySelector(".sections-list");
+        dragDropEditorRef.value.$el.querySelector(".modules-list");
       if (container) {
         container.scrollTop = container.scrollHeight;
       }

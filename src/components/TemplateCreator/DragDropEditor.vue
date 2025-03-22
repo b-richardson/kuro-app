@@ -17,32 +17,18 @@
         :key="section.id"
         class="module-wrapper"
       >
-        <div class="module-controls">
-          <button
-            class="module-move-button"
-            @click.stop="moveModule(index, 'up')"
-            :disabled="index === 0"
-            title="Move module up"
-          >
-            <i class="fas fa-arrow-up"></i>
-          </button>
-          <button
-            class="module-move-button"
-            @click.stop="moveModule(index, 'down')"
-            :disabled="index === sections.length - 1"
-            title="Move module down"
-          >
-            <i class="fas fa-arrow-down"></i>
-          </button>
-        </div>
         <TemplateModuleEditor
-          :section="section"
+          :module="section"
+          :index="index"
+          :modules="sections"
           :is-selected="selectedModuleId === section.id"
           :auto-focus="section.id === autoFocusModuleId"
           @update:content="updateModuleContent(section.id, $event)"
+          @update="emit('update', $event)"
           @delete="deleteModule(section.id)"
           @select="selectModule(section.id)"
           @duplicate="duplicateModule(section.id)"
+          @module-change="emit('module-change')"
         />
       </div>
     </div>
@@ -86,6 +72,16 @@
             <span class="keyboard-key">Alt</span> +
             <span class="keyboard-key">Delete</span>
             <span class="keyboard-description">Delete module</span>
+          </div>
+          <div class="keyboard-shortcut">
+            <span class="keyboard-key">Alt</span> +
+            <span class="keyboard-key">↑</span>
+            <span class="keyboard-description">Move module up</span>
+          </div>
+          <div class="keyboard-shortcut">
+            <span class="keyboard-key">Alt</span> +
+            <span class="keyboard-key">↓</span>
+            <span class="keyboard-description">Move module down</span>
           </div>
         </div>
         <div class="keyboard-shortcut-group">
@@ -352,56 +348,7 @@ const handleGlobalKeydown = (event: KeyboardEvent) => {
   }
 };
 
-/**
- * Move a module up or down in the list
- * This function safely reorders modules with proper reactivity handling
- */
-const moveModule = (index: number, direction: "up" | "down") => {
-  // Validate parameters to avoid runtime errors
-  if (index === undefined || index === null || !direction) {
-    console.error("Invalid parameters in moveModule:", { index, direction });
-    return;
-  }
-
-  // Guard against operations on unmounted components
-  if (!props.sections || !Array.isArray(props.sections)) {
-    console.warn("moveModule called with invalid sections array");
-    return;
-  }
-
-  // Calculate the new index
-  const newIndex = direction === "up" ? index - 1 : index + 1;
-
-  // Ensure the new index is valid
-  if (newIndex < 0 || newIndex >= props.sections.length) {
-    return;
-  }
-
-  try {
-    // Create a fresh copy of the sections array to maintain Vue reactivity
-    const updatedSections = props.sections.map((section) => ({ ...section }));
-
-    // Store references to the modules we're swapping
-    const moduleA = updatedSections[index];
-    const moduleB = updatedSections[newIndex];
-
-    // Perform the swap with proper type safety
-    updatedSections[newIndex] = moduleA;
-    updatedSections[index] = moduleB;
-
-    // Update the sections - wrap in nextTick to avoid DOM update conflicts
-    nextTick(() => {
-      emit("update", updatedSections);
-      emit("module-change");
-
-      // Show a toast notification
-      showToast(`Module moved ${direction}`, "success");
-    });
-  } catch (error) {
-    console.error("Error moving module:", error);
-    showToast("Failed to move module", "error");
-  }
-};
+// The moveModule functionality is now handled in TemplateModuleEditor
 
 // IMPROVED: Only adapt section types once on mount, removing problematic watcher entirely
 // This prevents destructive cycle of content resets during editing
@@ -786,36 +733,7 @@ const duplicateModule = (moduleId: string) => {
   position: static;
 }
 
-/* Module controls for up/down buttons */
-.module-controls {
-  display: flex;
-  gap: 4px;
-  margin-bottom: 8px;
-}
-
-.module-move-button {
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid var(--glass-border);
-  color: var(--color-text-secondary);
-  width: 32px;
-  height: 32px;
-  border-radius: var(--radius-sm);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.module-move-button:hover:not(:disabled) {
-  background: rgba(255, 171, 88, 0.1);
-  color: var(--color-primary);
-}
-
-.module-move-button:disabled {
-  opacity: 0.3;
-  cursor: not-allowed;
-}
+/* Module wrapper styling */
 
 /* Keyboard shortcuts help */
 .keyboard-shortcuts-help {

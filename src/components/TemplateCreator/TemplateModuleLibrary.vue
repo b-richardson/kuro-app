@@ -82,7 +82,7 @@ import { ref, computed } from 'vue';
 import BasicModules from './BasicModules.vue';
 import YamlPresetModules from './YamlPresetModules.vue';
 import PluginModules from './PluginModules.vue';
-import { TemplateSection } from '@/types/TemplateSection';
+import { TemplateModule } from '@/types/TemplateModule';
 import { usePreferencesStore } from '@/stores/preferences';
 
 const preferencesStore = usePreferencesStore();
@@ -109,7 +109,7 @@ const props = defineProps({
 const emit = defineEmits(['add-module']);
 
 // Handle module addition (emitted from child components)
-const handleAddModule = (moduleData: TemplateSection) => {
+const handleAddModule = (moduleData: TemplateModule) => {
   // Simply pass the event up to parent component
   emit('add-module', moduleData);
   
