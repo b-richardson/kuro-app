@@ -19,7 +19,7 @@
           <h3>Connection Error</h3>
           <p>{{ connectionError }}</p>
           <div v-if="errorCode === 'CERT_ERROR'" class="cert-error-help">
-            <button @click="openCertificateAcceptPage" class="accept-cert-button">
+            <button @click="() => openCertificateAcceptPage('127.0.0.1', apiPort)" class="accept-cert-button">
               <i class="fas fa-external-link-alt"></i> Open Certificate Page
             </button>
             <p class="cert-help-text">
