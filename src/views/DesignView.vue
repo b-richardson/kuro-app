@@ -29,7 +29,7 @@ const theme = ref('dark');
 const isDarkTheme = computed(() => theme.value === 'dark');
 
 const handleBack = () => {
-  router.push({ name: 'home' });
+  router.push({ name: 'landing' });
 };
 
 const toggleTheme = () => {

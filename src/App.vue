@@ -160,7 +160,7 @@ const handleThemeChange = (theme) => {
 
 const handleLogout = () => {
   authStore.logout();
-  router.push({ name: "home" });
+  router.push({ name: "landing" });
   uiStore.showToast("You have been logged out", "info");
 };
 
@@ -189,9 +189,9 @@ onMounted(async () => {
 
   // Handle redirects based on auth state
   if (authStore.isAuthenticated) {
-    // If user is authenticated and at home or login, redirect to dashboard
+    // If user is authenticated and at landing or login, redirect to dashboard
     if (
-      router.currentRoute.value.name === "home" ||
+      router.currentRoute.value.name === "landing" ||
       router.currentRoute.value.name === "login"
     ) {
       router.push({ name: "dashboard" });

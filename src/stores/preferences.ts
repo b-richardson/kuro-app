@@ -12,7 +12,7 @@ export const usePreferencesStore = defineStore('preferences', () => {
   // State
   const exportProfiles = ref<ExportProfileOptions[]>([])
   const activeExportProfileId = ref<ExportProfile>(getDefaultExportProfile())
-  const lastVisitedView = ref<string>('home')
+  const lastVisitedView = ref<string>('landing')
   const editorTheme = ref<string>('light')
 
   // Getters
@@ -29,7 +29,7 @@ export const usePreferencesStore = defineStore('preferences', () => {
         const preferences = JSON.parse(storedPreferences)
         exportProfiles.value = preferences.exportProfiles || []
         activeExportProfileId.value = preferences.activeExportProfileId || ''
-        lastVisitedView.value = preferences.lastVisitedView || 'home'
+        lastVisitedView.value = preferences.lastVisitedView || 'landing'
         editorTheme.value = preferences.editorTheme || 'light'
       }
       

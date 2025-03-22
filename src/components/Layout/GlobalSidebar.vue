@@ -7,7 +7,7 @@
       </div>
       <h1 class="app-title">Template Builder</h1>
     </div>
-    
+
     <!-- User profile section -->
     <div class="user-profile" v-if="authStore.user">
       <div class="user-avatar">
@@ -15,42 +15,44 @@
       </div>
       <div class="user-info">
         <div class="user-name">{{ authStore.user.name }}</div>
-        <div class="user-plan">{{ getPlanLabel(authStore.user.subscription.plan) }}</div>
+        <div class="user-plan">
+          {{ getPlanLabel(authStore.user.subscription.plan) }}
+        </div>
       </div>
     </div>
-    
+
     <!-- Main navigation -->
     <div class="sidebar-nav">
-      <router-link 
-        to="/dashboard" 
-        class="nav-item" 
+      <router-link
+        to="/dashboard"
+        class="nav-item"
         exact
         :class="{ active: currentRoute === 'dashboard' }"
       >
         <i class="fas fa-home"></i>
         <span>Dashboard</span>
       </router-link>
-      
-      <router-link 
-        to="/library" 
+
+      <router-link
+        to="/library"
         class="nav-item"
         :class="{ active: currentRoute === 'library' }"
       >
         <i class="fas fa-folder"></i>
         <span>My Templates</span>
       </router-link>
-      
-      <router-link 
-        to="/template-library" 
+
+      <router-link
+        to="/template-library"
         class="nav-item"
         :class="{ active: currentRoute === 'templateLibrary' }"
       >
         <i class="fas fa-book"></i>
         <span>Template Library</span>
       </router-link>
-      
-      <router-link 
-        to="/settings" 
+
+      <router-link
+        to="/settings"
         class="nav-item"
         :class="{ active: currentRoute === 'settings' }"
       >
@@ -58,18 +60,12 @@
         <span>Settings</span>
       </router-link>
     </div>
-    
+
     <!-- Divider -->
     <div class="sidebar-divider"></div>
-    
+
     <!-- Context-sensitive content based on current route -->
     <div class="sidebar-context">
-      <!-- Show section library when in editor view -->
-      <div v-if="currentRoute === 'editor'" class="section-library-container">
-        <h2 class="sidebar-section-title">Section Library</h2>
-        <SectionLibrary @add-section="$emit('add-section', $event)" />
-      </div>
-      
       <!-- Show template filters when in library view -->
       <div v-if="currentRoute === 'library'" class="template-filters">
         <h2 class="sidebar-section-title">Filters</h2>
@@ -83,11 +79,11 @@
         </div>
       </div>
     </div>
-    
+
     <!-- Bottom actions -->
     <div class="sidebar-footer">
       <div v-if="currentRoute === 'editor'" class="editor-actions">
-        <button 
+        <button
           class="action-button primary-button"
           @click="$emit('save-template')"
           :disabled="!isModified"
@@ -95,8 +91,8 @@
           <i class="fas fa-save"></i>
           <span>Save</span>
         </button>
-        
-        <button 
+
+        <button
           class="action-button secondary-button"
           @click="$emit('export-template')"
         >
@@ -104,18 +100,22 @@
           <span>Export</span>
         </button>
       </div>
-      
-      <button v-else-if="currentRoute === 'dashboard' || currentRoute === 'library'" class="action-button primary-button" @click="$emit('new-template')">
+
+      <button
+        v-else-if="currentRoute === 'dashboard' || currentRoute === 'library'"
+        class="action-button primary-button"
+        @click="$emit('new-template')"
+      >
         <i class="fas fa-plus"></i>
         <span>New Template</span>
       </button>
-      
+
       <!-- Theme toggle button -->
       <div class="footer-actions">
         <button class="theme-toggle" @click="toggleTheme">
           <i class="fas" :class="isDarkTheme ? 'fa-sun' : 'fa-moon'"></i>
         </button>
-        
+
         <button class="logout-button" @click="logout">
           <i class="fas fa-sign-out-alt"></i>
           <span>Logout</span>
@@ -126,27 +126,27 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, onMounted } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
-import SectionLibrary from '@/components/TemplateCreator/SectionLibrary.vue';
-import { useUIStore, usePreferencesStore } from '@/stores';
-import { useAuthStore } from '@/stores/auth';
+import { computed, ref, onMounted } from "vue";
+import { useRoute, useRouter } from "vue-router";
+import SectionLibrary from "@/components/TemplateCreator/SectionLibrary.vue";
+import { useUIStore, usePreferencesStore } from "@/stores";
+import { useAuthStore } from "@/stores/auth";
 
 // Props
 const props = defineProps({
   isModified: {
     type: Boolean,
-    default: false
-  }
+    default: false,
+  },
 });
 
 // Emits
 const emit = defineEmits([
-  'add-section',
-  'save-template',
-  'export-template',
-  'new-template',
-  'theme-change'
+  "add-section",
+  "save-template",
+  "export-template",
+  "new-template",
+  "theme-change",
 ]);
 
 // Get stores
@@ -158,36 +158,40 @@ const router = useRouter();
 // Get current route
 const route = useRoute();
 const currentRoute = computed(() => {
-  if (route.path === '/dashboard') return 'dashboard';
-  if (route.path.includes('/editor')) return 'editor';
-  if (route.path === '/library') return 'library';
-  if (route.path === '/template-library') return 'templateLibrary';
-  if (route.path === '/settings') return 'settings';
-  return '';
+  if (route.path === "/dashboard") return "dashboard";
+  if (route.path.includes("/editor")) return "editor";
+  if (route.path === "/library") return "library";
+  if (route.path === "/template-library") return "templateLibrary";
+  if (route.path === "/settings") return "settings";
+  return "";
 });
 
 // User profile methods
 const getInitials = (name: string) => {
-  if (!name) return '';
+  if (!name) return "";
   return name
-    .split(' ')
-    .map(part => part.charAt(0))
-    .join('')
+    .split(" ")
+    .map((part) => part.charAt(0))
+    .join("")
     .toUpperCase();
 };
 
 const getPlanLabel = (plan: string) => {
   switch (plan) {
-    case 'free': return 'Free Plan';
-    case 'premium': return 'Premium Plan';
-    case 'pro': return 'Pro Plan';
-    default: return 'Free Plan';
+    case "free":
+      return "Free Plan";
+    case "premium":
+      return "Premium Plan";
+    case "pro":
+      return "Pro Plan";
+    default:
+      return "Free Plan";
   }
 };
 
 const logout = () => {
   authStore.logout();
-  router.push({ name: 'login' });
+  router.push({ name: "login" });
 };
 
 // Theme toggle
@@ -195,24 +199,27 @@ const isDarkTheme = ref(true); // Default to dark theme
 
 onMounted(() => {
   // Initialize theme based on stored preference
-  const savedTheme = preferencesStore.editorTheme || 
-    (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
-  
-  isDarkTheme.value = savedTheme === 'dark';
+  const savedTheme =
+    preferencesStore.editorTheme ||
+    (window.matchMedia("(prefers-color-scheme: dark)").matches
+      ? "dark"
+      : "light");
+
+  isDarkTheme.value = savedTheme === "dark";
 });
 
 const toggleTheme = () => {
   isDarkTheme.value = !isDarkTheme.value;
-  const themeName = isDarkTheme.value ? 'dark' : 'light';
-  
+  const themeName = isDarkTheme.value ? "dark" : "light";
+
   // Update the document theme
-  document.documentElement.setAttribute('data-theme', themeName);
-  
+  document.documentElement.setAttribute("data-theme", themeName);
+
   // Store preference
   preferencesStore.setEditorTheme(themeName);
-  
+
   // Emit theme change
-  emit('theme-change', themeName);
+  emit("theme-change", themeName);
 };
 </script>
 
@@ -241,7 +248,11 @@ const toggleTheme = () => {
 .app-logo {
   width: 36px; /* Was 40px */
   height: 36px; /* Was 40px */
-  background: linear-gradient(135deg, var(--color-primary), var(--color-primary-dark));
+  background: linear-gradient(
+    135deg,
+    var(--color-primary),
+    var(--color-primary-dark)
+  );
   border-radius: var(--radius-sm);
   display: flex;
   align-items: center;
@@ -254,7 +265,11 @@ const toggleTheme = () => {
   font-size: 1.125rem; /* Was 1.25rem */
   font-weight: 600;
   margin: 0;
-  background: linear-gradient(135deg, var(--color-primary-light), var(--color-primary));
+  background: linear-gradient(
+    135deg,
+    var(--color-primary-light),
+    var(--color-primary)
+  );
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -374,7 +389,11 @@ const toggleTheme = () => {
 }
 
 .primary-button {
-  background: linear-gradient(135deg, var(--color-primary-light), var(--color-primary));
+  background: linear-gradient(
+    135deg,
+    var(--color-primary-light),
+    var(--color-primary)
+  );
   color: white;
   border: none;
   box-shadow: 0 2px 4px rgba(255, 171, 88, 0.2);
@@ -454,7 +473,11 @@ const toggleTheme = () => {
   width: 36px;
   height: 36px;
   border-radius: var(--radius-full);
-  background: linear-gradient(135deg, var(--color-primary-light), var(--color-primary));
+  background: linear-gradient(
+    135deg,
+    var(--color-primary-light),
+    var(--color-primary)
+  );
   display: flex;
   align-items: center;
   justify-content: center;

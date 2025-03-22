@@ -193,6 +193,18 @@
               </div>
             </div>
 
+            <!-- Export Button -->
+            <button
+              class="panel-action-button export-button"
+              @click="exportTemplate"
+              title="Export with current profile"
+            >
+              <i class="fas fa-file-export"></i>
+              <span class="export-profile-indicator">{{
+                getExportProfileShortName(getCurrentProfileId())
+              }}</span>
+            </button>
+
             <!-- Focus Mode Button -->
             <button
               class="panel-action-button"
@@ -367,6 +379,12 @@ const getCurrentProfileId = (): ExportProfile => {
   return preferencesStore.activeExportProfileId || "full";
 };
 
+// Get short name for export profile indicator
+const getExportProfileShortName = (profileId: string) => {
+  const profile = EXPORT_PROFILES.find((p) => p.id === profileId);
+  return profile ? profile.name || profile.name.substring(0, 3) : "";
+};
+
 // UI Interaction methods
 const toggleSidebar = () => {
   isSidebarCollapsed.value = !isSidebarCollapsed.value;
@@ -467,20 +485,22 @@ const updateSections = (sections: TemplateSection[]) => {
       if (isMounted.value) {
         // Create a proper reactive copy of the sections before updating the store
         // This ensures reactivity is maintained throughout the whole chain
-        const reactiveSections = sections.map(section => ({
+        const reactiveSections = sections.map((section) => ({
           ...section,
           // Ensure content array is properly copied for reactivity
-          content: Array.isArray(section.content) ? [...section.content] : [section.content as string],
+          content: Array.isArray(section.content)
+            ? [...section.content]
+            : [section.content as string],
           // Ensure metadata is properly copied if it exists
-          metadata: section.metadata ? {...section.metadata} : undefined
+          metadata: section.metadata ? { ...section.metadata } : undefined,
         }));
-        
+
         // Update the sections in the store
         templateStore.updateSections(reactiveSections);
 
         // Mark template as modified
         markAsModified();
-        
+
         console.log("Sections updated successfully with reactivity preserved");
       }
     });
@@ -878,8 +898,8 @@ onUnmounted(() => {
 
 .panel-header h2 {
   margin: 0;
-  font-size: 0.9rem;
-  font-weight: 500;
+  font-size: 1rem;
+  font-weight: 600;
 }
 
 .collapse-button {
@@ -919,7 +939,8 @@ onUnmounted(() => {
 /* Preview panel */
 .preview-controls {
   display: flex;
-  gap: var(--spacing-xs);
+  gap: 0.5rem;
+  align-items: center;
 }
 
 /* Panel action button (including focus toggle) */
@@ -934,12 +955,37 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
   border-radius: var(--radius-sm);
-  transition: all var(--transition-fast);
+  transition: all 0.15s ease;
 }
 
 .panel-action-button:hover {
   background: rgba(255, 255, 255, 0.1);
   color: var(--color-text);
+  transform: translateY(-1px);
+}
+
+/* Export button in preview panel */
+.preview-panel .panel-action-button.export-button {
+  width: auto;
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  background-color: rgba(255, 171, 88, 0.1);
+  border: 1px solid rgba(255, 171, 88, 0.2);
+  color: var(--color-primary);
+  padding: 0 0.5rem;
+}
+
+.preview-panel .panel-action-button.export-button:hover {
+  background-color: rgba(255, 171, 88, 0.15);
+  transform: translateY(-1px);
+}
+
+.export-profile-indicator {
+  font-size: 0.75rem;
+  font-weight: 600;
+  opacity: 0.9;
+  line-height: 1;
 }
 
 /* Dropdown styling */
@@ -958,11 +1004,12 @@ onUnmounted(() => {
   color: var(--color-text);
   font-size: 0.75rem;
   cursor: pointer;
-  transition: all var(--transition-fast);
+  transition: all 0.15s ease;
 }
 
 .dropdown-trigger:hover {
-  background: rgba(255, 255, 255, 0.12);
+  background-color: rgba(255, 255, 255, 0.08);
+  transform: translateY(-1px);
 }
 
 .dropdown-menu {
@@ -977,16 +1024,29 @@ onUnmounted(() => {
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
   z-index: 100;
   overflow: hidden;
-  animation: fadeIn 0.2s ease;
+  opacity: 0;
+  transform: translateY(2px) scale(0.98);
+  animation: dropdownOpen 0.15s ease forwards;
+  transform-origin: top center;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+@keyframes dropdownOpen {
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 .dropdown-item {
-  padding: var(--spacing-xs) var(--spacing-md);
+  padding: 0.5rem 0.75rem;
   display: flex;
   align-items: center;
   gap: var(--spacing-sm);
   cursor: pointer;
-  transition: all var(--transition-fast);
+  transition: background-color 0.15s ease, color 0.15s ease;
+  position: relative;
+  font-size: 0.875rem;
 }
 
 .dropdown-item i {
@@ -998,9 +1058,20 @@ onUnmounted(() => {
   background: rgba(255, 255, 255, 0.1);
 }
 
+.dropdown-item:hover::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  width: 3px;
+  background-color: var(--color-primary);
+}
+
 .dropdown-item.active {
   background: rgba(255, 171, 88, 0.15);
   color: var(--color-primary);
+  font-weight: 500;
 }
 
 .toggle-indicator {

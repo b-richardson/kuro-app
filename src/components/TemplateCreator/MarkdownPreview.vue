@@ -557,15 +557,15 @@ const highlightSyntax = (text: string): string => {
 
 /* Dark/Light mode styling for content */
 .light-content {
-  background-color: white;
-  color: #334155;
+  background-color: rgba(255, 255, 255, 0.98);
+  color: rgba(51, 65, 85, 0.95);
   border: 1px solid rgba(230, 235, 245, 0.8);
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.03);
 }
 
 .dark-content {
-  background-color: #1a1b26;
-  color: #c0caf5;
+  background-color: rgba(26, 27, 38, 0.98);
+  color: rgba(192, 202, 245, 0.95);
   border: 1px solid rgba(30, 30, 46, 0.3);
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
 }
@@ -597,59 +597,59 @@ const highlightSyntax = (text: string): string => {
 
 /* Rendered markdown styling */
 .markdown-preview__rendered {
-  font-size: 0.9375rem;
+  font-size: 0.875rem;
   line-height: 1.6;
 }
 
 /* Light mode styling for rendered markdown */
 .light-content .markdown-preview__rendered :deep(h1) {
-  font-size: 1.875rem;
+  font-size: 1.75rem;
   margin-top: 0;
   margin-bottom: 1.25rem;
-  color: #1e293b;
+  color: rgba(30, 41, 59, 0.95);
   border-bottom: 2px solid #f1f5f9;
   padding-bottom: 0.5rem;
 }
 
 .light-content .markdown-preview__rendered :deep(h2) {
-  font-size: 1.5rem;
-  margin-top: 1.75rem;
-  margin-bottom: 0.875rem;
-  color: #1e293b;
+  font-size: 1.4rem;
+  margin-top: 1.5rem;
+  margin-bottom: 0.75rem;
+  color: rgba(30, 41, 59, 0.95);
 }
 
 .light-content .markdown-preview__rendered :deep(h3) {
-  font-size: 1.25rem;
-  margin-top: 1.5rem;
-  margin-bottom: 0.75rem;
-  color: #1e293b;
+  font-size: 1.2rem;
+  margin-top: 1.25rem;
+  margin-bottom: 0.625rem;
+  color: rgba(30, 41, 59, 0.95);
 }
 
 .light-content .markdown-preview__rendered :deep(h4) {
-  font-size: 1.125rem;
-  margin-top: 1.25rem;
-  margin-bottom: 0.625rem;
-  color: #1e293b;
+  font-size: 1.05rem;
+  margin-top: 1rem;
+  margin-bottom: 0.5rem;
+  color: rgba(30, 41, 59, 0.95);
 }
 
 .light-content .markdown-preview__rendered :deep(h5) {
-  font-size: 1rem;
-  margin-top: 1rem;
-  margin-bottom: 0.5rem;
-  color: #1e293b;
+  font-size: 0.95rem;
+  margin-top: 0.875rem;
+  margin-bottom: 0.4375rem;
+  color: rgba(30, 41, 59, 0.95);
 }
 
 .light-content .markdown-preview__rendered :deep(h6) {
-  font-size: 0.875rem;
-  margin-top: 0.875rem;
-  margin-bottom: 0.5rem;
-  color: #1e293b;
+  font-size: 0.85rem;
+  margin-top: 0.75rem;
+  margin-bottom: 0.375rem;
+  color: rgba(30, 41, 59, 0.95);
 }
 
 .light-content .markdown-preview__rendered :deep(p) {
   margin-top: 0;
   margin-bottom: 1.25rem;
-  color: #334155;
+  color: rgba(51, 65, 85, 0.95);
 }
 
 .light-content .markdown-preview__rendered :deep(ul),
@@ -675,19 +675,19 @@ const highlightSyntax = (text: string): string => {
 
 .light-content .markdown-preview__rendered :deep(th),
 .light-content .markdown-preview__rendered :deep(td) {
-  border: 1px solid #e2e8f0;
-  padding: 0.75rem;
+  border: 1px solid rgba(226, 232, 240, 0.8);
+  padding: 0.625rem;
   text-align: left;
 }
 
 .light-content .markdown-preview__rendered :deep(th) {
-  background-color: #f8fafc;
+  background-color: rgba(248, 250, 252, 0.8);
   font-weight: 600;
-  color: #334155;
+  color: rgba(51, 65, 85, 0.95);
 }
 
 .light-content .markdown-preview__rendered :deep(tr:nth-child(even)) {
-  background-color: #f8fafc;
+  background-color: rgba(248, 250, 252, 0.5);
 }
 
 .light-content .markdown-preview__rendered :deep(code) {
@@ -729,53 +729,53 @@ const highlightSyntax = (text: string): string => {
 
 /* Dark mode styling for rendered markdown */
 .dark-content .markdown-preview__rendered :deep(h1) {
-  font-size: 1.875rem;
+  font-size: 1.75rem;
   margin-top: 0;
   margin-bottom: 1.25rem;
-  color: #c0caf5;
+  color: rgba(192, 202, 245, 0.95);
   border-bottom: 2px solid #24283b;
   padding-bottom: 0.5rem;
 }
 
 .dark-content .markdown-preview__rendered :deep(h2) {
-  font-size: 1.5rem;
-  margin-top: 1.75rem;
-  margin-bottom: 0.875rem;
-  color: #c0caf5;
+  font-size: 1.4rem;
+  margin-top: 1.5rem;
+  margin-bottom: 0.75rem;
+  color: rgba(192, 202, 245, 0.95);
 }
 
 .dark-content .markdown-preview__rendered :deep(h3) {
-  font-size: 1.25rem;
-  margin-top: 1.5rem;
-  margin-bottom: 0.75rem;
-  color: #c0caf5;
+  font-size: 1.2rem;
+  margin-top: 1.25rem;
+  margin-bottom: 0.625rem;
+  color: rgba(192, 202, 245, 0.95);
 }
 
 .dark-content .markdown-preview__rendered :deep(h4) {
-  font-size: 1.125rem;
-  margin-top: 1.25rem;
-  margin-bottom: 0.625rem;
-  color: #c0caf5;
+  font-size: 1.05rem;
+  margin-top: 1rem;
+  margin-bottom: 0.5rem;
+  color: rgba(192, 202, 245, 0.95);
 }
 
 .dark-content .markdown-preview__rendered :deep(h5) {
-  font-size: 1rem;
-  margin-top: 1rem;
-  margin-bottom: 0.5rem;
-  color: #c0caf5;
+  font-size: 0.95rem;
+  margin-top: 0.875rem;
+  margin-bottom: 0.4375rem;
+  color: rgba(192, 202, 245, 0.95);
 }
 
 .dark-content .markdown-preview__rendered :deep(h6) {
-  font-size: 0.875rem;
-  margin-top: 0.875rem;
-  margin-bottom: 0.5rem;
-  color: #c0caf5;
+  font-size: 0.85rem;
+  margin-top: 0.75rem;
+  margin-bottom: 0.375rem;
+  color: rgba(192, 202, 245, 0.95);
 }
 
 .dark-content .markdown-preview__rendered :deep(p) {
   margin-top: 0;
   margin-bottom: 1.25rem;
-  color: #a9b1d6;
+  color: rgba(169, 177, 214, 0.95);
 }
 
 .dark-content .markdown-preview__rendered :deep(ul),
@@ -801,19 +801,19 @@ const highlightSyntax = (text: string): string => {
 
 .dark-content .markdown-preview__rendered :deep(th),
 .dark-content .markdown-preview__rendered :deep(td) {
-  border: 1px solid #32344a;
-  padding: 0.75rem;
+  border: 1px solid rgba(50, 52, 74, 0.8);
+  padding: 0.625rem;
   text-align: left;
 }
 
 .dark-content .markdown-preview__rendered :deep(th) {
-  background-color: #24283b;
+  background-color: rgba(36, 40, 59, 0.8);
   font-weight: 600;
-  color: #c0caf5;
+  color: rgba(192, 202, 245, 0.95);
 }
 
 .dark-content .markdown-preview__rendered :deep(tr:nth-child(even)) {
-  background-color: #24283b;
+  background-color: rgba(36, 40, 59, 0.5);
 }
 
 .dark-content .markdown-preview__rendered :deep(code) {
@@ -855,9 +855,12 @@ const highlightSyntax = (text: string): string => {
 
 /* Checkbox styling */
 .markdown-preview__rendered :deep(input[type="checkbox"]) {
-  margin-right: 0.5rem;
-  width: 16px;
-  height: 16px;
+  width: 14px;
+  height: 14px;
+  margin-right: 0.375rem;
+  vertical-align: middle;
+  position: relative;
+  top: -1px;
 }
 
 .light-content .markdown-preview__rendered :deep(input[type="checkbox"]) {
@@ -866,6 +869,24 @@ const highlightSyntax = (text: string): string => {
 
 .dark-content .markdown-preview__rendered :deep(input[type="checkbox"]) {
   accent-color: #7aa2f7;
+}
+
+.light-content .markdown-preview__rendered :deep(li) {
+  margin-bottom: 0.375rem;
+}
+
+.dark-content .markdown-preview__rendered :deep(li) {
+  margin-bottom: 0.375rem;
+}
+
+.light-content .markdown-preview__rendered :deep(input[type="checkbox"]:checked) + span {
+  text-decoration: line-through;
+  opacity: 0.7;
+}
+
+.dark-content .markdown-preview__rendered :deep(input[type="checkbox"]:checked) + span {
+  text-decoration: line-through;
+  opacity: 0.7;
 }
 
 /* Templater field placeholders */
