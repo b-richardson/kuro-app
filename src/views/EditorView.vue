@@ -78,7 +78,24 @@
         <div class="panel-header">
           <h2>Preview</h2>
 
-          <div class="preview-controls">
+          <!-- Only keep focus mode button in the header -->
+          <div class="panel-header-actions">
+            <button
+              class="panel-action-button"
+              @click="togglePreviewFocus"
+              title="Toggle focus mode"
+            >
+              <i
+                class="fas"
+                :class="isPreviewFocused ? 'fa-compress' : 'fa-expand'"
+              ></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- New Preview Controls Component -->
+        <div class="preview-controls-bar">
+          <div class="preview-controls-group">
             <!-- View Mode Dropdown -->
             <div class="dropdown">
               <button
@@ -86,7 +103,8 @@
                 @click.stop="toggleViewModeMenu"
                 title="Change view mode"
               >
-                <span>{{ currentViewMode }}</span>
+                <i class="fas fa-eye"></i>
+                <span>Mode: {{ currentViewMode }}</span>
                 <i class="fas fa-chevron-down"></i>
               </button>
               <div class="dropdown-menu" v-if="showViewModeMenu">
@@ -124,6 +142,8 @@
                 @click.stop="toggleProfileMenu"
                 title="Change export profile"
               >
+                <i class="fas fa-puzzle-piece"></i>
+                <span>Plugins: </span>
                 <span
                   class="profile-badge"
                   :class="`profile-${getCurrentProfileId()}`"
@@ -145,7 +165,9 @@
                 </div>
               </div>
             </div>
+          </div>
 
+          <div class="preview-controls-group">
             <!-- Plugin Syntax Dropdown -->
             <div class="dropdown">
               <button
@@ -153,7 +175,8 @@
                 @click.stop="togglePluginMenu"
                 title="Toggle plugin syntax"
               >
-                <span>Plugins</span>
+                <i class="fas fa-sliders-h"></i>
+                <span>Plugin Options</span>
                 <i class="fas fa-chevron-down"></i>
               </button>
               <div class="dropdown-menu" v-if="showPluginMenu">
@@ -195,7 +218,7 @@
 
             <!-- Export Button -->
             <button
-              class="panel-action-button export-button"
+              class="preview-action-button export-button"
               @click="exportTemplate"
               title="Export with current profile"
             >
@@ -203,18 +226,6 @@
               <span class="export-profile-indicator">{{
                 getExportProfileShortName(getCurrentProfileId())
               }}</span>
-            </button>
-
-            <!-- Focus Mode Button -->
-            <button
-              class="panel-action-button"
-              @click="togglePreviewFocus"
-              title="Toggle focus mode"
-            >
-              <i
-                class="fas"
-                :class="isPreviewFocused ? 'fa-compress' : 'fa-expand'"
-              ></i>
             </button>
           </div>
         </div>
@@ -937,10 +948,29 @@ onUnmounted(() => {
 }
 
 /* Preview panel */
-.preview-controls {
+/* Panel header actions (just the focus toggle) */
+.panel-header-actions {
   display: flex;
   gap: 0.5rem;
   align-items: center;
+}
+
+/* Preview controls bar - the new component below header */
+.preview-controls-bar {
+  display: flex;
+  justify-content: space-between;
+  padding: var(--spacing-sm) var(--spacing-md);
+  background-color: rgba(26, 27, 38, 0.5);
+  border-bottom: 1px solid var(--glass-border);
+  gap: var(--spacing-md);
+  flex-wrap: wrap;
+}
+
+.preview-controls-group {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  flex-wrap: wrap;
 }
 
 /* Panel action button (including focus toggle) */
@@ -964,8 +994,28 @@ onUnmounted(() => {
   transform: translateY(-1px);
 }
 
-/* Export button in preview panel */
-.preview-panel .panel-action-button.export-button {
+/* Action buttons in preview-controls-bar */
+.preview-action-button {
+  background: transparent;
+  border: none;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  transition: all 0.15s ease;
+}
+
+.preview-action-button:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--color-text);
+  transform: translateY(-1px);
+}
+
+/* Export button in preview controls */
+.preview-action-button.export-button {
   width: auto;
   display: flex;
   align-items: center;
@@ -976,7 +1026,7 @@ onUnmounted(() => {
   padding: 0 0.5rem;
 }
 
-.preview-panel .panel-action-button.export-button:hover {
+.preview-action-button.export-button:hover {
   background-color: rgba(255, 171, 88, 0.15);
   transform: translateY(-1px);
 }
@@ -1005,6 +1055,17 @@ onUnmounted(() => {
   font-size: 0.75rem;
   cursor: pointer;
   transition: all 0.15s ease;
+}
+
+/* Larger buttons in preview-controls-bar */
+.preview-controls-bar .dropdown-trigger {
+  padding: 4px 10px;
+  font-size: 0.8rem;
+  height: 28px;
+}
+
+.preview-controls-bar .dropdown-trigger i:first-child {
+  margin-right: 4px;
 }
 
 .dropdown-trigger:hover {
@@ -1237,6 +1298,17 @@ onUnmounted(() => {
     width: 100%;
     max-width: none;
   }
+  
+  /* Adjust preview controls for medium screens */
+  .preview-controls-bar {
+    flex-direction: column;
+    gap: var(--spacing-sm);
+  }
+  
+  .preview-controls-group {
+    width: 100%;
+    justify-content: space-between;
+  }
 }
 
 @media (max-width: 768px) {
@@ -1279,6 +1351,23 @@ onUnmounted(() => {
   .focus-mode .preview-panel {
     display: flex;
     grid-column: 1;
+  }
+  
+  /* Compact preview controls on small screens */
+  .preview-controls-bar {
+    padding: var(--spacing-xs);
+  }
+  
+  .preview-controls-bar .dropdown-trigger {
+    padding: 2px 6px;
+  }
+  
+  .preview-controls-bar .dropdown-trigger span:not(.profile-badge) {
+    display: none;
+  }
+  
+  .preview-action-button.export-button span {
+    display: none;
   }
 }
 </style>
