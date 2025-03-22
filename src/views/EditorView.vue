@@ -462,24 +462,26 @@ const updateSections = (sections: TemplateSection[]) => {
       return;
     }
 
-    // Log for debugging (consider removing in production)
-    console.log(
-      "Updating sections in EditorView:",
-      sections.length,
-      "sections"
-    );
-
     // Use nextTick to avoid Vue patching conflicts
     nextTick(() => {
       if (isMounted.value) {
-        // Create deep copy to avoid reference issues
-        const sectionsCopy = JSON.parse(JSON.stringify(sections));
-
-        // Update sections in the store
-        templateStore.updateSections(sectionsCopy);
+        // Create a proper reactive copy of the sections before updating the store
+        // This ensures reactivity is maintained throughout the whole chain
+        const reactiveSections = sections.map(section => ({
+          ...section,
+          // Ensure content array is properly copied for reactivity
+          content: Array.isArray(section.content) ? [...section.content] : [section.content as string],
+          // Ensure metadata is properly copied if it exists
+          metadata: section.metadata ? {...section.metadata} : undefined
+        }));
+        
+        // Update the sections in the store
+        templateStore.updateSections(reactiveSections);
 
         // Mark template as modified
         markAsModified();
+        
+        console.log("Sections updated successfully with reactivity preserved");
       }
     });
   } catch (error) {

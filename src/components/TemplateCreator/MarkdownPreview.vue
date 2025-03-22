@@ -36,7 +36,6 @@
 <script setup lang="ts">
 import { computed, ref, watch, inject } from "vue";
 import MarkdownIt from "markdown-it";
-import { debounce } from "lodash-es";
 import { TemplateSection } from "@/types/TemplateSection";
 import { ExportProfile, ViewMode } from "@/types/Editor";
 import { generateMarkdown } from "@/utils/markdownUtils";
@@ -91,26 +90,25 @@ const exportProfile = computed(() => {
 });
 
 // Generate markdown text from sections with current export profile
-const generateMarkdownDebounced = debounce(() => {
+const generateMarkdownContent = () => {
   try {
     isGenerating.value = true;
     emit("generation-start");
-
-    // Small timeout to ensure loading state is visible
-    setTimeout(() => {
-      markdownText.value = generateMarkdown(
-        props.sections,
-        exportProfile.value
-      );
-      isGenerating.value = false;
-      emit("generation-complete");
-    }, 100);
+    
+    // Generate markdown immediately without artificial timeout
+    markdownText.value = generateMarkdown(
+      props.sections,
+      exportProfile.value
+    );
+    
+    isGenerating.value = false;
+    emit("generation-complete");
   } catch (error) {
     console.error("Error generating markdown:", error);
     isGenerating.value = false;
     emit("generation-complete");
   }
-}, 300);
+};
 
 // Store the markdown text to avoid recalculating it too often
 const markdownText = ref("");
@@ -119,13 +117,13 @@ const markdownText = ref("");
 watch(
   () => [props.sections, exportProfile.value],
   () => {
-    generateMarkdownDebounced();
+    generateMarkdownContent();
   },
   { deep: true }
 );
 
 // Initialize on mount
-generateMarkdownDebounced();
+generateMarkdownContent();
 
 // Process Templater, Dataview, and Kanban syntax based on toggle states
 const processedMarkdownText = computed(() => {

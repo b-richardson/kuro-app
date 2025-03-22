@@ -211,7 +211,16 @@ const hideToast = () => {
 /**
  * Adapter function to safely handle type mismatches between
  * store definition and component expectations
+ * 
+ * This improved version preserves content during adaptation and only
+ * emits updates when necessary, avoiding content resets during editing.
  */
+// Define a flag to track initial adaptation
+const hasPerformedInitialAdaptation = ref(false);
+
+// Define a flag to track active section editing
+const isUserEditingSection = ref(false);
+
 const adaptSectionTypes = () => {
   // Guard against invalid parameters or unmounted component
   if (
@@ -220,6 +229,19 @@ const adaptSectionTypes = () => {
     props.sections.length === 0
   ) {
     return;
+  }
+
+  // Check if user is actively editing
+  // We'll consider inputs, textareas and select elements
+  const activeElement = document.activeElement;
+  const isEditingInput = activeElement && 
+    (activeElement.tagName === 'INPUT' || 
+     activeElement.tagName === 'TEXTAREA' || 
+     activeElement.tagName === 'SELECT');
+  
+  // Only skip adaptation if this is not the initial run AND user is editing
+  if (hasPerformedInitialAdaptation.value && isEditingInput && isUserEditingSection.value) {
+    return; // Skip adaptation during active editing
   }
 
   try {
@@ -234,61 +256,67 @@ const adaptSectionTypes = () => {
     };
 
     // Check if any section needs adaptation
-    let needsAdaptation = false;
+    // Only identify sections that TRULY need adaptation
+    const sectionsNeedingAdaptation = props.sections.reduce((acc, section, index) => {
+      if (!section) return acc; // Skip undefined/null sections
 
-    props.sections.forEach((section) => {
-      if (!section) return; // Skip undefined/null sections
+      let needsAdaptation = false;
+      const adaptations = {};
 
-      // Type-safe check
+      // Type-safe check - only adapt if needed
       const sectionType = section.type as string;
       if (typeMap[sectionType] && sectionType !== typeMap[sectionType]) {
+        adaptations['type'] = typeMap[sectionType];
         needsAdaptation = true;
       }
 
-      // Also ensure content is an array (store might use string)
+      // Check content format - only convert string to array if needed
       if (typeof section.content === "string") {
+        adaptations['content'] = [section.content]; // Preserve the content value
         needsAdaptation = true;
       }
 
-      // Check if pluginType is missing
+      // Check if pluginType is missing - only set if undefined
       if (section.pluginType === undefined) {
+        adaptations['pluginType'] = null;
         needsAdaptation = true;
       }
-    });
 
-    if (needsAdaptation) {
-      // Create adapted sections with proper types
-      const adaptedSections = props.sections.map((section) => {
-        if (!section) return section; // Skip undefined/null sections
+      // Only include sections that need adaptation
+      if (needsAdaptation) {
+        acc.push({ index, section, adaptations });
+      }
 
-        // Create a new object to avoid mutating props directly
-        const adapted = { ...section };
+      return acc;
+    }, [] as Array<{ index: number, section: any, adaptations: Record<string, any> }>);
 
-        // Type-safe adaptation
-        const sectionType = section.type as string;
-        if (typeMap[sectionType]) {
-          adapted.type = typeMap[sectionType] as any;
-        }
+    // Only perform adaptation if sections actually need it
+    if (sectionsNeedingAdaptation.length > 0) {
+      // Create copy of sections array to work with
+      const adaptedSections = [...props.sections];
 
-        // Ensure content is an array
-        if (typeof section.content === "string") {
-          adapted.content = [section.content];
-        }
-
-        // Ensure pluginType exists
-        if (adapted.pluginType === undefined) {
-          adapted.pluginType = null;
-        }
-
-        return adapted;
+      // Apply targeted adaptations to only the sections that need them
+      sectionsNeedingAdaptation.forEach(({ index, section, adaptations }) => {
+        // Create adapted section with minimal changes
+        adaptedSections[index] = {
+          ...section, // Keep all original properties
+          ...adaptations // Apply only the needed adaptations
+        };
       });
 
-      // Replace the sections in the computed property - use nextTick for safety
+      // Use nextTick to ensure the component is ready
       nextTick(() => {
+        // Only emit update if component is mounted
         if (isComponentMounted.value) {
           emit("update", adaptedSections);
+          
+          // Mark that we've performed the initial adaptation
+          hasPerformedInitialAdaptation.value = true;
         }
       });
+    } else {
+      // Even if no adaptations were needed, mark as performed
+      hasPerformedInitialAdaptation.value = true;
     }
   } catch (error) {
     console.error("Error adapting section types:", error);
@@ -365,18 +393,84 @@ const moveSection = (index: number, direction: "up" | "down") => {
   }
 };
 
-// Add a watcher for sections prop to apply adapters
-watch(
-  () => props.sections,
-  (newSections) => {
-    if (isComponentMounted.value) {
-      adaptSectionTypes();
-    }
-  },
-  { immediate: false, deep: true }
-);
+// IMPROVED: Only adapt section types once on mount, removing problematic watcher entirely
+// This prevents destructive cycle of content resets during editing
+// Section types should be adapted at initialization and when explicitly needed
+// NOT automatically on every content change
+
+// Event listener for focus events on input elements
+const handleInputFocus = () => {
+  isUserEditingSection.value = true;
+};
+
+// Event listener for blur events on input elements
+const handleInputBlur = () => {
+  isUserEditingSection.value = false;
+};
 
 // Set up event listeners
+// Define new function that only runs once rather than on every content change
+const adaptSectionTypesOnce = () => {
+  if (!props.sections || props.sections.length === 0) return;
+  
+  // Create a mapping between store types and component expected types
+  const typeMap: Record<string, string> = {
+    'heading': 'header',
+    'list': 'checklist',
+    'text': 'text',
+    'table': 'table',
+    'code': 'text',
+    'frontmatter': 'yaml'
+  };
+  
+  // Check if any section needs adaptation
+  let needsAdaptation = false;
+  
+  props.sections.forEach(section => {
+    // Type-safe check
+    const sectionType = section.type as string;
+    if (typeMap[sectionType] && sectionType !== typeMap[sectionType]) {
+      needsAdaptation = true;
+    }
+    
+    // Also ensure content is an array (store might use string)
+    if (typeof section.content === 'string') {
+      needsAdaptation = true;
+    }
+  });
+  
+  if (needsAdaptation) {
+    console.log('Adapting sections types once on mount...');
+    
+    // Create adapted sections with proper types
+    const adaptedSections = props.sections.map(section => {
+      // Create a new object to avoid mutating props directly
+      const adapted = { ...section };
+      
+      // Type-safe adaptation
+      const sectionType = section.type as string;
+      if (typeMap[sectionType]) {
+        // @ts-ignore - We need to convert types safely
+        adapted.type = typeMap[sectionType];
+      }
+      
+      // Ensure content is an array
+      if (typeof section.content === 'string') {
+        adapted.content = [section.content];
+      }
+      
+      // Ensure pluginType exists
+      if (adapted.pluginType === undefined) {
+        adapted.pluginType = null;
+      }
+      
+      return adapted;
+    });
+    
+    emit('update', adaptedSections);
+  }
+};
+
 onMounted(() => {
   try {
     // Mark component as mounted
@@ -385,8 +479,16 @@ onMounted(() => {
     // Add global keyboard event listener
     document.addEventListener("keydown", handleGlobalKeydown);
 
-    // Apply section type adapter on mount
-    adaptSectionTypes();
+    // Add event listeners for editing state tracking
+    document.addEventListener("focusin", handleInputFocus);
+    document.addEventListener("focusout", handleInputBlur);
+
+    // Apply section type adapter ONLY ONCE on mount instead of watching for changes
+    // This fixes the reactivity issues with sections resetting during editing
+    adaptSectionTypesOnce();
+    
+    // Log successful initialization
+    console.log("DragDropEditor successfully mounted with initial section adaptation");
   } catch (e) {
     console.error("Error in DragDropEditor mount:", e);
   }
@@ -400,6 +502,8 @@ onUnmounted(() => {
 
     // Remove event listeners
     document.removeEventListener("keydown", handleGlobalKeydown);
+    document.removeEventListener("focusin", handleInputFocus);
+    document.removeEventListener("focusout", handleInputBlur);
 
     // Clear any pending timeouts
     if (toast.value.timeout) {
@@ -413,6 +517,8 @@ onUnmounted(() => {
 
 /**
  * Updates content of a specific section
+ * IMPROVED: Optimized to minimize unnecessary object recreation
+ * and preserve reactivity during editing
  */
 const updateSectionContent = (sectionId: string, newContent: string[]) => {
   // Guard against invalid parameters or unmounted component
@@ -420,24 +526,39 @@ const updateSectionContent = (sectionId: string, newContent: string[]) => {
     return;
   }
 
+  // Set a flag that we're actively editing this section
+  // This prevents adaptSectionTypes from running during editing
+  isUserEditingSection.value = true;
+
   try {
     const sectionIndex = props.sections.findIndex(
       (section) => section.id === sectionId
     );
     if (sectionIndex !== -1) {
-      // Create a new array to trigger reactivity
-      const updatedSections = props.sections.map((section) => ({ ...section }));
+      // Create a targeted update that preserves reactivity but minimizes cloning
+      const updatedSections = [...props.sections];
 
-      // Update the specific section with the new content
-      updatedSections[sectionIndex] = {
-        ...updatedSections[sectionIndex],
-        content: [...newContent], // Create a new array for content
+      // Get the current section
+      const currentSection = updatedSections[sectionIndex];
+      
+      // Create a new section object with minimal changes
+      const updatedSection = {
+        ...currentSection,
+        // Only copy the content that actually changed
+        content: [...newContent],
+        // Keep existing metadata if any
+        metadata: currentSection.metadata ? {...currentSection.metadata} : undefined
       };
+      
+      // Update only the specific section in the array
+      updatedSections[sectionIndex] = updatedSection;
 
       // Emit the update events
       nextTick(() => {
-        emit("update", updatedSections);
-        emit("section-change");
+        if (isComponentMounted.value) {
+          emit("update", updatedSections);
+          emit("section-change");
+        }
       });
     }
   } catch (error) {

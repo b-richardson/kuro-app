@@ -76,7 +76,7 @@
               class="template-section-select"
               :value="getHeaderLevel(line)"
               @input="
-                debouncedUpdateHeaderLevel(
+                updateHeaderLevel(
                   index,
                   ($event.target as HTMLSelectElement).value
                 )
@@ -101,7 +101,7 @@
               class="template-section-input"
               :value="getHeaderText(line)"
               @input="
-                debouncedUpdateHeaderLevel(
+                updateHeaderText(
                   index,
                   ($event.target as HTMLInputElement).value
                 )
@@ -144,7 +144,7 @@
               class="template-section-input"
               :value="getChecklistText(line)"
               @input="
-                debouncedUpdateHeaderLevel(
+                updateChecklistText(
                   index,
                   ($event.target as HTMLInputElement).value
                 )
@@ -188,7 +188,7 @@
                 class="template-section-table-input"
                 :value="cell"
                 @input="
-                  debouncedUpdateTableCell(
+                  updateTableCell(
                     rowIndex,
                     colIndex,
                     ($event.target as HTMLInputElement).value
@@ -249,7 +249,7 @@
               class="template-section-textarea"
               :value="line"
               @input="
-                debouncedUpdateHeaderLevel(
+                updateContentLine(
                   index,
                   ($event.target as HTMLTextAreaElement).value
                 )
@@ -516,17 +516,6 @@ const toastIcon = computed(() => {
   }
 });
 
-// Debouncing function for input events
-let debounceTimer: ReturnType<typeof setTimeout> | null = null;
-const debounce = (fn: Function, delay = 300) => {
-  return (...args: any[]) => {
-    if (debounceTimer) clearTimeout(debounceTimer);
-    debounceTimer = setTimeout(() => {
-      fn(...args);
-    }, delay);
-  };
-};
-
 // Confirm section deletion
 const confirmDeleteSection = () => {
   if (confirm("Are you sure you want to delete this section?")) {
@@ -632,9 +621,6 @@ const updateContentLine = (index: number, newValue: string) => {
   emit("update:content", newContent);
 };
 
-// Create debounced versions of update methods
-const debouncedUpdateContentLine = debounce(updateContentLine, 300);
-
 // Header-specific methods
 const getHeaderLevel = (line: string): string => {
   const match = line.match(/^(#+)\s/);
@@ -657,10 +643,6 @@ const updateHeaderText = (index: number, text: string) => {
   updateContentLine(index, newHeader);
 };
 
-// Create debounced versions of header methods
-const debouncedUpdateHeaderLevel = debounce(updateHeaderLevel, 300);
-const debouncedUpdateHeaderText = debounce(updateHeaderText, 300);
-
 // Checklist-specific methods
 const isCheckboxChecked = (line: string): boolean => {
   return line.includes("- [x]");
@@ -682,9 +664,6 @@ const updateChecklistText = (index: number, text: string) => {
   const prefix = isChecked ? "- [x] " : "- [ ] ";
   updateContentLine(index, prefix + text);
 };
-
-// Create debounced version of checklist text update
-const debouncedUpdateChecklistText = debounce(updateChecklistText, 300);
 
 // Table-specific methods
 const tableData = computed(() => {
@@ -742,9 +721,6 @@ const updateTableCell = (rowIndex: number, colIndex: number, value: string) => {
 
   updateTableData();
 };
-
-// Create debounced version of table cell update
-const debouncedUpdateTableCell = debounce(updateTableCell, 300);
 
 const addTableRow = () => {
   const columnCount = tableData.value[0]?.length || 3;

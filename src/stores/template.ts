@@ -150,8 +150,20 @@ export const useTemplateStore = defineStore('template', () => {
     
     const template = templateById.value(id);
     if (template) {
-      // Deep copy the template to prevent unintended mutations
-      currentTemplate.value = JSON.parse(JSON.stringify(template));
+      // Create a reactive copy that maintains reactivity
+      // Properly copy nested objects to avoid breaking reactivity
+      currentTemplate.value = { 
+        ...template,
+        // Create fresh copies of arrays and objects to maintain reactivity
+        sections: template.sections.map(section => ({
+          ...section,
+          // Create a fresh copy of the content array
+          content: [...section.content],
+          // Create a fresh copy of metadata if it exists
+          metadata: section.metadata ? {...section.metadata} : undefined
+        })),
+        tags: [...template.tags]
+      };
       currentTemplateId.value = id;
       return true;
     }
@@ -228,15 +240,36 @@ export const useTemplateStore = defineStore('template', () => {
       // Update timestamp
       template.lastModified = Date.now();
       
-      // Normalize sections to ensure type consistency
-      template.sections = template.sections.map(normalizeSection);
+      // Normalize sections to ensure type consistency but do it in a reactive way
+      const normalizedSections = template.sections.map(section => normalizeSection(section));
       
-      // Update the template in the store
-      templates.value[index] = template;
+      // Update the template in the templates array
+      templates.value[index] = {
+        ...template,
+        sections: normalizedSections,
+      };
       
       // Update current template if it's the same one
       if (currentTemplate.value?.id === template.id) {
-        currentTemplate.value = JSON.parse(JSON.stringify(template));
+        // Update properties individually to maintain proper reactivity
+        // Instead of using Object.assign which can break reactivity with nested objects
+        Object.keys(template).forEach(key => {
+          if (key === 'sections') {
+            // Create a deep reactive copy of sections
+            currentTemplate.value.sections = normalizedSections.map(section => ({
+              ...section,
+              content: [...section.content],
+              metadata: section.metadata ? {...section.metadata} : undefined
+            }));
+          } else if (key === 'tags') {
+            // Create a fresh copy of the tags array
+            currentTemplate.value.tags = [...template.tags];
+          } else {
+            // For primitive values, direct assignment is fine
+            // @ts-ignore - Dynamic property assignment
+            currentTemplate.value[key] = template[key];
+          }
+        });
       }
       
       saveTemplates();
@@ -296,18 +329,24 @@ export const useTemplateStore = defineStore('template', () => {
     const template = templateById.value(id);
     
     if (template) {
+      // Create a reactive copy without using JSON.parse/stringify
       const newTemplate: Template = {
-        ...JSON.parse(JSON.stringify(template)),
+        // Use shallow spread for the main template properties
+        ...template,
         id: uuidv4(),
         name: `${template.name} (Copy)`,
         lastModified: Date.now(),
         createdAt: Date.now()
       };
       
-      // Ensure all sections have fresh IDs
-      newTemplate.sections = newTemplate.sections.map(section => ({
-        ...section,
-        id: uuidv4()
+      // Create a deep copy of sections while maintaining reactivity
+      newTemplate.sections = template.sections.map(section => ({
+        ...section,  // Copy all properties of the section
+        id: uuidv4(), // Assign new ID
+        // Create a fresh copy of the content array to maintain reactivity
+        content: section.content ? [...section.content] : [],
+        // Create a fresh copy of metadata if it exists
+        metadata: section.metadata ? {...section.metadata} : undefined
       }));
       
       templates.value.push(newTemplate);
@@ -407,10 +446,36 @@ export const useTemplateStore = defineStore('template', () => {
    */
   const updateSections = (newSections: Partial<TemplateSection>[]) => {
     if (currentTemplate.value) {
-      // Normalize all sections to ensure type consistency
-      currentTemplate.value.sections = newSections.map(normalizeSection);
+      // Create normalized sections with proper reactivity
+      const normalizedSections = newSections.map(section => {
+        const normalized = normalizeSection(section);
+        // Ensure content array is properly copied for reactivity
+        return {
+          ...normalized,
+          content: [...normalized.content],
+          metadata: normalized.metadata ? {...normalized.metadata} : undefined
+        };
+      });
+      
+      // Update the sections array with the normalized sections
+      currentTemplate.value.sections = normalizedSections;
       currentTemplate.value.lastModified = Date.now();
-      updateTemplate(currentTemplate.value);
+      
+      // Update the template in the templates array
+      const index = templates.value.findIndex(t => t.id === currentTemplate.value?.id);
+      if (index !== -1) {
+        // Create a reactive copy of the current template
+        templates.value[index] = {
+          ...currentTemplate.value,
+          // Ensure sections array is properly copied
+          sections: normalizedSections.map(section => ({
+            ...section,
+            content: [...section.content],
+            metadata: section.metadata ? {...section.metadata} : undefined
+          }))
+        };
+        saveTemplates();
+      }
     }
   };
 
