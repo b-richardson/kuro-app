@@ -10,6 +10,7 @@ import TemplateLibraryView from "../views/TemplateLibraryView.vue";
 import EditorView from "../views/EditorView.vue";
 import SettingsView from "../views/SettingsView.vue";
 import DesignView from "../views/DesignView.vue";
+import ObsidianOnboarding from "../views/ObsidianOnboarding.vue";
 
 // Check if dev mode is enabled
 const isDevMode = localStorage.getItem('devMode') === 'true' || import.meta.env.DEV;
@@ -80,6 +81,14 @@ const routes = [
     component: DesignView,
     meta: {
       requiresAuth: false  // Available in all modes for development
+    }
+  },
+  {
+    path: "/obsidian-connect",
+    name: "obsidian-connect",
+    component: ObsidianOnboarding,
+    meta: {
+      requiresAuth: true  // Requires authentication
     }
   }
 ];

@@ -60,6 +60,7 @@ import { useTemplateStore } from "./stores/template";
 import { useUIStore } from "./stores/ui";
 import { usePreferencesStore } from "./stores/preferences";
 import { useAuthStore } from "./stores/auth";
+import { useObsidianStore } from "./stores/obsidian";
 
 import GradientBackground from "./components/UI/GradientBackground.vue";
 import GlobalSidebar from "./components/Layout/GlobalSidebar.vue";
@@ -78,6 +79,7 @@ const uiStore = useUIStore();
 const preferencesStore = usePreferencesStore();
 const templateStore = useTemplateStore();
 const authStore = useAuthStore();
+const obsidianStore = useObsidianStore();
 
 // Check if we should show sidebar even in dev mode
 const shouldShowSidebar = computed(() => {
@@ -186,6 +188,9 @@ onMounted(async () => {
 
   // Check authentication
   await authStore.checkAuth();
+  
+  // Attempt to restore Obsidian connection
+  await obsidianStore.restoreConnection();
 
   // Handle redirects based on auth state
   if (authStore.isAuthenticated) {

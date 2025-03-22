@@ -6,6 +6,9 @@
         <i class="fas fa-file-alt"></i>
       </div>
       <h1 class="app-title">Template Builder</h1>
+      
+      <!-- Obsidian connection status -->
+      <ObsidianStatusIndicator />
     </div>
 
     <!-- User profile section -->
@@ -129,6 +132,7 @@
 import { computed, ref, onMounted } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import SectionLibrary from "@/components/TemplateCreator/SectionLibrary.vue";
+import ObsidianStatusIndicator from "@/components/Layout/ObsidianStatusIndicator.vue";
 import { useUIStore, usePreferencesStore } from "@/stores";
 import { useAuthStore } from "@/stores/auth";
 
@@ -241,8 +245,10 @@ const toggleTheme = () => {
 .sidebar-header {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   padding: var(--spacing-md) var(--spacing-lg); /* Reduced from var(--spacing-lg) */
   gap: var(--spacing-md);
+  justify-content: space-between;
 }
 
 .app-logo {
