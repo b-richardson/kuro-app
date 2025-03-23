@@ -5,126 +5,155 @@
         <div class="app-logo">
           <i class="fas fa-file-alt"></i>
         </div>
-        <h1>Obsidian Template Builder</h1>
-        <p class="login-subtitle">Sign in to your account</p>
+        <h1>
+          {{ isSignupMode ? "Sign Up" : "Sign In" }} to Obsidian Template
+          Builder
+        </h1>
+        <p class="login-subtitle">
+          {{
+            isSignupMode ? "Create a new account" : "Sign in to your account"
+          }}
+        </p>
       </div>
-      
-      <form class="login-form" @submit.prevent="handleLogin">
+
+      <form class="login-form" @submit.prevent="handleSubmit">
         <div class="form-group">
           <label for="email">Email</label>
-          <input 
-            type="email" 
-            id="email" 
-            v-model="email" 
+          <input
+            type="email"
+            id="email"
+            v-model="email"
             placeholder="your@email.com"
             required
           />
         </div>
-        
+
         <div class="form-group">
           <label for="password">Password</label>
-          <input 
-            type="password" 
-            id="password" 
-            v-model="password" 
+          <input
+            type="password"
+            id="password"
+            v-model="password"
             placeholder="Your password"
             required
           />
         </div>
-        
-        <div class="form-error" v-if="authStore.error">
-          {{ authStore.error }}
+
+        <div class="form-error" v-if="error">
+          {{ error }}
         </div>
-        
-        <button 
-          type="submit" 
-          class="login-button"
-          :disabled="authStore.isLoading"
-        >
-          <span v-if="authStore.isLoading">
-            <i class="fas fa-spinner fa-spin"></i> Signing in...
+
+        <button type="submit" class="login-button" :disabled="isLoading">
+          <span v-if="isLoading">
+            <i class="fas fa-spinner fa-spin"></i>
+            {{ isSignupMode ? "Signing up..." : "Signing in..." }}
           </span>
-          <span v-else>Sign In</span>
+          <span v-else>
+            {{ isSignupMode ? "Sign Up" : "Sign In" }}
+          </span>
         </button>
-        
+
         <div class="form-divider">
           <span>Or</span>
         </div>
-        
-        <button 
-          type="button" 
+
+        <button
+          type="button"
           class="oauth-button google-button"
           @click="handleOAuthLogin('google')"
         >
           <i class="fab fa-google"></i> Continue with Google
         </button>
-        
-        <button 
-          type="button" 
+
+        <button
+          type="button"
           class="oauth-button github-button"
           @click="handleOAuthLogin('github')"
         >
           <i class="fab fa-github"></i> Continue with GitHub
         </button>
       </form>
-      
+
       <div class="login-footer">
-        <p>Don't have an account? <a href="#" @click.prevent="goToSignup">Sign up</a></p>
-        <p><a href="#" @click.prevent="resetPassword">Forgot password?</a></p>
+        <p v-if="!isSignupMode">
+          Don't have an account?
+          <a href="#" @click.prevent="toggleMode">Sign up</a>
+        </p>
+        <p v-else>
+          Already have an account?
+          <a href="#" @click.prevent="toggleMode">Sign in</a>
+        </p>
+        <p>
+          <a href="#" @click.prevent="resetPassword">Forgot password?</a>
+        </p>
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
-import { useRouter, useRoute } from 'vue-router';
-import { useAuthStore } from '@/stores/auth';
-import { useUIStore } from '@/stores/ui';
+import { ref } from "vue";
+import { useRouter, useRoute } from "vue-router";
+import { signIn, signUp } from "@/services/supabase/auth";
+import { useUIStore } from "@/stores/ui";
 
 const router = useRouter();
 const route = useRoute();
-const authStore = useAuthStore();
 const uiStore = useUIStore();
 
-// Form state
-const email = ref('');
-const password = ref('');
+// Local state for the form and mode toggle
+const email = ref("user@example.com");
+const password = ref("password");
+const error = ref("");
+const isLoading = ref(false);
+const isSignupMode = ref(false);
 
-// Login methods
-const handleLogin = async () => {
-  const success = await authStore.login(email.value, password.value);
-  
-  if (success) {
-    // Navigate to the redirect path or dashboard
-    const redirectPath = route.query.redirect as string || '/dashboard';
-    router.push(redirectPath);
-    
-    uiStore.showToast('Successfully signed in', 'success');
+// Handle form submission based on current mode
+const handleSubmit = async () => {
+  isLoading.value = true;
+  error.value = "";
+
+  let authResult;
+  if (isSignupMode.value) {
+    authResult = await signUp(email.value, password.value);
+  } else {
+    authResult = await signIn(email.value, password.value);
   }
+  isLoading.value = false;
+
+  if (authResult.error) {
+    error.value = authResult.error.message;
+    uiStore.showToast(authResult.error.message, "error");
+    return;
+  }
+
+  const redirectPath = (route.query.redirect as string) || "/dashboard";
+  router.push(redirectPath);
+  uiStore.showToast(
+    isSignupMode.value ? "Successfully signed up" : "Successfully signed in",
+    "success"
+  );
 };
 
+// Dummy OAuth login (update with real OAuth logic as needed)
 const handleOAuthLogin = (provider: string) => {
-  // In a real app, this would redirect to the OAuth provider
-  uiStore.showToast(`OAuth login with ${provider} would happen here`, 'info');
+  uiStore.showToast(`OAuth login with ${provider} would happen here`, "info");
 };
 
-const goToSignup = () => {
-  // In a real app, this would navigate to the signup page
-  uiStore.showToast('Signup would happen here', 'info');
+// Toggle between sign in and sign up modes
+const toggleMode = () => {
+  isSignupMode.value = !isSignupMode.value;
+  error.value = ""; // clear errors when toggling
 };
 
+// Stub for password reset navigation
 const resetPassword = () => {
-  // In a real app, this would navigate to password reset
-  uiStore.showToast('Password reset would happen here', 'info');
+  uiStore.showToast("Password reset would happen here", "info");
 };
-
-// For demo purposes, pre-fill the email
-email.value = 'user@example.com';
-password.value = 'password';
 </script>
 
 <style scoped>
+/* (Keep your existing CSS unchanged) */
 .login-view {
   height: 100vh;
   display: flex;
@@ -152,7 +181,11 @@ password.value = 'password';
 .app-logo {
   width: 60px;
   height: 60px;
-  background: linear-gradient(135deg, var(--color-primary-light), var(--color-primary));
+  background: linear-gradient(
+    135deg,
+    var(--color-primary-light),
+    var(--color-primary)
+  );
   border-radius: var(--radius-sm);
   display: flex;
   align-items: center;
@@ -211,14 +244,18 @@ password.value = 'password';
   padding: var(--spacing-sm);
   background: rgba(244, 67, 54, 0.1);
   border: 1px solid rgba(244, 67, 54, 0.3);
-  color: #F44336;
+  color: #f44336;
   border-radius: var(--radius-sm);
   font-size: 0.875rem;
 }
 
 .login-button {
   padding: var(--spacing-sm);
-  background: linear-gradient(135deg, var(--color-primary-light), var(--color-primary));
+  background: linear-gradient(
+    135deg,
+    var(--color-primary-light),
+    var(--color-primary)
+  );
   color: white;
   border: none;
   border-radius: var(--radius-sm);
@@ -247,7 +284,7 @@ password.value = 'password';
 
 .form-divider::before,
 .form-divider::after {
-  content: '';
+  content: "";
   flex: 1;
   height: 1px;
   background: var(--glass-border);
@@ -313,7 +350,13 @@ password.value = 'password';
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 </style>
