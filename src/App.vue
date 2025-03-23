@@ -81,11 +81,9 @@ const templateStore = useTemplateStore();
 const authStore = useAuthStore();
 const obsidianStore = useObsidianStore();
 
-// Check if we should show sidebar even in dev mode
+// Check if sidebar should be shown
 const shouldShowSidebar = computed(() => {
-  // In dev mode, show sidebar for certain routes even if not authenticated
-  const devMode =
-    localStorage.getItem("devMode") === "true" || import.meta.env.DEV;
+  // Only show sidebar for authenticated users or on routes that need it
   const currentRoute = router.currentRoute.value.name as string;
   const sidebarRoutes = [
     "editor",
@@ -95,7 +93,7 @@ const shouldShowSidebar = computed(() => {
     "settings",
   ];
 
-  return devMode && sidebarRoutes.includes(currentRoute);
+  return authStore.isAuthenticated && sidebarRoutes.includes(currentRoute);
 });
 
 // Computed
@@ -197,25 +195,21 @@ onMounted(async () => {
     // If user is authenticated and at landing or login, redirect to dashboard
     if (
       router.currentRoute.value.name === "landing" ||
-      router.currentRoute.value.name === "login"
+      router.currentRoute.value.name === "login" ||
+      router.currentRoute.value.name === "signup"
     ) {
       router.push({ name: "dashboard" });
       return;
     }
   } else {
-    // Check if we're in dev mode - if not, handle non-auth redirects
-    const devMode =
-      localStorage.getItem("devMode") === "true" || import.meta.env.DEV;
-    if (!devMode) {
-      // If not authenticated and route requires auth, redirect to login
-      const requiresAuth = router.currentRoute.value.meta?.requiresAuth;
-      if (requiresAuth) {
-        router.push({
-          name: "login",
-          query: { redirect: router.currentRoute.value.fullPath },
-        });
-        return;
-      }
+    // If not authenticated and route requires auth, redirect to login
+    const requiresAuth = router.currentRoute.value.meta?.requiresAuth;
+    if (requiresAuth) {
+      router.push({
+        name: "login",
+        query: { redirect: router.currentRoute.value.fullPath },
+      });
+      return;
     }
   }
 

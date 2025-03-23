@@ -6,17 +6,15 @@
           <i class="fas fa-file-alt"></i>
         </div>
         <h1>
-          {{ isSignupMode ? "Sign Up" : "Sign In" }} to Obsidian Template
-          Builder
+          {{ pageTitle }}
         </h1>
         <p class="login-subtitle">
-          {{
-            isSignupMode ? "Create a new account" : "Sign in to your account"
-          }}
+          {{ pageSubtitle }}
         </p>
       </div>
 
-      <form class="login-form" @submit.prevent="handleSubmit">
+      <!-- Sign In / Sign Up Form -->
+      <form v-if="!isResetPassword && !isEmailSent" class="login-form" @submit.prevent="handleSubmit">
         <div class="form-group">
           <label for="email">Email</label>
           <input
@@ -25,10 +23,11 @@
             v-model="email"
             placeholder="your@email.com"
             required
+            autocomplete="email"
           />
         </div>
 
-        <div class="form-group">
+        <div class="form-group" v-if="!isEmailVerification">
           <label for="password">Password</label>
           <input
             type="password"
@@ -36,6 +35,75 @@
             v-model="password"
             placeholder="Your password"
             required
+            autocomplete="current-password"
+          />
+        </div>
+
+        <!-- Only show for signup -->
+        <div class="form-group" v-if="isSignup && !isEmailVerification">
+          <label for="confirmPassword">Confirm Password</label>
+          <input
+            type="password"
+            id="confirmPassword"
+            v-model="confirmPassword"
+            placeholder="Confirm your password"
+            required
+            autocomplete="new-password"
+          />
+        </div>
+
+        <div class="form-error" v-if="error">
+          {{ error }}
+        </div>
+
+        <div class="form-success" v-if="successMessage">
+          {{ successMessage }}
+        </div>
+
+        <button type="submit" class="login-button" :disabled="isLoading">
+          <span v-if="isLoading">
+            <i class="fas fa-spinner fa-spin"></i>
+            {{ loadingText }}
+          </span>
+          <span v-else>
+            {{ submitButtonText }}
+          </span>
+        </button>
+
+        <div class="form-divider" v-if="!isEmailVerification">
+          <span>Or</span>
+        </div>
+
+        <button
+          type="button"
+          class="oauth-button google-button"
+          @click="handleOAuthLogin('google')"
+          v-if="!isEmailVerification"
+        >
+          <i class="fab fa-google"></i> Continue with Google
+        </button>
+
+        <button
+          type="button"
+          class="oauth-button github-button"
+          @click="handleOAuthLogin('github')"
+          v-if="!isEmailVerification"
+        >
+          <i class="fab fa-github"></i> Continue with GitHub
+        </button>
+      </form>
+
+      <!-- Password Reset Request Form -->
+      <form v-if="isResetPassword && !isEmailSent" class="login-form" @submit.prevent="handleResetRequest">
+        <div class="form-group">
+          <label for="resetEmail">Email</label>
+          <input
+            type="email"
+            id="resetEmail"
+            v-model="email"
+            placeholder="your@email.com"
+            required
+            autocomplete="email"
           />
         </div>
 
@@ -46,45 +114,41 @@
         <button type="submit" class="login-button" :disabled="isLoading">
           <span v-if="isLoading">
             <i class="fas fa-spinner fa-spin"></i>
-            {{ isSignupMode ? "Signing up..." : "Signing in..." }}
+            Sending reset link...
           </span>
           <span v-else>
-            {{ isSignupMode ? "Sign Up" : "Sign In" }}
+            Send Reset Link
           </span>
-        </button>
-
-        <div class="form-divider">
-          <span>Or</span>
-        </div>
-
-        <button
-          type="button"
-          class="oauth-button google-button"
-          @click="handleOAuthLogin('google')"
-        >
-          <i class="fab fa-google"></i> Continue with Google
-        </button>
-
-        <button
-          type="button"
-          class="oauth-button github-button"
-          @click="handleOAuthLogin('github')"
-        >
-          <i class="fab fa-github"></i> Continue with GitHub
         </button>
       </form>
 
+      <!-- Email Sent Confirmation -->
+      <div v-if="isEmailSent" class="login-form email-sent-container">
+        <div class="email-sent-icon">
+          <i class="fas fa-envelope"></i>
+        </div>
+        <h2>{{ emailSentTitle }}</h2>
+        <p>{{ emailSentMessage }}</p>
+        <p class="email-sent-address">{{ email }}</p>
+        <button class="login-button" @click="goBackToLogin">
+          Return to Login
+        </button>
+      </div>
+
       <div class="login-footer">
-        <p v-if="!isSignupMode">
+        <p v-if="!isSignup && !isResetPassword && !isEmailVerification && !isEmailSent">
           Don't have an account?
-          <a href="#" @click.prevent="toggleMode">Sign up</a>
+          <a href="#" @click.prevent="goToSignup">Sign up</a>
         </p>
-        <p v-else>
+        <p v-else-if="!isResetPassword && !isEmailVerification && !isEmailSent">
           Already have an account?
-          <a href="#" @click.prevent="toggleMode">Sign in</a>
+          <a href="#" @click.prevent="goToLogin">Sign in</a>
         </p>
-        <p>
-          <a href="#" @click.prevent="resetPassword">Forgot password?</a>
+        <p v-if="!isResetPassword && !isEmailVerification && !isEmailSent">
+          <a href="#" @click.prevent="goToResetPassword">Forgot password?</a>
+        </p>
+        <p v-if="(isResetPassword || isEmailVerification) && !isEmailSent">
+          <a href="#" @click.prevent="goToLogin">Back to login</a>
         </p>
       </div>
     </div>
@@ -92,68 +156,215 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from "vue";
+import { ref, computed, onMounted } from "vue";
 import { useRouter, useRoute } from "vue-router";
-import { signIn, signUp } from "@/services/supabase/auth";
+import * as supabaseAuth from "@/services/supabase/auth";
 import { useUIStore } from "@/stores/ui";
+import { useAuthStore } from "@/stores/auth";
+
+// Props for determining the mode of the form
+const props = defineProps({
+  isSignup: { type: Boolean, default: false },
+  isResetPassword: { type: Boolean, default: false },
+  isEmailVerification: { type: Boolean, default: false },
+});
 
 const router = useRouter();
 const route = useRoute();
 const uiStore = useUIStore();
+const authStore = useAuthStore();
 
-// Local state for the form and mode toggle
-const email = ref("user@example.com");
-const password = ref("password");
+// Local state for the form
+const email = ref("");
+const password = ref("");
+const confirmPassword = ref("");
 const error = ref("");
+const successMessage = ref("");
 const isLoading = ref(false);
-const isSignupMode = ref(false);
+const isEmailSent = ref(false);
+const emailSentTitle = ref("Check your email");
+const emailSentMessage = ref("We've sent you a link to verify your email address.");
+
+// Computed properties for dynamic text content
+const pageTitle = computed(() => {
+  if (props.isResetPassword) return "Reset your password";
+  if (props.isEmailVerification) return "Verify your email";
+  return props.isSignup ? "Sign Up to Obsidian Template Builder" : "Sign In to Obsidian Template Builder";
+});
+
+const pageSubtitle = computed(() => {
+  if (props.isResetPassword) return "Enter your email to receive a password reset link";
+  if (props.isEmailVerification) return "Check your email for a verification code";
+  return props.isSignup ? "Create a new account" : "Sign in to your account";
+});
+
+const submitButtonText = computed(() => {
+  if (props.isResetPassword) return "Send Reset Link";
+  if (props.isEmailVerification) return "Verify Email";
+  return props.isSignup ? "Sign Up" : "Sign In";
+});
+
+const loadingText = computed(() => {
+  if (props.isResetPassword) return "Sending...";
+  if (props.isEmailVerification) return "Verifying...";
+  return props.isSignup ? "Signing up..." : "Signing in...";
+});
+
+// Check if we're in signup mode
+const isSignup = computed(() => props.isSignup);
 
 // Handle form submission based on current mode
 const handleSubmit = async () => {
-  isLoading.value = true;
+  // Clear previous errors/messages
   error.value = "";
-
-  let authResult;
-  if (isSignupMode.value) {
-    authResult = await signUp(email.value, password.value);
-  } else {
-    authResult = await signIn(email.value, password.value);
+  successMessage.value = "";
+  
+  // Validate form
+  if (!email.value || !password.value) {
+    error.value = "Please fill in all fields";
+    return;
   }
-  isLoading.value = false;
-
-  if (authResult.error) {
-    error.value = authResult.error.message;
-    uiStore.showToast(authResult.error.message, "error");
+  
+  // In signup mode, check if passwords match
+  if (isSignup.value && password.value !== confirmPassword.value) {
+    error.value = "Passwords do not match";
     return;
   }
 
-  const redirectPath = (route.query.redirect as string) || "/dashboard";
-  router.push(redirectPath);
-  uiStore.showToast(
-    isSignupMode.value ? "Successfully signed up" : "Successfully signed in",
-    "success"
-  );
+  isLoading.value = true;
+
+  try {
+    if (isSignup.value) {
+      // Handle sign-up
+      const { success, confirmationRequired } = await authStore.signUp(email.value, password.value);
+      
+      if (success) {
+        if (confirmationRequired) {
+          // Show email confirmation message
+          isEmailSent.value = true;
+          emailSentTitle.value = "Verify your email";
+          emailSentMessage.value = "We've sent you a link to verify your email address. Please check your inbox.";
+        } else {
+          // Redirect to dashboard or the intended destination
+          const redirectPath = (route.query.redirect as string) || "/dashboard";
+          router.push(redirectPath);
+          uiStore.showToast("Successfully signed up and logged in", "success");
+        }
+      } else {
+        // Handle sign-up error from authStore
+        error.value = authStore.error || "Something went wrong with the sign up process";
+      }
+    } else {
+      // Handle sign-in
+      const success = await authStore.login(email.value, password.value);
+      
+      if (success) {
+        // Redirect to dashboard or the intended destination
+        const redirectPath = (route.query.redirect as string) || "/dashboard";
+        router.push(redirectPath);
+        uiStore.showToast("Successfully signed in", "success");
+      } else {
+        // Handle sign-in error from authStore
+        error.value = authStore.error || "Invalid email or password";
+      }
+    }
+  } catch (err: any) {
+    error.value = err.message || "An unexpected error occurred";
+  } finally {
+    isLoading.value = false;
+  }
 };
 
-// Dummy OAuth login (update with real OAuth logic as needed)
-const handleOAuthLogin = (provider: string) => {
-  uiStore.showToast(`OAuth login with ${provider} would happen here`, "info");
+// Handle OAuth login
+const handleOAuthLogin = async (provider: 'google' | 'github' | 'facebook' | 'twitter') => {
+  isLoading.value = true;
+  error.value = "";
+  
+  try {
+    const { data, error: authError } = await supabaseAuth.signInWithOAuth({ provider });
+    
+    if (authError) {
+      throw authError;
+    }
+    
+    // The OAuth flow will redirect the user away from the app,
+    // so we don't need to do anything more here
+    if (!data) {
+      uiStore.showToast(`Redirecting to ${provider} for authentication...`, "info");
+    }
+  } catch (err: any) {
+    error.value = err.message || `Could not sign in with ${provider}`;
+    uiStore.showToast(error.value, "error");
+  } finally {
+    isLoading.value = false;
+  }
 };
 
-// Toggle between sign in and sign up modes
-const toggleMode = () => {
-  isSignupMode.value = !isSignupMode.value;
-  error.value = ""; // clear errors when toggling
+// Handle password reset request
+const handleResetRequest = async () => {
+  isLoading.value = true;
+  error.value = "";
+  
+  try {
+    const success = await authStore.resetPassword(email.value);
+    
+    if (success) {
+      isEmailSent.value = true;
+      emailSentTitle.value = "Reset link sent";
+      emailSentMessage.value = "We've sent you a password reset link. Please check your inbox.";
+    } else {
+      error.value = authStore.error || "Something went wrong sending the reset link";
+    }
+  } catch (err: any) {
+    error.value = err.message || "An unexpected error occurred";
+  } finally {
+    isLoading.value = false;
+  }
 };
 
-// Stub for password reset navigation
-const resetPassword = () => {
-  uiStore.showToast("Password reset would happen here", "info");
+// Navigation helpers
+const goToLogin = () => {
+  router.push({ name: "login" });
 };
+
+const goToSignup = () => {
+  router.push({ name: "signup" });
+};
+
+const goToResetPassword = () => {
+  router.push({ name: "resetPassword" });
+};
+
+const goBackToLogin = () => {
+  router.push({ name: "login" });
+};
+
+// Check for OAuth redirects on mount
+onMounted(() => {
+  // Parse the hash URL for an access token to determine if returning from OAuth
+  const hashParams = new URLSearchParams(window.location.hash.substring(1));
+  const accessToken = hashParams.get('access_token');
+  
+  if (accessToken) {
+    // If we have an access token, the user has been authenticated via OAuth
+    uiStore.showToast("Successfully authenticated", "success");
+    
+    // We can redirect to the dashboard since auth listeners will handle the session
+    const redirectPath = (route.query.redirect as string) || "/dashboard";
+    router.push(redirectPath);
+  }
+  
+  // Check for any reset token in the URL
+  const resetToken = route.query.reset_token;
+  if (resetToken) {
+    // Handle password reset logic here
+    // You will likely need to redirect to a password reset form
+    uiStore.showToast("Password reset token detected", "info");
+  }
+});
 </script>
 
 <style scoped>
-/* (Keep your existing CSS unchanged) */
 .login-view {
   height: 100vh;
   display: flex;
@@ -245,6 +456,15 @@ const resetPassword = () => {
   background: rgba(244, 67, 54, 0.1);
   border: 1px solid rgba(244, 67, 54, 0.3);
   color: #f44336;
+  border-radius: var(--radius-sm);
+  font-size: 0.875rem;
+}
+
+.form-success {
+  padding: var(--spacing-sm);
+  background: rgba(76, 175, 80, 0.1);
+  border: 1px solid rgba(76, 175, 80, 0.3);
+  color: #4caf50;
   border-radius: var(--radius-sm);
   font-size: 0.875rem;
 }
@@ -347,6 +567,36 @@ const resetPassword = () => {
 
 .login-footer a:hover {
   color: var(--color-primary-light);
+}
+
+/* Email sent confirmation styles */
+.email-sent-container {
+  text-align: center;
+  padding: var(--spacing-xl) var(--spacing-lg);
+}
+
+.email-sent-icon {
+  font-size: 3rem;
+  color: var(--color-primary);
+  margin-bottom: var(--spacing-md);
+}
+
+.email-sent-container h2 {
+  margin: 0 0 var(--spacing-md);
+  font-size: 1.5rem;
+}
+
+.email-sent-container p {
+  margin: 0 0 var(--spacing-md);
+  color: var(--color-text-secondary);
+}
+
+.email-sent-address {
+  font-weight: bold;
+  background: rgba(0, 0, 0, 0.1);
+  padding: var(--spacing-sm);
+  border-radius: var(--radius-sm);
+  margin-bottom: var(--spacing-lg) !important;
 }
 
 @keyframes fadeIn {

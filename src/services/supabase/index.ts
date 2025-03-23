@@ -22,11 +22,12 @@ console.log(
 );
 
 // Create and export the Supabase client.
-// The auth options below disable session persistence so that no data is stored in localStorage.
+// Configure session handling for the application
 export const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
   auth: {
-    autoRefreshToken: false,
-    persistSession: false,
-    detectSessionInUrl: false,
+    autoRefreshToken: true,
+    persistSession: true,
+    detectSessionInUrl: true,
+    storage: localStorage
   },
 });

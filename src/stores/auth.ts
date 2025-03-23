@@ -1,6 +1,10 @@
 import { defineStore } from 'pinia';
-import { ref } from 'vue';
+import { ref, onMounted, onUnmounted } from 'vue';
+import type { User as SupabaseUser } from '@supabase/supabase-js';
+import * as supabaseAuth from '@/services/supabase/auth';
+import { supabase } from '@/services/supabase';
 
+// Application-specific User type that extends Supabase user data
 export interface User {
   id: string;
   email: string;
@@ -14,75 +18,150 @@ export interface User {
 }
 
 export const useAuthStore = defineStore('auth', () => {
-  // State
+  // State (keeping the same interface for compatibility)
   const user = ref<User | null>(null);
   const isAuthenticated = ref(false);
   const isLoading = ref(false);
   const error = ref<string | null>(null);
+  const authSubscription = ref<{ data: any } | null>(null);
 
-  // Mock user for development - in production, this would be populated from an API
-  const mockUser: User = {
-    id: '1',
-    email: 'user@example.com',
-    name: 'Demo User',
-    subscription: {
-      plan: 'premium',
+  // Helper function to map Supabase user to our application User type
+  const mapSupabaseUser = (supabaseUser: SupabaseUser): User => {
+    // Extract user metadata or use defaults
+    const userMetadata = supabaseUser.user_metadata || {};
+    const name = userMetadata.name || supabaseUser.email?.split('@')[0] || 'User';
+    
+    // Default subscription plan for new users
+    const subscription = userMetadata.subscription || {
+      plan: 'free',
       status: 'active',
       expiresAt: null
-    },
-    createdAt: '2023-01-01T00:00:00.000Z'
+    };
+
+    return {
+      id: supabaseUser.id,
+      email: supabaseUser.email || '',
+      name,
+      subscription,
+      createdAt: supabaseUser.created_at || new Date().toISOString()
+    };
   };
 
-  // Actions
+  // Error handling helper
+  const handleError = (err: any) => {
+    console.error('Auth error:', err);
+    const errorMessage = err?.message || err?.error_description || 'An authentication error occurred';
+    error.value = errorMessage;
+    return false;
+  };
+
+  // Login with email and password
   const login = async (email: string, password: string) => {
     isLoading.value = true;
     error.value = null;
     
     try {
-      // In production, this would be an API call
-      // For development, we'll just set the mock user after a small delay
-      await new Promise(resolve => setTimeout(resolve, 500));
+      const { data, error: signInError } = await supabaseAuth.signIn(email, password);
       
-      user.value = mockUser;
-      isAuthenticated.value = true;
+      if (signInError) {
+        throw signInError;
+      }
       
-      // Save auth state to localStorage
-      localStorage.setItem('auth', JSON.stringify({ 
-        isAuthenticated: true,
-        userId: mockUser.id
-      }));
+      if (data?.user) {
+        const mappedUser = mapSupabaseUser(data.user);
+        user.value = mappedUser;
+        isAuthenticated.value = true;
+        return true;
+      }
       
+      throw new Error('No user returned from sign in');
+    } catch (err) {
+      return handleError(err);
+    } finally {
+      isLoading.value = false;
+    }
+  };
+
+  // Sign up with email and password
+  const signUp = async (email: string, password: string) => {
+    isLoading.value = true;
+    error.value = null;
+    
+    try {
+      const { data, error: signUpError } = await supabaseAuth.signUp(email, password);
+      
+      if (signUpError) {
+        throw signUpError;
+      }
+      
+      // Check if confirmation is required
+      if (data?.user?.identities?.length === 0) {
+        return { success: true, confirmationRequired: true };
+      }
+      
+      if (data?.user) {
+        const mappedUser = mapSupabaseUser(data.user);
+        user.value = mappedUser;
+        isAuthenticated.value = true;
+        return { success: true, confirmationRequired: false };
+      }
+      
+      throw new Error('No user returned from sign up');
+    } catch (err) {
+      handleError(err);
+      return { success: false, confirmationRequired: false };
+    } finally {
+      isLoading.value = false;
+    }
+  };
+
+  // Logout the user
+  const logout = async () => {
+    isLoading.value = true;
+    
+    try {
+      const { error: signOutError } = await supabaseAuth.signOut();
+      
+      if (signOutError) {
+        throw signOutError;
+      }
+      
+      user.value = null;
+      isAuthenticated.value = false;
       return true;
     } catch (err) {
-      error.value = 'Invalid email or password';
+      handleError(err);
+      // Still clear local state even on API error
+      user.value = null;
+      isAuthenticated.value = false;
       return false;
     } finally {
       isLoading.value = false;
     }
   };
 
-  const logout = () => {
-    user.value = null;
-    isAuthenticated.value = false;
-    
-    // Clear auth state from localStorage
-    localStorage.removeItem('auth');
-  };
-
+  // Check authentication status
   const checkAuth = async () => {
     isLoading.value = true;
     
     try {
-      // Check localStorage for existing auth
-      const auth = localStorage.getItem('auth');
+      const { data: sessionData, error: sessionError } = await supabaseAuth.getSession();
       
-      if (auth) {
-        const parsedAuth = JSON.parse(auth);
+      if (sessionError) {
+        throw sessionError;
+      }
+      
+      if (sessionData?.session) {
+        // Get user details
+        const { data: userData, error: userError } = await supabaseAuth.getUser();
         
-        if (parsedAuth.isAuthenticated) {
-          // In production, validate the token with an API call
-          // For development, just set the mock user
-          user.value = mockUser;
+        if (userError) {
+          throw userError;
+        }
+        
+        if (userData?.user) {
+          const mappedUser = mapSupabaseUser(userData.user);
+          user.value = mappedUser;
           isAuthenticated.value = true;
           return true;
         }
@@ -90,22 +169,125 @@ export const useAuthStore = defineStore('auth', () => {
       
       return false;
     } catch (err) {
+      handleError(err);
       return false;
     } finally {
       isLoading.value = false;
     }
   };
 
-  // Initialize
-  checkAuth();
+  // Password reset request
+  const resetPassword = async (email: string) => {
+    isLoading.value = true;
+    error.value = null;
+    
+    try {
+      const { error: resetError } = await supabaseAuth.resetPassword(email);
+      
+      if (resetError) {
+        throw resetError;
+      }
+      
+      return true;
+    } catch (err) {
+      return handleError(err);
+    } finally {
+      isLoading.value = false;
+    }
+  };
+
+  // Update profile data
+  const updateProfile = async (profile: Partial<User>) => {
+    isLoading.value = true;
+    error.value = null;
+    
+    try {
+      // Update user metadata in Supabase
+      const { data, error: updateError } = await supabaseAuth.updateUser({
+        data: {
+          name: profile.name,
+          subscription: profile.subscription
+        }
+      });
+      
+      if (updateError) {
+        throw updateError;
+      }
+      
+      if (data?.user) {
+        // Update local user state
+        user.value = {
+          ...user.value!,
+          ...profile
+        };
+        
+        return true;
+      }
+      
+      throw new Error('User update failed');
+    } catch (err) {
+      return handleError(err);
+    } finally {
+      isLoading.value = false;
+    }
+  };
+
+  // Set up auth state change listener
+  onMounted(() => {
+    // Listen for auth state changes
+    const { data } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_IN' && session) {
+        // Get user details and update store
+        const { data: userData, error: userError } = await supabaseAuth.getUser();
+        
+        if (!userError && userData?.user) {
+          user.value = mapSupabaseUser(userData.user);
+          isAuthenticated.value = true;
+        }
+      } else if (event === 'SIGNED_OUT' || event === 'USER_DELETED') {
+        // Clear user data on sign out
+        user.value = null;
+        isAuthenticated.value = false;
+      } else if (event === 'TOKEN_REFRESHED' && session) {
+        // Session refreshed, verify and update if needed
+        if (!isAuthenticated.value) {
+          const { data: userData, error: userError } = await supabaseAuth.getUser();
+          
+          if (!userError && userData?.user) {
+            user.value = mapSupabaseUser(userData.user);
+            isAuthenticated.value = true;
+          }
+        }
+      }
+    });
+    
+    // Store subscription for cleanup
+    authSubscription.value = data;
+    
+    // Initialize auth state
+    checkAuth();
+  });
+
+  // Clean up subscriptions
+  onUnmounted(() => {
+    if (authSubscription.value) {
+      authSubscription.value.subscription.unsubscribe();
+    }
+  });
 
   return {
+    // State
     user,
     isAuthenticated,
     isLoading,
     error,
-    login,
-    logout,
-    checkAuth
+    
+    // Actions
+    login,           // Maintained for backward compatibility
+    signUp,          // New method for registration
+    logout,          // Maintained for backward compatibility
+    checkAuth,       // Maintained for backward compatibility
+    resetPassword,   // Added for password reset
+    updateProfile    // Added for profile updates
   };
 });

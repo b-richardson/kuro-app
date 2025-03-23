@@ -1,5 +1,5 @@
 import { createRouter, createWebHistory } from "vue-router";
-import { useAuthStore } from '@/stores/auth';
+import { useAuthStore } from "@/stores/auth";
 
 // Import view components
 import LandingPage from "../views/LandingPage.vue";
@@ -13,9 +13,6 @@ import DesignView from "../views/DesignView.vue";
 import ObsidianOnboarding from "../views/ObsidianOnboarding.vue";
 import ObsidianExplorer from "../views/ObsidianExplorer.vue";
 
-// Check if dev mode is enabled
-const isDevMode = localStorage.getItem('devMode') === 'true' || import.meta.env.DEV;
-
 const routes = [
   {
     path: "/",
@@ -23,8 +20,8 @@ const routes = [
     component: LandingPage,
     meta: {
       requiresAuth: false,
-      hideForAuth: true  // Hide for authenticated users
-    }
+      hideForAuth: true, // Hide for authenticated users
+    },
   },
   {
     path: "/login",
@@ -32,32 +29,52 @@ const routes = [
     component: LoginView,
     meta: {
       requiresAuth: false,
-      hideForAuth: true  // Hide for authenticated users
-    }
+      hideForAuth: true, // Hide for authenticated users
+    },
+  },
+  {
+    path: "/signup",
+    name: "signup",
+    component: LoginView, // Reuse login view with a prop to indicate signup mode
+    props: { isSignup: true },
+    meta: {
+      requiresAuth: false,
+      hideForAuth: true, // Hide for authenticated users
+    },
+  },
+  {
+    path: "/reset-password",
+    name: "resetPassword",
+    component: LoginView, // Reuse login view with a prop to indicate reset mode
+    props: { isResetPassword: true },
+    meta: {
+      requiresAuth: false,
+      hideForAuth: false, // Allow authenticated users to reset password
+    },
   },
   {
     path: "/dashboard",
     name: "dashboard",
     component: DashboardView,
     meta: {
-      requiresAuth: true  // Requires authentication
-    }
+      requiresAuth: true, // Requires authentication
+    },
   },
   {
     path: "/library",
     name: "library",
     component: LibraryView,
     meta: {
-      requiresAuth: true  // Requires authentication
-    }
+      requiresAuth: true, // Requires authentication
+    },
   },
   {
     path: "/template-library",
     name: "templateLibrary",
     component: TemplateLibraryView,
     meta: {
-      requiresAuth: true  // Requires authentication
-    }
+      requiresAuth: true, // Requires authentication
+    },
   },
   {
     path: "/editor/:id?",
@@ -65,41 +82,41 @@ const routes = [
     component: EditorView,
     props: true,
     meta: {
-      requiresAuth: true  // Requires authentication
-    }
+      requiresAuth: true, // Requires authentication
+    },
   },
   {
     path: "/settings",
     name: "settings",
     component: SettingsView,
     meta: {
-      requiresAuth: true  // Requires authentication
-    }
+      requiresAuth: true, // Requires authentication
+    },
   },
   {
     path: "/design",
     name: "design",
     component: DesignView,
     meta: {
-      requiresAuth: false  // Available in all modes for development
-    }
+      requiresAuth: false, // Available without authentication
+    },
   },
   {
     path: "/obsidian-connect",
     name: "obsidian-connect",
     component: ObsidianOnboarding,
     meta: {
-      requiresAuth: true  // Requires authentication
-    }
+      requiresAuth: true, // Requires authentication
+    },
   },
   {
     path: "/obsidian-explorer",
     name: "obsidian-explorer",
     component: ObsidianExplorer,
     meta: {
-      requiresAuth: true  // Requires authentication
-    }
-  }
+      requiresAuth: true, // Requires authentication
+    },
+  },
 ];
 
 const router = createRouter({
@@ -107,53 +124,30 @@ const router = createRouter({
   routes,
 });
 
-// Add dev mode toggle function to window (can be called in browser console)
-window.toggleDevMode = () => {
-  const current = localStorage.getItem('devMode') === 'true';
-  localStorage.setItem('devMode', (!current).toString());
-  console.log(`Dev mode ${!current ? 'enabled' : 'disabled'}. Refresh the page for changes to take effect.`);
-};
-
-// Helper function to check if we should bypass auth checks
-const shouldBypassAuth = () => {
-  return isDevMode || localStorage.getItem('devMode') === 'true';
-};
-
-// Navigation guards
+// Navigation guards - strictly enforce auth requirements
 router.beforeEach(async (to, from, next) => {
   const authStore = useAuthStore();
-  const requiresAuth = to.matched.some(record => record.meta.requiresAuth);
-  const hideForAuth = to.matched.some(record => record.meta.hideForAuth);
+  const requiresAuth = to.matched.some((record) => record.meta.requiresAuth);
+  const hideForAuth = to.matched.some((record) => record.meta.hideForAuth);
   
-  // Bypass auth checks in dev mode
-  if (shouldBypassAuth()) {
-    console.log('Dev mode: Bypassing authentication checks');
-    next();
-    return;
-  }
+  // Always check auth status before proceeding
+  await authStore.checkAuth();
   
   // Check if the route requires authentication
   if (requiresAuth && !authStore.isAuthenticated) {
-    next({ name: 'login', query: { redirect: to.fullPath } });
+    // Store the intended destination for post-login redirect
+    next({ 
+      name: "login", 
+      query: { redirect: to.fullPath } 
+    });
   } 
   // Check if the route should be hidden for authenticated users
   else if (hideForAuth && authStore.isAuthenticated) {
-    next({ name: 'dashboard' });
+    next({ name: "dashboard" });
   }
   else {
     next();
   }
 });
-
-// Add console message about dev mode during development
-if (import.meta.env.DEV) {
-  console.log(`
-    🛠️ Development mode detected
-    
-    To toggle authentication bypass:
-    - Run 'toggleDevMode()' in the browser console
-    - Current status: ${shouldBypassAuth() ? 'ENABLED' : 'DISABLED'}
-  `);
-}
 
 export default router;
