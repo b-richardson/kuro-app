@@ -1,7 +1,7 @@
 <template>
   <div class="module-category">
     <h3 class="category-title">YAML Presets</h3>
-    
+
     <!-- High Priority Presets (Always visible) -->
     <div class="module-grid">
       <ModuleCard
@@ -9,57 +9,66 @@
         :key="preset.id"
         :title="preset.title"
         :description="preset.description"
-        :icon="getSectionIcon('yaml')"
+        :icon="getModuleIcon('yaml')"
         :show-description="showDescriptions"
         @click="addYamlPreset(preset.id)"
       />
     </div>
-    
+
     <!-- Secondary Priority Presets (Only if showSecondary is true) -->
     <div v-if="showSecondaryModules">
       <div class="secondary-modules-heading">
         <h4 class="module-subheading">Additional Presets</h4>
-        <small class="module-hint">These presets provide additional options for specific use cases</small>
+        <small class="module-hint"
+          >These presets provide additional options for specific use
+          cases</small
+        >
       </div>
-      
+
       <div class="module-grid secondary-module-grid">
         <ModuleCard
           v-for="preset in secondaryPriorityPresets"
           :key="preset.id"
           :title="preset.title"
           :description="preset.description"
-          :icon="getSectionIcon('yaml')"
+          :icon="getModuleIcon('yaml')"
           :show-description="showDescriptions"
           @click="addYamlPreset(preset.id)"
         />
       </div>
     </div>
-    
+
     <!-- Toggle for Secondary Modules -->
-    <button 
-      v-if="hasSecondaryModules" 
+    <button
+      v-if="hasSecondaryModules"
       class="toggle-secondary-btn"
       @click="toggleSecondaryModules"
     >
-      {{ showSecondaryModules ? 'Hide additional presets' : 'Show more presets' }}
-      <i :class="showSecondaryModules ? 'fas fa-chevron-up' : 'fas fa-chevron-down'"></i>
+      {{
+        showSecondaryModules ? "Hide additional presets" : "Show more presets"
+      }}
+      <i
+        :class="
+          showSecondaryModules ? 'fas fa-chevron-up' : 'fas fa-chevron-down'
+        "
+      ></i>
     </button>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue';
-import ModuleCard from './ModuleCard.vue';
-import { getSectionIcon } from '@/utils/pluginTemplates';
-import { usePresetStore, ModulePriority } from '@/stores/presets';
-import { v4 as uuidv4 } from 'uuid';
+import { computed, ref } from "vue";
+import ModuleCard from "./ModuleCard.vue";
+import { getModuleIcon } from "@/utils/pluginTemplates";
+import { usePresetStore, ModulePriority } from "@/stores/presets";
+import { v4 as uuidv4 } from "uuid";
 
 // Define props
 const props = defineProps({
   showDescriptions: {
     type: Boolean,
-    default: true
-  }
+    default: true,
+  },
 });
 
 const presetStore = usePresetStore();
@@ -85,18 +94,18 @@ const toggleSecondaryModules = () => {
 };
 
 // Define emits
-const emit = defineEmits(['add-module']);
+const emit = defineEmits(["add-module"]);
 
 // Function to add a YAML preset
 const addYamlPreset = (presetId) => {
   const preset = presetStore.getYamlPresetById(presetId);
   if (!preset) return;
-  
-  emit('add-module', {
+
+  emit("add-module", {
     id: uuidv4(),
-    type: 'yaml',
+    type: "yaml",
     content: [...preset.content],
-    pluginType: null
+    pluginType: null,
   });
 };
 </script>

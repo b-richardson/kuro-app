@@ -254,7 +254,7 @@ export function getPluginDisplayName(pluginType: PluginType): string {
  * @param sectionType The section type
  * @returns Font Awesome icon class
  */
-export function getSectionIcon(sectionType: SectionType): string {
+export function getModuleIcon(sectionType: SectionType): string {
   switch (sectionType) {
     case "header":
       return "fas fa-heading";

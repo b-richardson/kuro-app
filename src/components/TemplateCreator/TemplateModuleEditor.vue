@@ -37,7 +37,10 @@
       <div class="template-module-editor-type">
         <i :class="moduleIcon"></i>
         <span>{{ moduleTypeLabel }}</span>
-        <span v-if="module.pluginType" class="template-module-editor-plugin-tag">
+        <span
+          v-if="module.pluginType"
+          class="template-module-editor-plugin-tag"
+        >
           <i :class="pluginIcon"></i>
           {{ pluginTypeLabel }}
         </span>
@@ -188,7 +191,7 @@
           <div v-if="tableIsEmpty" class="template-module-editor-table-empty">
             <i class="fas fa-table"></i>
             <p>Add data to create your table</p>
-            <button 
+            <button
               class="template-module-editor-table-button template-module-editor-empty-table-button"
               @click.stop="initializeEmptyTable"
             >
@@ -216,7 +219,9 @@
                         ($event.target as HTMLInputElement).value
                       )
                     "
-                    @keydown="handleTableKeyboardNavigation($event, 0, colIndex)"
+                    @keydown="
+                      handleTableKeyboardNavigation($event, 0, colIndex)
+                    "
                     @focus="setEditing(true)"
                     @blur="setEditing(false)"
                     placeholder="Header"
@@ -263,7 +268,9 @@
                         ($event.target as HTMLInputElement).value
                       )
                     "
-                    @keydown="handleTableKeyboardNavigation($event, rowIndex, colIndex)"
+                    @keydown="
+                      handleTableKeyboardNavigation($event, rowIndex, colIndex)
+                    "
                     @focus="setEditing(true)"
                     @blur="setEditing(false)"
                     placeholder="Cell"
@@ -391,7 +398,11 @@
 
     <!-- Toast for feedback messages -->
     <Transition name="toast">
-      <div v-if="showToast" class="template-module-editor-toast" :class="toastType">
+      <div
+        v-if="showToast"
+        class="template-module-editor-toast"
+        :class="toastType"
+      >
         <i :class="toastIcon"></i>
         {{ toastMessage }}
       </div>
@@ -407,7 +418,7 @@ import {
   DATAVIEW,
   KANBAN,
   getPluginDisplayName,
-  getSectionIcon as getModuleIcon,
+  getModuleIcon,
   validatePluginSyntax,
   getPluginIcon,
 } from "@/utils/pluginTemplates";
@@ -525,20 +536,20 @@ const handleKeyboardShortcut = (event: KeyboardEvent) => {
       confirmDeleteModule();
       return;
     }
-    
+
     // Module movement shortcuts
     if (event.key === "ArrowUp") {
       event.preventDefault();
       if (props.index > 0) {
-        moveModule('up');
+        moveModule("up");
       }
       return;
     }
-    
+
     if (event.key === "ArrowDown") {
       event.preventDefault();
       if (props.index < props.modules.length - 1) {
-        moveModule('down');
+        moveModule("down");
       }
       return;
     }
@@ -640,9 +651,7 @@ const pluginTypeLabel = computed(() => {
 });
 
 const pluginIcon = computed(() => {
-  return props.module.pluginType
-    ? getPluginIcon(props.module.pluginType)
-    : "";
+  return props.module.pluginType ? getPluginIcon(props.module.pluginType) : "";
 });
 
 // Validation error handling
@@ -666,11 +675,11 @@ watch(
  * Move the module up or down
  * @param direction 'up' or 'down'
  */
-const moveModule = (direction: 'up' | 'down') => {
+const moveModule = (direction: "up" | "down") => {
   // Guard against invalid operations
   if (
-    (direction === 'up' && props.index === 0) || 
-    (direction === 'down' && props.index === props.modules.length - 1)
+    (direction === "up" && props.index === 0) ||
+    (direction === "down" && props.index === props.modules.length - 1)
   ) {
     return;
   }
@@ -678,22 +687,22 @@ const moveModule = (direction: 'up' | 'down') => {
   try {
     // Create a fresh copy of the modules array
     const updatedModules = props.modules.map((module) => ({ ...module }));
-    
+
     // Calculate the new index
-    const newIndex = direction === 'up' ? props.index - 1 : props.index + 1;
-    
+    const newIndex = direction === "up" ? props.index - 1 : props.index + 1;
+
     // Store references to the modules we're swapping
     const moduleA = updatedModules[props.index];
     const moduleB = updatedModules[newIndex];
-    
+
     // Perform the swap
     updatedModules[newIndex] = moduleA;
     updatedModules[props.index] = moduleB;
-    
+
     // Emit update events
     emit("update", updatedModules);
     emit("module-change");
-    
+
     // Show a success toast
     displayToast(`Module moved ${direction}`, "success");
   } catch (error) {
@@ -800,8 +809,10 @@ const MAX_COLUMNS = 50;
 
 // Table-specific methods and computed properties
 const tableIsEmpty = computed(() => {
-  return tableData.value.length <= 1 && 
-         (tableData.value.length === 0 || tableData.value[0]?.length === 0);
+  return (
+    tableData.value.length <= 1 &&
+    (tableData.value.length === 0 || tableData.value[0]?.length === 0)
+  );
 });
 
 const tableData = computed(() => {
@@ -816,7 +827,7 @@ const tableData = computed(() => {
       return cells.map((cell) => cell.trim());
     })
     .filter((row) => row.length > 0);
-  
+
   // Return at least an empty structure
   return result.length > 0 ? result : [[]];
 });
@@ -830,7 +841,7 @@ const updateTableData = () => {
   }
 
   // Get headers and ensure they're not empty
-  const headers = tableData.value[0].map(header => header.trim() || "Header");
+  const headers = tableData.value[0].map((header) => header.trim() || "Header");
   const data = tableData.value.slice(1);
 
   // Create header row with consistent spacing
@@ -840,14 +851,14 @@ const updateTableData = () => {
   const separatorRow = "|" + headers.map(() => "--------|").join("");
 
   // Create data rows with proper padding
-  const dataRows = data.map(row => {
+  const dataRows = data.map((row) => {
     // Ensure each row has the correct number of cells
     const paddedRow = [...row];
     while (paddedRow.length < headers.length) {
       paddedRow.push("");
     }
     // Trim cells and handle empty ones
-    const formattedRow = paddedRow.map(cell => cell.trim());
+    const formattedRow = paddedRow.map((cell) => cell.trim());
     return "| " + formattedRow.join(" | ") + " |";
   });
 
@@ -891,7 +902,7 @@ const addTableRow = () => {
 
   const headerRow = "| " + headers.join(" | ") + " |";
   const separatorRow = "|" + headers.map(() => "--------|").join("");
-  const dataRows = data.map(row => "| " + row.join(" | ") + " |");
+  const dataRows = data.map((row) => "| " + row.join(" | ") + " |");
 
   emit("update:content", [headerRow, separatorRow, ...dataRows]);
 
@@ -925,7 +936,7 @@ const addTableColumn = () => {
 
   const headerRow = "| " + headers.join(" | ") + " |";
   const separatorRow = "|" + headers.map(() => "--------|").join("");
-  const dataRows = data.map(row => "| " + row.join(" | ") + " |");
+  const dataRows = data.map((row) => "| " + row.join(" | ") + " |");
 
   emit("update:content", [headerRow, separatorRow, ...dataRows]);
 
@@ -950,14 +961,14 @@ const deleteTableColumn = (colIndex: number) => {
     displayToast("Cannot delete the last column", "error");
     return;
   }
-  
+
   // Remove the column from each row
-  const newTableData = tableData.value.map(row => {
+  const newTableData = tableData.value.map((row) => {
     const newRow = [...row];
     newRow.splice(colIndex, 1);
     return newRow;
   });
-  
+
   // Update the table data
   // We need to manually update this since tableData is a computed property
   for (let i = 0; i < newTableData.length; i++) {
@@ -965,10 +976,10 @@ const deleteTableColumn = (colIndex: number) => {
       tableData.value[i] = newTableData[i].slice();
     }
   }
-  
+
   // Update the markdown
   updateTableData();
-  
+
   // Show success toast
   displayToast("Column deleted", "info");
 };
@@ -992,7 +1003,7 @@ const deleteTableRow = (rowIndex: number) => {
 
   const headerRow = "| " + headers.join(" | ") + " |";
   const separatorRow = "|" + headers.map(() => "--------|").join("");
-  const dataRows = data.map(row => "| " + row.join(" | ") + " |");
+  const dataRows = data.map((row) => "| " + row.join(" | ") + " |");
 
   emit("update:content", [headerRow, separatorRow, ...dataRows]);
   displayToast("Row deleted", "info");
@@ -1004,25 +1015,29 @@ const initializeEmptyTable = () => {
   const headers = ["Header 1", "Header 2", "Header 3"];
   const rows = [
     ["Cell 1", "Cell 2", "Cell 3"],
-    ["Cell 4", "Cell 5", "Cell 6"]
+    ["Cell 4", "Cell 5", "Cell 6"],
   ];
-  
+
   const headerRow = "| " + headers.join(" | ") + " |";
   const separatorRow = "|" + headers.map(() => "--------|").join("");
-  const dataRows = rows.map(row => "| " + row.join(" | ") + " |");
-  
+  const dataRows = rows.map((row) => "| " + row.join(" | ") + " |");
+
   emit("update:content", [headerRow, separatorRow, ...dataRows]);
   displayToast("Table created", "success");
 };
 
 // Handle keyboard navigation for the table
-const handleTableKeyboardNavigation = (event: KeyboardEvent, rowIndex: number, colIndex: number) => {
+const handleTableKeyboardNavigation = (
+  event: KeyboardEvent,
+  rowIndex: number,
+  colIndex: number
+) => {
   // Get current dimensions
   const maxRow = tableData.value.length - 1;
   const maxCol = tableData.value[rowIndex].length - 1;
-  
+
   switch (event.key) {
-    case 'Tab':
+    case "Tab":
       // Handle tab navigation
       if (!event.shiftKey) {
         // Move right
@@ -1046,42 +1061,49 @@ const handleTableKeyboardNavigation = (event: KeyboardEvent, rowIndex: number, c
         }
       }
       break;
-      
-    case 'ArrowDown':
+
+    case "ArrowDown":
       if (rowIndex < maxRow) {
         event.preventDefault();
         focusCell(rowIndex + 1, colIndex);
       }
       break;
-      
-    case 'ArrowUp':
+
+    case "ArrowUp":
       if (rowIndex > 0) {
         event.preventDefault();
         focusCell(rowIndex - 1, colIndex);
       }
       break;
-      
-    case 'ArrowRight':
-      if (event.ctrlKey || event.metaKey || 
-          (event.target as HTMLInputElement).selectionStart === (event.target as HTMLInputElement).value.length) {
+
+    case "ArrowRight":
+      if (
+        event.ctrlKey ||
+        event.metaKey ||
+        (event.target as HTMLInputElement).selectionStart ===
+          (event.target as HTMLInputElement).value.length
+      ) {
         if (colIndex < maxCol) {
           event.preventDefault();
           focusCell(rowIndex, colIndex + 1);
         }
       }
       break;
-      
-    case 'ArrowLeft':
-      if (event.ctrlKey || event.metaKey || 
-          (event.target as HTMLInputElement).selectionStart === 0) {
+
+    case "ArrowLeft":
+      if (
+        event.ctrlKey ||
+        event.metaKey ||
+        (event.target as HTMLInputElement).selectionStart === 0
+      ) {
         if (colIndex > 0) {
           event.preventDefault();
           focusCell(rowIndex, colIndex - 1);
         }
       }
       break;
-      
-    case 'Enter':
+
+    case "Enter":
       if (event.ctrlKey || event.metaKey) {
         // Create new row with Ctrl/Cmd+Enter
         event.preventDefault();
@@ -1100,23 +1122,27 @@ const focusCell = (rowIndex: number, colIndex: number) => {
   nextTick(() => {
     // For header row (rowIndex === 0), use header inputs
     if (rowIndex === 0) {
-      const headerInputs = moduleRef.value?.querySelectorAll('.template-module-editor-table-header-input');
+      const headerInputs = moduleRef.value?.querySelectorAll(
+        ".template-module-editor-table-header-input"
+      );
       if (headerInputs && headerInputs[colIndex]) {
         (headerInputs[colIndex] as HTMLElement).focus();
       }
       return;
     }
-    
+
     // For data rows
-    const cells = moduleRef.value?.querySelectorAll('.template-module-editor-table-input');
+    const cells = moduleRef.value?.querySelectorAll(
+      ".template-module-editor-table-input"
+    );
     if (!cells) return;
-    
+
     // Calculate index in the nodelist based on current row and column
     // We need to account for the header row being separate
     const rowOffset = rowIndex - 1; // Adjust for header row
     const columnCount = tableData.value[0]?.length || 0;
-    const cellIndex = (rowOffset * columnCount) + colIndex;
-    
+    const cellIndex = rowOffset * columnCount + colIndex;
+
     if (cells[cellIndex]) {
       (cells[cellIndex] as HTMLElement).focus();
     }
@@ -1443,7 +1469,8 @@ const updateModuleContent = (newContent: string[]) => {
   z-index: 2;
 }
 
-.template-module-editor-table-header-cell:hover .template-module-editor-column-delete {
+.template-module-editor-table-header-cell:hover
+  .template-module-editor-column-delete {
   opacity: 0.7;
 }
 

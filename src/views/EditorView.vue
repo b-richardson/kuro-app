@@ -271,10 +271,14 @@
       <div class="right-actions">
         <button
           class="action-button save-button"
-          @click="saveTemplate"
-          :disabled="!uiStore.isModified"
+          @click="pushToVault"
+          :disabled="!obsidianStore.isConnected || isLoading"
         >
-          <i class="fas fa-save"></i> Save Changes
+          <i
+            class="fas"
+            :class="isLoading ? 'fa-spinner fa-spin' : 'fa-file-export'"
+          ></i>
+          {{ isLoading ? "Pushing..." : "Push to Vault" }}
         </button>
 
         <button class="action-button export-button" @click="exportTemplate">
@@ -316,6 +320,7 @@ import { useRouter, useRoute } from "vue-router";
 import { useTemplateStore } from "@/stores/template";
 import { useUIStore } from "@/stores/ui";
 import { usePreferencesStore } from "@/stores/preferences";
+import { useObsidianStore } from "@/stores/obsidian";
 import debounce from "lodash-es/debounce";
 import { v4 as uuidv4 } from "uuid";
 import { TemplateModule } from "@/types/TemplateModule";
@@ -325,6 +330,7 @@ import {
   EXPORT_PROFILES,
   getExportProfileName,
 } from "@/types/Editor";
+import { generateMarkdown } from "@/utils/markdownUtils";
 
 // Import components
 import TemplateModuleLibrary from "@/components/TemplateCreator/TemplateModuleLibrary.vue";
@@ -338,6 +344,7 @@ const route = useRoute();
 const templateStore = useTemplateStore();
 const uiStore = useUIStore();
 const preferencesStore = usePreferencesStore();
+const obsidianStore = useObsidianStore();
 
 // Props from route
 const props = defineProps<{
@@ -354,6 +361,7 @@ const showProfileMenu = ref(false);
 const showPluginMenu = ref(false);
 const currentViewMode = ref<ViewMode>("Rendered");
 const isPreviewFocused = ref(false);
+const isLoading = ref(false); // General loading state for operations
 const dragDropEditorRef = ref<InstanceType<typeof DragDropEditor> | null>(null);
 
 // Plugin syntax toggle options
@@ -389,6 +397,11 @@ const templateDescription = computed({
 const getCurrentProfileId = (): ExportProfile => {
   return preferencesStore.activeExportProfileId || "full";
 };
+
+// Computed property for the current export profile to use for generating markdown
+const exportProfile = computed((): ExportProfile => {
+  return getCurrentProfileId();
+});
 
 // Get short name for export profile indicator
 const getExportProfileShortName = (profileId: string) => {
@@ -605,9 +618,83 @@ const saveTemplate = async () => {
   }
 };
 
+/**
+ * Export template functionality
+ */
 const exportTemplate = () => {
   // Will be implemented later
   uiStore.showToast("Export functionality will be implemented soon", "info");
+};
+
+/**
+ * Push the template to connected Obsidian vault
+ */
+const pushToVault = async () => {
+  // Guard against unmounted component
+  if (!isMounted.value) {
+    return;
+  }
+
+  // Check if Obsidian is connected
+  if (!obsidianStore.isConnected) {
+    uiStore.showToast(
+      "Not connected to Obsidian. Please connect first.",
+      "error"
+    );
+    return;
+  }
+
+  try {
+    // Set up loading state
+    isLoading.value = true;
+
+    // Start by generating the markdown content using the current settings
+    // The generateMarkdown already handles the export profile correctly
+    // plugin toggles are handled as display-only in MarkdownPreview
+    const markdown = generateMarkdown(
+      templateStore.currentSections,
+      exportProfile.value
+    );
+
+    // Create a safe filename from the template title
+    const templateTitle =
+      templateStore.currentTemplate?.name || "Untitled Template";
+    const safeFilename = templateTitle
+      .toLowerCase()
+      .replace(/[^\w\s-]/g, "") // Remove special characters
+      .replace(/\s+/g, "-") // Replace spaces with hyphens
+      .replace(/-+/g, "-"); // Replace multiple hyphens with single hyphen
+
+    // Add .md extension
+    const filename = `${safeFilename}.md`;
+
+    // Set destination path (Templates folder in vault)
+    const destinationPath = `Templates/${filename}`;
+
+    // Push the file to Obsidian vault
+    const result = await obsidianStore.createOrUpdateFile(
+      destinationPath,
+      markdown
+    );
+
+    if (result) {
+      uiStore.showToast(
+        `Template successfully pushed to your vault at ${destinationPath}`,
+        "success"
+      );
+    } else {
+      throw new Error("Failed to push template to vault. Unknown error.");
+    }
+  } catch (error: any) {
+    console.error("Error pushing template to vault:", error);
+    uiStore.showToast(
+      `Error pushing template to vault: ${error.message || error}`,
+      "error"
+    );
+  } finally {
+    // Clear loading state
+    isLoading.value = false;
+  }
 };
 
 const markAsModified = () => {
@@ -1298,13 +1385,13 @@ onUnmounted(() => {
     width: 100%;
     max-width: none;
   }
-  
+
   /* Adjust preview controls for medium screens */
   .preview-controls-bar {
     flex-direction: column;
     gap: var(--spacing-sm);
   }
-  
+
   .preview-controls-group {
     width: 100%;
     justify-content: space-between;
@@ -1352,20 +1439,20 @@ onUnmounted(() => {
     display: flex;
     grid-column: 1;
   }
-  
+
   /* Compact preview controls on small screens */
   .preview-controls-bar {
     padding: var(--spacing-xs);
   }
-  
+
   .preview-controls-bar .dropdown-trigger {
     padding: 2px 6px;
   }
-  
+
   .preview-controls-bar .dropdown-trigger span:not(.profile-badge) {
     display: none;
   }
-  
+
   .preview-action-button.export-button span {
     display: none;
   }

@@ -1,10 +1,10 @@
 <template>
   <div class="module-category">
     <h3 class="category-title">Plugin Modules</h3>
-    
+
     <!-- Plugin categories tabs -->
     <div class="plugin-tabs">
-      <button 
+      <button
         v-for="plugin in plugins"
         :key="plugin.type"
         class="plugin-tab"
@@ -15,7 +15,7 @@
         {{ plugin.name }}
       </button>
     </div>
-    
+
     <!-- Plugin modules -->
     <div class="module-content">
       <!-- Templater Modules -->
@@ -27,27 +27,33 @@
             :key="module.id"
             :title="module.title"
             :description="module.description"
-            :icon="getSectionIcon(module.sectionType)"
+            :icon="getModuleIcon(module.sectionType)"
             :plugin-icon="getPluginIcon('templater')"
             :show-description="showDescriptions"
             @click="addPluginModule(module.id, 'templater')"
           />
         </div>
-        
+
         <!-- Secondary Modules (togglable) -->
-        <div v-if="showSecondaryModules && secondaryPriorityTemplaterModules.length > 0">
+        <div
+          v-if="
+            showSecondaryModules && secondaryPriorityTemplaterModules.length > 0
+          "
+        >
           <div class="secondary-modules-heading">
             <h4 class="module-subheading">Additional Templater Modules</h4>
-            <small class="module-hint">Advanced templating options for specific needs</small>
+            <small class="module-hint"
+              >Advanced templating options for specific needs</small
+            >
           </div>
-          
+
           <div class="module-grid secondary-module-grid">
             <ModuleCard
               v-for="module in secondaryPriorityTemplaterModules"
               :key="module.id"
               :title="module.title"
               :description="module.description"
-              :icon="getSectionIcon(module.sectionType)"
+              :icon="getModuleIcon(module.sectionType)"
               :plugin-icon="getPluginIcon('templater')"
               :show-description="showDescriptions"
               @click="addPluginModule(module.id, 'templater')"
@@ -55,7 +61,7 @@
           </div>
         </div>
       </div>
-      
+
       <!-- Dataview Modules -->
       <div v-if="activePlugin === 'dataview'" class="plugin-module-section">
         <!-- High Priority Modules -->
@@ -65,27 +71,31 @@
             :key="module.id"
             :title="module.title"
             :description="module.description"
-            :icon="getSectionIcon(module.sectionType)"
+            :icon="getModuleIcon(module.sectionType)"
             :plugin-icon="getPluginIcon('dataview')"
             :show-description="showDescriptions"
             @click="addPluginModule(module.id, 'dataview')"
           />
         </div>
-        
+
         <!-- Secondary Modules (togglable) -->
-        <div v-if="showSecondaryModules && secondaryPriorityDataviewModules.length > 0">
+        <div
+          v-if="
+            showSecondaryModules && secondaryPriorityDataviewModules.length > 0
+          "
+        >
           <div class="secondary-modules-heading">
             <h4 class="module-subheading">Additional Dataview Modules</h4>
             <small class="module-hint">More advanced query options</small>
           </div>
-          
+
           <div class="module-grid secondary-module-grid">
             <ModuleCard
               v-for="module in secondaryPriorityDataviewModules"
               :key="module.id"
               :title="module.title"
               :description="module.description"
-              :icon="getSectionIcon(module.sectionType)"
+              :icon="getModuleIcon(module.sectionType)"
               :plugin-icon="getPluginIcon('dataview')"
               :show-description="showDescriptions"
               @click="addPluginModule(module.id, 'dataview')"
@@ -93,7 +103,7 @@
           </div>
         </div>
       </div>
-      
+
       <!-- Kanban Modules -->
       <div v-if="activePlugin === 'kanban'" class="plugin-module-section">
         <!-- High Priority Modules -->
@@ -103,27 +113,33 @@
             :key="module.id"
             :title="module.title"
             :description="module.description"
-            :icon="getSectionIcon(module.sectionType)"
+            :icon="getModuleIcon(module.sectionType)"
             :plugin-icon="getPluginIcon('kanban')"
             :show-description="showDescriptions"
             @click="addPluginModule(module.id, 'kanban')"
           />
         </div>
-        
+
         <!-- Secondary Modules (togglable) -->
-        <div v-if="showSecondaryModules && secondaryPriorityKanbanModules.length > 0">
+        <div
+          v-if="
+            showSecondaryModules && secondaryPriorityKanbanModules.length > 0
+          "
+        >
           <div class="secondary-modules-heading">
             <h4 class="module-subheading">Additional Kanban Modules</h4>
-            <small class="module-hint">More advanced board configurations</small>
+            <small class="module-hint"
+              >More advanced board configurations</small
+            >
           </div>
-          
+
           <div class="module-grid secondary-module-grid">
             <ModuleCard
               v-for="module in secondaryPriorityKanbanModules"
               :key="module.id"
               :title="module.title"
               :description="module.description"
-              :icon="getSectionIcon(module.sectionType)"
+              :icon="getModuleIcon(module.sectionType)"
               :plugin-icon="getPluginIcon('kanban')"
               :show-description="showDescriptions"
               @click="addPluginModule(module.id, 'kanban')"
@@ -132,79 +148,102 @@
         </div>
       </div>
     </div>
-    
+
     <!-- Toggle for Secondary Modules -->
-    <button 
-      v-if="hasSecondaryModules" 
+    <button
+      v-if="hasSecondaryModules"
       class="toggle-secondary-btn"
       @click="toggleSecondaryModules"
     >
-      {{ showSecondaryModules ? 'Hide additional modules' : 'Show more plugin modules' }}
-      <i :class="showSecondaryModules ? 'fas fa-chevron-up' : 'fas fa-chevron-down'"></i>
+      {{
+        showSecondaryModules
+          ? "Hide additional modules"
+          : "Show more plugin modules"
+      }}
+      <i
+        :class="
+          showSecondaryModules ? 'fas fa-chevron-up' : 'fas fa-chevron-down'
+        "
+      ></i>
     </button>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue';
-import ModuleCard from './ModuleCard.vue';
-import { getSectionIcon, getPluginIcon } from '@/utils/pluginTemplates';
-import { usePresetStore, ModulePriority } from '@/stores/presets';
-import { v4 as uuidv4 } from 'uuid';
+import { ref, computed } from "vue";
+import ModuleCard from "./ModuleCard.vue";
+import { getModuleIcon, getPluginIcon } from "@/utils/pluginTemplates";
+import { usePresetStore, ModulePriority } from "@/stores/presets";
+import { v4 as uuidv4 } from "uuid";
 
 // Define props
 const props = defineProps({
   showDescriptions: {
     type: Boolean,
-    default: true
-  }
+    default: true,
+  },
 });
 
 const presetStore = usePresetStore();
-const activePlugin = ref('templater');
+const activePlugin = ref("templater");
 const showSecondaryModules = ref(false);
 
 // Plugin definitions
 const plugins = [
-  { type: 'templater', name: 'Templater' },
-  { type: 'dataview', name: 'Dataview' },
-  { type: 'kanban', name: 'Kanban' }
+  { type: "templater", name: "Templater" },
+  { type: "dataview", name: "Dataview" },
+  { type: "kanban", name: "Kanban" },
 ];
 
 // Get high priority modules
 const highPriorityTemplaterModules = computed(() => {
-  return presetStore.getPluginModulesByPriority('templater', ModulePriority.HIGH);
+  return presetStore.getPluginModulesByPriority(
+    "templater",
+    ModulePriority.HIGH
+  );
 });
 
 const highPriorityDataviewModules = computed(() => {
-  return presetStore.getPluginModulesByPriority('dataview', ModulePriority.HIGH);
+  return presetStore.getPluginModulesByPriority(
+    "dataview",
+    ModulePriority.HIGH
+  );
 });
 
 const highPriorityKanbanModules = computed(() => {
-  return presetStore.getPluginModulesByPriority('kanban', ModulePriority.HIGH);
+  return presetStore.getPluginModulesByPriority("kanban", ModulePriority.HIGH);
 });
 
 // Get secondary priority modules
 const secondaryPriorityTemplaterModules = computed(() => {
-  return presetStore.getPluginModulesByPriority('templater', ModulePriority.SECONDARY);
+  return presetStore.getPluginModulesByPriority(
+    "templater",
+    ModulePriority.SECONDARY
+  );
 });
 
 const secondaryPriorityDataviewModules = computed(() => {
-  return presetStore.getPluginModulesByPriority('dataview', ModulePriority.SECONDARY);
+  return presetStore.getPluginModulesByPriority(
+    "dataview",
+    ModulePriority.SECONDARY
+  );
 });
 
 const secondaryPriorityKanbanModules = computed(() => {
-  return presetStore.getPluginModulesByPriority('kanban', ModulePriority.SECONDARY);
+  return presetStore.getPluginModulesByPriority(
+    "kanban",
+    ModulePriority.SECONDARY
+  );
 });
 
 // Check if we have any secondary modules for the active plugin
 const hasSecondaryModules = computed(() => {
   switch (activePlugin.value) {
-    case 'templater':
+    case "templater":
       return secondaryPriorityTemplaterModules.value.length > 0;
-    case 'dataview':
+    case "dataview":
       return secondaryPriorityDataviewModules.value.length > 0;
-    case 'kanban':
+    case "kanban":
       return secondaryPriorityKanbanModules.value.length > 0;
     default:
       return false;
@@ -217,18 +256,18 @@ const toggleSecondaryModules = () => {
 };
 
 // Define emits
-const emit = defineEmits(['add-module']);
+const emit = defineEmits(["add-module"]);
 
 // Function to add a plugin module
 const addPluginModule = (moduleId, pluginType) => {
   const module = presetStore.getPluginModuleById(moduleId, pluginType);
   if (!module) return;
-  
-  emit('add-module', {
+
+  emit("add-module", {
     id: uuidv4(),
     type: module.sectionType,
     content: [...module.content],
-    pluginType: pluginType
+    pluginType: pluginType,
   });
 };
 </script>
