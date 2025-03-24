@@ -22,12 +22,28 @@ console.log(
 );
 
 // Create and export the Supabase client.
-// Configure session handling for the application
+// Configure session handling for the application with enhanced persistence
 export const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
   auth: {
     autoRefreshToken: true,
     persistSession: true,
     detectSessionInUrl: true,
-    storage: localStorage
+    // Explicitly set storage to localStorage to ensure sessions persist
+    storage: localStorage,
+    storageKey: 'obsidian-template-creator-auth', // Use a specific key for our app
+    flowType: 'implicit' // Use implicit flow for better vite dev server compatibility
   },
+  // Set global database schema
+  db: {
+    schema: 'public',
+  },
+  // Configure cookie options for better persistence
+  cookies: {
+    // Use a long-lived cookie (30 days)
+    lifetime: 60 * 60 * 24 * 30, 
+    domain: window.location.hostname, // Set to current domain
+    sameSite: 'lax',
+    path: '/',
+    secure: window.location.protocol === 'https:'
+  }
 });

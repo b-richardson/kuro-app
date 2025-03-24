@@ -245,10 +245,16 @@ const handleSubmit = async () => {
           emailSentTitle.value = "Verify your email";
           emailSentMessage.value = "We've sent you a link to verify your email address. Please check your inbox.";
         } else {
+          // Show success toast
+          uiStore.showToast("Successfully signed up and logged in", "success");
+          
           // Redirect to dashboard or the intended destination
           const redirectPath = (route.query.redirect as string) || "/dashboard";
-          router.push(redirectPath);
-          uiStore.showToast("Successfully signed up and logged in", "success");
+          console.log('Redirecting after signup to:', redirectPath);
+          
+          // Force a complete page reload to reinitialize everything
+          console.log('Forcing complete page reload after signup to:', redirectPath);
+          window.location.replace(redirectPath.startsWith('/') ? redirectPath : `/${redirectPath}`);
         }
       } else {
         // Handle sign-up error from authStore
@@ -259,10 +265,25 @@ const handleSubmit = async () => {
       const success = await authStore.login(email.value, password.value);
       
       if (success) {
-        // Redirect to dashboard or the intended destination
-        const redirectPath = (route.query.redirect as string) || "/dashboard";
-        router.push(redirectPath);
+        // Log authentication state for debugging
+        console.log('After login auth state:', {
+          authenticated: authStore.isAuthenticated,
+          user: authStore.user,
+          route: route.path
+        });
+        
+        // Show success toast
         uiStore.showToast("Successfully signed in", "success");
+        
+        // Redirect to dashboard or the intended destination
+        // Use nextTick to ensure the DOM is updated and state changes are processed
+        const redirectPath = (route.query.redirect as string) || "/dashboard";
+        console.log('Redirecting to:', redirectPath);
+        
+        // Force a complete page reload to reinitialize everything
+        // This is the most reliable way to handle auth state changes
+        console.log('Forcing complete page reload to:', redirectPath);
+        window.location.replace(redirectPath.startsWith('/') ? redirectPath : `/${redirectPath}`);
       } else {
         // Handle sign-in error from authStore
         error.value = authStore.error || "Invalid email or password";
@@ -340,25 +361,46 @@ const goBackToLogin = () => {
 };
 
 // Check for OAuth redirects on mount
-onMounted(() => {
+onMounted(async () => {
+  console.log('LoginView mounted, checking for OAuth redirects');
+  
   // Parse the hash URL for an access token to determine if returning from OAuth
   const hashParams = new URLSearchParams(window.location.hash.substring(1));
   const accessToken = hashParams.get('access_token');
   
   if (accessToken) {
+    console.log('OAuth access token detected, processing authentication');
     // If we have an access token, the user has been authenticated via OAuth
-    uiStore.showToast("Successfully authenticated", "success");
     
-    // We can redirect to the dashboard since auth listeners will handle the session
-    const redirectPath = (route.query.redirect as string) || "/dashboard";
-    router.push(redirectPath);
+    // First check if the user is already properly authenticated in our store
+    await authStore.checkAuth();
+    
+    if (authStore.isAuthenticated) {
+      uiStore.showToast("Successfully authenticated", "success");
+      
+      // We should redirect to the dashboard
+      const redirectPath = (route.query.redirect as string) || "/dashboard";
+      console.log('Redirecting after OAuth login to:', redirectPath);
+      
+      // Force a complete page reload to reinitialize everything
+      console.log('Forcing complete page reload after OAuth to:', redirectPath);
+      window.location.replace(redirectPath.startsWith('/') ? redirectPath : `/${redirectPath}`);
+    } else {
+      console.log('OAuth token detected but user not authenticated in store');
+      uiStore.showToast("Authentication in progress...", "info");
+      // Give a bit more time for auth state to sync before redirecting
+      setTimeout(() => {
+        const redirectPath = (route.query.redirect as string) || "/dashboard";
+        console.log('OAuth fallback timeout triggered, forcing reload to:', redirectPath);
+        window.location.replace(redirectPath.startsWith('/') ? redirectPath : `/${redirectPath}`);
+      }, 1000);
+    }
   }
   
   // Check for any reset token in the URL
   const resetToken = route.query.reset_token;
   if (resetToken) {
     // Handle password reset logic here
-    // You will likely need to redirect to a password reset form
     uiStore.showToast("Password reset token detected", "info");
   }
 });

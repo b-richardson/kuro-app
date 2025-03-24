@@ -93,6 +93,13 @@ const shouldShowSidebar = computed(() => {
     "settings",
   ];
 
+  // For debugging purposes
+  console.log('Route and auth check:', { 
+    route: currentRoute, 
+    authenticated: authStore.isAuthenticated,
+    showSidebar: authStore.isAuthenticated && sidebarRoutes.includes(currentRoute)
+  });
+
   return authStore.isAuthenticated && sidebarRoutes.includes(currentRoute);
 });
 
@@ -166,6 +173,8 @@ const handleLogout = () => {
 
 // Check auth on mount
 onMounted(async () => {
+  console.log('App.vue mounting...');
+  
   // Load stored data
   preferencesStore.loadPreferences();
   templateStore.loadTemplates();
@@ -184,54 +193,17 @@ onMounted(async () => {
   isDarkTheme.value = savedTheme === "dark";
   document.documentElement.setAttribute("data-theme", savedTheme);
 
-  // Check authentication
+  // Check authentication status - this will trigger auth state watchers
+  console.log('Initializing auth state...');
   await authStore.checkAuth();
+  
+  // After auth check, explicitly sync router with auth state
+  await authStore.syncAuthStateWithRouter();
   
   // Attempt to restore Obsidian connection
   await obsidianStore.restoreConnection();
-
-  // Handle redirects based on auth state
-  if (authStore.isAuthenticated) {
-    // If user is authenticated and at landing or login, redirect to dashboard
-    if (
-      router.currentRoute.value.name === "landing" ||
-      router.currentRoute.value.name === "login" ||
-      router.currentRoute.value.name === "signup"
-    ) {
-      router.push({ name: "dashboard" });
-      return;
-    }
-  } else {
-    // If not authenticated and route requires auth, redirect to login
-    const requiresAuth = router.currentRoute.value.meta?.requiresAuth;
-    if (requiresAuth) {
-      router.push({
-        name: "login",
-        query: { redirect: router.currentRoute.value.fullPath },
-      });
-      return;
-    }
-  }
-
-  // Handle lastVisitedView-based redirect only if we're not handling auth redirects
-  const lastView = preferencesStore.lastVisitedView;
-
-  if (lastView === "editor") {
-    const templateId = templateStore.currentTemplateId || "";
-
-    if (templateId) {
-      router.replace(`/editor/${templateId}`);
-    } else if (authStore.isAuthenticated) {
-      router.replace("/library");
-    }
-  } else if (lastView === "library" && authStore.isAuthenticated) {
-    router.replace("/library");
-  } else if (
-    router.currentRoute.value.path === "/" &&
-    authStore.isAuthenticated
-  ) {
-    router.replace("/dashboard");
-  }
+  
+  console.log('App initialization complete');
 });
 
 // Watch for toast messages

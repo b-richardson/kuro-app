@@ -124,30 +124,46 @@ const router = createRouter({
   routes,
 });
 
-// Navigation guards - strictly enforce auth requirements
+// Navigation guards - simplified to avoid conflicts with auth store
 router.beforeEach(async (to, from, next) => {
   const authStore = useAuthStore();
-  const requiresAuth = to.matched.some((record) => record.meta.requiresAuth);
-  const hideForAuth = to.matched.some((record) => record.meta.hideForAuth);
   
-  // Always check auth status before proceeding
-  await authStore.checkAuth();
+  // Log what we're trying to do
+  console.log('Router guard running for:', to.path, {
+    from: from.path,
+    isAuthenticated: authStore.isAuthenticated,
+    sessionChecked: authStore.sessionChecked
+  });
   
-  // Check if the route requires authentication
-  if (requiresAuth && !authStore.isAuthenticated) {
-    // Store the intended destination for post-login redirect
-    next({ 
-      name: "login", 
-      query: { redirect: to.fullPath } 
-    });
-  } 
-  // Check if the route should be hidden for authenticated users
-  else if (hideForAuth && authStore.isAuthenticated) {
-    next({ name: "dashboard" });
+  // If the session hasn't been checked yet, let's do it
+  if (!authStore.sessionChecked) {
+    console.log('Session not checked yet, checking auth status...');
+    await authStore.checkAuth();
   }
-  else {
+  
+  // Let the authStore's reactive system handle the redirects
+  // This reduces the risk of redirect loops and state inconsistencies
+  if (authStore.sessionChecked) {
+    console.log('Session checked, proceeding with navigation');
+    next();
+    
+    // After navigation completes successfully, sync auth state with router
+    // This ensures that any subsequent navigation will be properly handled
+    // based on updated auth state
+    setTimeout(() => {
+      authStore.syncAuthStateWithRouter();
+    }, 0);
+  } else {
+    // If the session check is still pending, continue navigation
+    // The auth state watcher will handle redirects later if needed
+    console.log('Session check still pending, continuing navigation');
     next();
   }
+});
+
+// After each navigation, sync auth state if needed
+router.afterEach((to) => {
+  console.log('Navigation completed to:', to.path);
 });
 
 export default router;
