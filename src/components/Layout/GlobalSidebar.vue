@@ -72,6 +72,15 @@
         <i class="fas fa-mountain"></i>
         <span>Obsidian Explorer</span>
       </router-link>
+      
+      <router-link
+        to="/editor-test"
+        class="nav-item"
+        :class="{ active: currentRoute === 'editor-test' }"
+      >
+        <i class="fas fa-edit"></i>
+        <span>Editor Test</span>
+      </router-link>
 
       <router-link
         to="/settings"
@@ -183,11 +192,13 @@ const router = useRouter();
 const route = useRoute();
 const currentRoute = computed(() => {
   if (route.path === "/dashboard") return "dashboard";
-  if (route.path.includes("/editor")) return "editor";
+  if (route.path.includes("/editor") && !route.path.includes("/editor-test")) return "editor";
+  if (route.path === "/editor-test") return "editor-test";
   if (route.path === "/library") return "library";
   if (route.path === "/template-library") return "templateLibrary";
   if (route.path === "/settings") return "settings";
   if (route.path === "/obsidian-explorer") return "obsidian-explorer";
+  if (route.path === "/frameworks") return "frameworks";
   return "";
 });
 

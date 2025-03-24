@@ -133,6 +133,7 @@ const routes = [
     component: EditorTestView,
     meta: {
       requiresAuth: false, // Available without authentication for testing
+      skipAuthRedirect: true, // Skip any auth redirects for this route
     },
   },
 ];

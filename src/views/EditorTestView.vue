@@ -1,6 +1,7 @@
 <template>
   <div class="editor-test-view">
     <h1>Obsidian Editor Test</h1>
+    <p class="editor-description">Enhanced Live Preview - Testing Environment</p>
     <div class="editor-container">
       <ObsidianNoteEditor
         v-model="editorContent"
@@ -41,7 +42,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from "vue";
-import { ObsidianNoteEditor } from "@/components/ObsidianEditor/index";
+import { ObsidianNoteEditor } from "@/components/ObsidianEditor";
 import { useFrameworksStore } from "@/stores/frameworks";
 
 // Editor state
@@ -140,8 +141,14 @@ const clearEditor = () => {
 }
 
 h1 {
-  margin-bottom: var(--spacing-md);
+  margin-bottom: calc(var(--spacing-sm) / 2);
   color: var(--color-primary);
+}
+
+.editor-description {
+  margin-bottom: var(--spacing-md);
+  color: var(--color-text-secondary);
+  font-size: 0.9rem;
 }
 
 .editor-container {
@@ -152,6 +159,7 @@ h1 {
   background: rgba(30, 30, 46, 0.5);
   backdrop-filter: blur(10px);
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  min-height: 600px; /* Ensure a good size for testing */
 }
 
 .editor-controls {
