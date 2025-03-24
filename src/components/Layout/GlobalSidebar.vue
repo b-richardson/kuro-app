@@ -53,6 +53,15 @@
         <i class="fas fa-book"></i>
         <span>Template Library</span>
       </router-link>
+
+      <router-link
+        to="/frameworks"
+        class="nav-item"
+        :class="{ active: currentRoute === 'frameworks' }"
+      >
+        <i class="fas fa-puzzle-piece"></i>
+        <span>Frameworks</span>
+      </router-link>
       
       <router-link
         to="/obsidian-explorer"

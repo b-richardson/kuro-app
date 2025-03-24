@@ -12,6 +12,7 @@ import SettingsView from "../views/SettingsView.vue";
 import DesignView from "../views/DesignView.vue";
 import ObsidianOnboarding from "../views/ObsidianOnboarding.vue";
 import ObsidianExplorer from "../views/ObsidianExplorer.vue";
+import FrameworksView from "../views/Frameworks/FrameworksView.vue";
 
 const routes = [
   {
@@ -113,6 +114,14 @@ const routes = [
     path: "/obsidian-explorer",
     name: "obsidian-explorer",
     component: ObsidianExplorer,
+    meta: {
+      requiresAuth: true, // Requires authentication
+    },
+  },
+  {
+    path: "/frameworks",
+    name: "frameworks",
+    component: FrameworksView,
     meta: {
       requiresAuth: true, // Requires authentication
     },
