@@ -41,6 +41,8 @@
         </div>
       </section>
 
+      <ObsidianNoteEditor />
+
       <!-- Features Section -->
       <section id="features" class="features-section">
         <h2 class="section-title">Features That Boost Your Productivity</h2>
@@ -287,6 +289,7 @@
 import { ref, onMounted } from "vue";
 import { usePreferencesStore } from "../stores";
 import ScrollContainer from "@/components/UI/ScrollContainer.vue";
+import ObsidianNoteEditor from "@/components/ObsidianEditor/ObsidianNoteEditor.vue";
 
 // Navigation dropdowns
 const showViewModeMenu = ref(false);
