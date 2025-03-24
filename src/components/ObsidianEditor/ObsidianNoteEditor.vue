@@ -339,10 +339,76 @@ function getLivePreviewExtensions(): Extension[] {
       }
       
       buildDecorations(view: EditorView) {
-        // In a full implementation, this would parse the markdown and add inline decorations
-        // For simplicity in this demo, we're keeping it minimal
-        // A complete implementation would add decorations for headings, bold text, etc.
-        return Decoration.none;
+        const decorations: Range<Decoration>[] = [];
+        const doc = view.state.doc;
+        
+        // Process the document content to find and decorate Obsidian specific syntax
+        for (let i = 1; i <= doc.lines; i++) {
+          const line = doc.line(i);
+          const text = line.text;
+          
+          // Decorate Obsidian WikiLinks [[Link]]
+          const wikiLinkRegex = /\[\[(.*?)\]\]/g;
+          let wikiMatch;
+          while ((wikiMatch = wikiLinkRegex.exec(text)) !== null) {
+            const start = line.from + wikiMatch.index;
+            const end = start + wikiMatch[0].length;
+            
+            decorations.push(Decoration.mark({
+              class: "cm-hmd-internal-link"
+            }).range(start, end));
+          }
+          
+          // Decorate tags #tag
+          const tagRegex = /(^|\s)#([a-zA-Z0-9_/-]+)/g;
+          let tagMatch;
+          while ((tagMatch = tagRegex.exec(text)) !== null) {
+            const start = line.from + tagMatch.index + tagMatch[1].length; // Skip the space before
+            const end = start + tagMatch[2].length + 1; // Include the # symbol
+            
+            decorations.push(Decoration.mark({
+              class: "cm-tag"
+            }).range(start, end));
+          }
+          
+          // Decorate highlights ==highlight==
+          const highlightRegex = /==(.*?)==/g;
+          let highlightMatch;
+          while ((highlightMatch = highlightRegex.exec(text)) !== null) {
+            const start = line.from + highlightMatch.index;
+            const end = start + highlightMatch[0].length;
+            
+            decorations.push(Decoration.mark({
+              class: "cm-highlight"
+            }).range(start, end));
+          }
+          
+          // Decorate comments %% comment %%
+          const commentRegex = /%%(.+?)%%/g;
+          let commentMatch;
+          while ((commentMatch = commentRegex.exec(text)) !== null) {
+            const start = line.from + commentMatch.index;
+            const end = start + commentMatch[0].length;
+            
+            decorations.push(Decoration.mark({
+              class: "cm-comment"
+            }).range(start, end));
+          }
+          
+          // Decorate dataview inline queries `=query`
+          const dataviewRegex = /`=(.+?)`/g;
+          let dataviewMatch;
+          while ((dataviewMatch = dataviewRegex.exec(text)) !== null) {
+            const start = line.from + dataviewMatch.index;
+            const end = start + dataviewMatch[0].length;
+            
+            decorations.push(Decoration.mark({
+              class: "cm-dataview-inline"
+            }).range(start, end));
+          }
+        }
+        
+        return Decoration.set(decorations);
       }
     }, {
       decorations: v => v.decorations
@@ -551,6 +617,45 @@ function processObsidianSyntax(content: string): string {
     }
   );
   
+  // Process Obsidian comments %% comment %%
+  processedContent = processedContent.replace(
+    /%%(.+?)%%/gs,
+    '<span class="obsidian-comment">$1</span>'
+  );
+  
+  // Process dynamic dates like {{date}} or {{date:YYYY-MM-DD}}
+  processedContent = processedContent.replace(
+    /\{\{date(?::([^}]+))?\}\}/g,
+    (match, format) => {
+      const now = new Date();
+      if (format) {
+        // This is a simplistic approach - in a full implementation we would use date-fns format
+        return format.replace('YYYY', now.getFullYear().toString())
+                    .replace('MM', (now.getMonth() + 1).toString().padStart(2, '0'))
+                    .replace('DD', now.getDate().toString().padStart(2, '0'));
+      }
+      return now.toISOString().split('T')[0]; // YYYY-MM-DD format
+    }
+  );
+  
+  // Process Dataview inline queries (simplified version)
+  processedContent = processedContent.replace(
+    /`=(.+?)`/g,
+    '<span class="dataview-inline-query">$1</span>'
+  );
+  
+  // Process Dataview code blocks
+  processedContent = processedContent.replace(
+    /```dataview\n([\s\S]*?)```/g,
+    '<div class="dataview-block"><pre><code class="language-dataview">$1</code></pre></div>'
+  );
+  
+  // Process tag links #tag
+  processedContent = processedContent.replace(
+    /(^|\s)#([a-zA-Z0-9_/-]+)/g,
+    '$1<a href="#" class="tag-link" data-tag="$2">#$2</a>'
+  );
+  
   return processedContent;
 }
 
@@ -573,6 +678,31 @@ function postProcessHtml(html: string): string {
   
   // Process Mermaid diagrams
   html = processMermaidDiagrams(html);
+  
+  // Handle Obsidian comments - make them visible but styled as comments
+  html = html.replace(
+    /<span class="obsidian-comment">([\s\S]*?)<\/span>/g,
+    '<span class="obsidian-comment" title="Obsidian Comment">$1</span>'
+  );
+  
+  // Process Dataview blocks to make them look better
+  html = html.replace(
+    /<div class="dataview-block">([\s\S]*?)<\/div>/g,
+    '<div class="dataview-block"><div class="dataview-block-header">Dataview Query</div>$1</div>'
+  );
+  
+  // Process dynamic date placeholders that remain
+  const now = new Date();
+  html = html.replace(
+    /\{\{date(?::[^}]+)?\}\}/g,
+    now.toISOString().split('T')[0] // YYYY-MM-DD format
+  );
+  
+  // Add special styling for tag links
+  html = html.replace(
+    /<a href="#" class="tag-link" data-tag="([^"]+)">(#[^<]+)<\/a>/g,
+    '<a href="#" class="tag-link" data-tag="$1">$2</a>'
+  );
   
   return html;
 }
@@ -684,6 +814,38 @@ function enhanceMarkdownParser(md: MarkdownIt): void {
       return originalRender(tokens, idx, options, env, self);
     };
   });
+  
+  // Custom renderer for improved handling of Obsidian-specific syntax
+  md.renderer.rules.link_open = function(tokens, idx, options, env, self) {
+    const token = tokens[idx];
+    const href = token.attrGet('href') || '';
+    
+    // Check if it looks like an Obsidian-style wikilink that was converted to HTML
+    if (href.startsWith('#') && token.attrGet('data-link')) {
+      token.attrSet('class', 'internal-link');
+    }
+    
+    return self.renderToken(tokens, idx, options);
+  };
+  
+  // Enhance code block rendering
+  const defaultFence = md.renderer.rules.fence || function(tokens, idx, options, env, self) {
+    return self.renderToken(tokens, idx, options);
+  };
+  
+  md.renderer.rules.fence = function(tokens, idx, options, env, self) {
+    const token = tokens[idx];
+    const lang = token.info.trim();
+    
+    // Special handling for mermaid, dataview, etc.
+    if (lang === 'mermaid') {
+      return `<div class="mermaid-diagram" data-content="${token.content}">${token.content}</div>`;
+    } else if (lang === 'dataview') {
+      return `<div class="dataview-block"><pre><code class="language-dataview">${token.content}</code></pre></div>`;
+    }
+    
+    return defaultFence(tokens, idx, options, env, self);
+  };
 }
 
 // Handle clicks in preview mode
@@ -1524,6 +1686,97 @@ defineExpose({
   margin: 1em 0;
 }
 
+/* Obsidian-specific markdown features */
+.preview .internal-link {
+  color: #a277ff;
+  text-decoration: none;
+  border-bottom: 1px dotted rgba(162, 119, 255, 0.4);
+}
+
+.light-theme .preview .internal-link {
+  color: #8457d3;
+  border-bottom: 1px dotted rgba(132, 87, 211, 0.4);
+}
+
+.preview .internal-link:hover {
+  text-decoration: none;
+  border-bottom: 1px solid rgba(162, 119, 255, 0.8);
+}
+
+.light-theme .preview .internal-link:hover {
+  border-bottom: 1px solid rgba(132, 87, 211, 0.8);
+}
+
+.preview .tag-link {
+  color: #89b4fa;
+  text-decoration: none;
+  background-color: rgba(137, 180, 250, 0.1);
+  border-radius: 3px;
+  padding: 2px 4px;
+}
+
+.light-theme .preview .tag-link {
+  color: #0077cc;
+  background-color: rgba(0, 119, 204, 0.1);
+}
+
+.preview .tag-link:hover {
+  text-decoration: none;
+  background-color: rgba(137, 180, 250, 0.2);
+}
+
+.light-theme .preview .tag-link:hover {
+  background-color: rgba(0, 119, 204, 0.2);
+}
+
+.preview .obsidian-comment {
+  color: rgba(217, 224, 238, 0.5);
+  font-style: italic;
+  background-color: rgba(80, 80, 80, 0.1);
+  padding: 0 4px;
+  border-radius: 2px;
+}
+
+.light-theme .preview .obsidian-comment {
+  color: rgba(46, 51, 56, 0.5);
+  background-color: rgba(200, 200, 200, 0.2);
+}
+
+.preview .dataview-block {
+  background-color: rgba(137, 180, 250, 0.05);
+  border: 1px solid rgba(137, 180, 250, 0.2);
+  border-radius: 4px;
+  margin: 1em 0;
+  overflow: hidden;
+}
+
+.preview .dataview-block-header {
+  background-color: rgba(137, 180, 250, 0.1);
+  padding: 4px 8px;
+  font-size: 0.8em;
+  font-weight: bold;
+  color: #89b4fa;
+  border-bottom: 1px solid rgba(137, 180, 250, 0.2);
+}
+
+.light-theme .preview .dataview-block-header {
+  color: #0077cc;
+}
+
+.preview .dataview-inline-query {
+  color: #89b4fa;
+  background-color: rgba(137, 180, 250, 0.1);
+  padding: 2px 4px;
+  border-radius: 3px;
+  font-family: monospace;
+  font-size: 0.9em;
+}
+
+.light-theme .preview .dataview-inline-query {
+  color: #0077cc;
+  background-color: rgba(0, 119, 204, 0.1);
+}
+
 /* CodeMirror live preview extensions */
 .editor-container.live-preview .cm-formatting {
   opacity: 0.6;
@@ -1548,6 +1801,74 @@ defineExpose({
 .editor-container.live-preview .cm-highlight {
   background-color: rgba(246, 189, 96, 0.3);
   border-radius: 2px;
+}
+
+.editor-container.live-preview .cm-hmd-internal-link {
+  color: #a277ff;
+  text-decoration: none;
+}
+
+.light-theme .editor-container.live-preview .cm-hmd-internal-link {
+  color: #8457d3;
+}
+
+.editor-container.live-preview .cm-tag {
+  color: #89b4fa;
+}
+
+.light-theme .editor-container.live-preview .cm-tag {
+  color: #0077cc;
+}
+
+.editor-container.live-preview .cm-comment {
+  color: rgba(217, 224, 238, 0.5);
+  font-style: italic;
+}
+
+.light-theme .editor-container.live-preview .cm-comment {
+  color: rgba(46, 51, 56, 0.5);
+}
+
+.editor-container.live-preview .cm-dataview-inline {
+  color: #89b4fa;
+  background-color: rgba(137, 180, 250, 0.1);
+  padding: 0 2px;
+  border-radius: 2px;
+}
+
+.light-theme .editor-container.live-preview .cm-dataview-inline {
+  color: #0077cc;
+  background-color: rgba(0, 119, 204, 0.1);
+}
+
+/* Additional styling for callouts in the editor */
+.editor-container.live-preview .cm-callout {
+  background-color: rgba(137, 180, 250, 0.05);
+  border-left: 4px solid #89b4fa;
+  padding-left: 8px;
+}
+
+/* Make task checkboxes appear more interactive */
+.editor-container.live-preview .cm-formatting-task {
+  color: #89b4fa;
+  font-weight: bold;
+}
+
+.light-theme .editor-container.live-preview .cm-formatting-task {
+  color: #0077cc;
+}
+
+/* Style for dynamic content like {{date}} */
+.editor-container.live-preview .cm-template-tag {
+  color: #f5c2e7;
+  background-color: rgba(245, 194, 231, 0.1);
+  border-radius: 2px;
+  padding: 0 2px;
+}
+
+.light-theme .editor-container.live-preview .cm-template-tag {
+  color: #d670d6;
+  background-color: rgba(214, 112, 214, 0.1);
 }
 
 /* Placeholder styling */

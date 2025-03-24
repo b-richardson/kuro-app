@@ -157,7 +157,9 @@ const scrollCarousel = (direction) => {
 
 // Preview a template
 const previewTemplate = (template) => {
-  previewedTemplate.value = template;
+  // Get the template with content loaded
+  const templateWithContent = frameworksStore.getTemplateById(template.id);
+  previewedTemplate.value = templateWithContent;
 };
 
 // Push template to Obsidian vault
@@ -168,17 +170,27 @@ const pushToVault = async (template) => {
       return;
     }
     
-    // In a real implementation, this would call the Obsidian API
-    // For now we'll just show a success message
+    // Get template with content if not already loaded
+    let templateToUse = template;
+    if (!template.content) {
+      templateToUse = frameworksStore.getTemplateById(template.id);
+    }
+    
+    if (!templateToUse || !templateToUse.content) {
+      uiStore.showToast('Failed to load template content', 'error');
+      return;
+    }
+    
+    // Push to Obsidian vault
     await obsidianStore.pushToVault({
-      filename: `${template.title}.md`,
-      content: template.content
+      filename: `${templateToUse.title}.md`,
+      content: templateToUse.content
     });
     
-    uiStore.showToast(`Template "${template.title}" pushed to your vault!`, 'success');
+    uiStore.showToast(`Template "${templateToUse.title}" pushed to your vault!`, 'success');
     
     // Close preview if open
-    if (previewedTemplate.value?.id === template.id) {
+    if (previewedTemplate.value?.id === templateToUse.id) {
       previewedTemplate.value = null;
     }
   } catch (error) {

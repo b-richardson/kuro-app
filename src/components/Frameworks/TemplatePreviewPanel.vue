@@ -72,6 +72,9 @@ defineEmits(['close', 'push-to-vault', 'open-in-editor']);
 
 // Computed
 const renderedContent = computed(() => {
+  if (!props.template.content) {
+    return '<div class="loading">Loading template content...</div>';
+  }
   return marked.parse(props.template.content);
 });
 
@@ -277,6 +280,15 @@ const getCompatibilityName = (compatibility) => {
 
 .markdown-preview input[type="checkbox"] {
   margin-right: var(--spacing-xs);
+}
+
+.loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-xl);
+  color: var(--color-text-secondary);
+  font-style: italic;
 }
 
 .preview-actions {

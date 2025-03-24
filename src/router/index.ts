@@ -13,6 +13,7 @@ import DesignView from "../views/DesignView.vue";
 import ObsidianOnboarding from "../views/ObsidianOnboarding.vue";
 import ObsidianExplorer from "../views/ObsidianExplorer.vue";
 import FrameworksView from "../views/Frameworks/FrameworksView.vue";
+import EditorTestView from "../views/EditorTestView.vue";
 
 const routes = [
   {
@@ -124,6 +125,14 @@ const routes = [
     component: FrameworksView,
     meta: {
       requiresAuth: true, // Requires authentication
+    },
+  },
+  {
+    path: "/editor-test",
+    name: "editor-test",
+    component: EditorTestView,
+    meta: {
+      requiresAuth: false, // Available without authentication for testing
     },
   },
 ];

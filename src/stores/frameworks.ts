@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia';
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted } from 'vue';
+import { loadTemplateById } from '@/services/templates';
 
 // Template category type
 export type TemplateCategory = 'journaling' | 'productivity' | 'wellness' | 'goal' | 'all';
@@ -18,7 +19,8 @@ export interface Template {
   tags: string[];
   featured: boolean;
   badge?: string;
-  content: string;
+  fileName: string;
+  content?: string; // Content is loaded dynamically
 }
 
 export const useFrameworksStore = defineStore('frameworks', () => {
@@ -34,7 +36,7 @@ export const useFrameworksStore = defineStore('frameworks', () => {
       tags: ['journaling', 'daily', 'reflection'],
       featured: true,
       badge: 'Staff Pick',
-      content: '# Daily Journal\n\n## Mood Tracker\n- How are you feeling today?\n- Energy level (1-10):\n\n## Tasks\n- [ ] Task 1\n- [ ] Task 2\n\n## Gratitude\n- I am grateful for:\n\n## Reflection\n- What went well today?\n- What could be improved?'
+      fileName: 'Daily Journal.md'
     },
     {
       id: '2',
@@ -46,7 +48,7 @@ export const useFrameworksStore = defineStore('frameworks', () => {
       tags: ['weekly', 'review', 'planning'],
       featured: true,
       badge: 'Expert Curated',
-      content: '# Weekly Review\n\n## Past Week Review\n- Accomplishments:\n- Challenges:\n\n## Next Week Planning\n- Priority 1:\n- Priority 2:\n- Priority 3:\n\n## Goals Progress\n- Goal 1 progress:\n- Goal 2 progress:'
+      fileName: 'Weekly Review.md'
     },
     {
       id: '3',
@@ -58,7 +60,7 @@ export const useFrameworksStore = defineStore('frameworks', () => {
       tags: ['project', 'dashboard', 'tracking'],
       featured: true,
       badge: 'Community Favorite',
-      content: '# Project Dashboard\n\n## Overview\n- Project Name:\n- Deadline:\n- Status:\n\n## Tasks\n- [ ] Task 1\n- [ ] Task 2\n\n## Resources\n- Link 1\n- Link 2\n\n## Notes\n'
+      fileName: 'Project Dashboard.md'
     },
     {
       id: '4',
@@ -70,7 +72,7 @@ export const useFrameworksStore = defineStore('frameworks', () => {
       tags: ['habits', 'tracking', 'wellness'],
       featured: false,
       badge: 'Staff Pick',
-      content: '# Habit Tracker\n\n## Daily Habits\n- [ ] Meditation\n- [ ] Exercise\n- [ ] Reading\n\n## Weekly Review\n- Which habits were most consistent?\n- What obstacles did you face?\n\n## Monthly View\n(Table with days and habits)'
+      fileName: 'Habit Tracker.md'
     },
     {
       id: '5',
@@ -82,7 +84,7 @@ export const useFrameworksStore = defineStore('frameworks', () => {
       tags: ['goals', 'planning', 'achievement'],
       featured: false,
       badge: 'Expert Curated',
-      content: '# Goal Setting Framework\n\n## Goal Definition\n- What do you want to achieve?\n- Why is this important to you?\n- How will you measure success?\n\n## Action Plan\n- Step 1:\n- Step 2:\n- Step 3:\n\n## Timeline\n- Milestone 1 (date):\n- Milestone 2 (date):\n\n## Obstacles & Solutions\n- Potential obstacle 1:\n  - Solution:\n- Potential obstacle 2:\n  - Solution:'
+      fileName: 'Goal Setting Framework.md'
     },
     {
       id: '6',
@@ -94,11 +96,11 @@ export const useFrameworksStore = defineStore('frameworks', () => {
       tags: ['meetings', 'notes', 'work'],
       featured: false,
       badge: 'Community Favorite',
-      content: '# Meeting Notes\n\n## Meeting Information\n- Date:\n- Attendees:\n- Purpose:\n\n## Agenda\n1. \n2. \n3. \n\n## Discussion\n- \n\n## Action Items\n- [ ] Action 1 (Owner: )\n- [ ] Action 2 (Owner: )\n\n## Decisions\n- \n\n## Next Steps\n- '
+      fileName: 'Meeting Notes.md'
     },
     {
       id: '7',
-      title: 'Book Notes Template',
+      title: 'Book Notes',
       description: 'Organize your reading notes with this template designed for deep reading and insights capture.',
       category: 'productivity',
       compatibility: ['core'],
@@ -106,7 +108,7 @@ export const useFrameworksStore = defineStore('frameworks', () => {
       tags: ['reading', 'notes', 'books'],
       featured: false,
       badge: 'Community Favorite',
-      content: '# Book Notes: [Title]\n\n## Book Information\n- Author:\n- Year Published:\n- Genre:\n\n## Summary\n\n*Brief summary of the book*\n\n## Key Ideas\n- \n- \n- \n\n## Quotes\n> \n\n## Personal Reflections\n- \n\n## Action Items\n- [ ] \n'
+      fileName: 'Book Notes.md'
     },
     {
       id: '8',
@@ -117,8 +119,20 @@ export const useFrameworksStore = defineStore('frameworks', () => {
       author: 'Fitness Coach',
       tags: ['fitness', 'workout', 'tracking'],
       featured: false,
-      content: '# Workout Log\n\n## Today\'s Stats\n- Date:\n- Weight:\n- Energy Level (1-10):\n- Sleep Quality (1-10):\n\n## Workout Plan\n### Warmup\n- [ ] 5 min cardio\n- [ ] Dynamic stretching\n\n### Main Workout\n| Exercise | Sets | Reps | Weight | Notes |\n| -------- | ---- | ---- | ------ | ----- |\n| | | | | |\n| | | | | |\n| | | | | |\n\n### Cooldown\n- [ ] Static stretching\n- [ ] 5 min light cardio\n\n## Notes\n- \n\n## Next Workout Plan\n- '
+      fileName: 'Workout Tracker.md'
     },
+    {
+      id: '9',
+      title: 'Mood Tracker',
+      description: 'Monitor and analyze your emotional well-being with this detailed mood tracking template.',
+      category: 'wellness',
+      compatibility: ['core'],
+      author: 'Mental Health Expert',
+      tags: ['wellness', 'mental health', 'mood'],
+      featured: false,
+      badge: 'New',
+      fileName: 'Mood Tracker.md'
+    }
   ]);
   
   const categories = ref([
@@ -156,10 +170,27 @@ export const useFrameworksStore = defineStore('frameworks', () => {
     );
   };
   
-  // Get template by ID
+  // Get template by ID with content
   const getTemplateById = (id: string) => {
-    return templates.value.find(template => template.id === id);
+    const template = templates.value.find(template => template.id === id);
+    
+    if (template && !template.content) {
+      // Load content if not already loaded
+      template.content = loadTemplateById(id);
+    }
+    
+    return template;
   };
+  
+  // Initialize template content
+  onMounted(() => {
+    // Preload featured templates for better UX
+    featuredTemplates.value.forEach(template => {
+      if (!template.content) {
+        template.content = loadTemplateById(template.id);
+      }
+    });
+  });
 
   return {
     templates,
