@@ -34,64 +34,14 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, nextTick, onBeforeUnmount, shallowRef } from 'vue';
-import MarkdownIt from 'markdown-it';
-import katex from 'katex';
-import 'katex/dist/katex.min.css';
+import { EditorState } from '@codemirror/state';
+import { EditorView } from '@codemirror/view';
 import mermaid from 'mermaid';
 
-// CodeMirror imports
-import { EditorState, Extension } from '@codemirror/state';
-import { EditorView, keymap, lineNumbers, highlightActiveLine, highlightSpecialChars, drawSelection, Decoration, DecorationSet, ViewPlugin } from '@codemirror/view';
-import { defaultKeymap, history, historyKeymap, indentWithTab, undo, redo } from '@codemirror/commands';
-import { markdown, markdownLanguage } from '@codemirror/lang-markdown';
-import { languages } from '@codemirror/language-data';
-import { syntaxHighlighting, defaultHighlightStyle, indentOnInput, bracketMatching } from '@codemirror/language';
-import { searchKeymap } from '@codemirror/search';
-import { autocompletion, completionKeymap } from '@codemirror/autocomplete';
-import { lintKeymap } from '@codemirror/lint';
-
-// Custom placeholder implementation since CodeMirror 6 doesn't have a built-in one
-function placeholder(placeholderText: string): Extension {
-  return ViewPlugin.fromClass(class {
-    decoration: DecorationSet
-    placeholderText: string
-    
-    constructor(view: EditorView) {
-      this.placeholderText = placeholderText
-      this.decoration = this.createDeco(view)
-    }
-    
-    update(update: { docChanged: boolean; view: EditorView }) {
-      if (update.docChanged)
-        this.decoration = this.createDeco(update.view)
-    }
-    
-    createDeco(view: EditorView) {
-      let docText = view.state.doc.toString()
-      if (!docText || docText.trim() === "") {
-        return Decoration.set([
-          Decoration.widget({
-            widget: {
-              toDOM: () => {
-                const span = document.createElement("span")
-                span.textContent = this.placeholderText
-                span.className = "cm-placeholder"
-                return span
-              }
-            },
-            side: 1
-          }).range(0)
-        ])
-      }
-      return Decoration.none
-    }
-  }, {
-    decorations: v => v.decoration
-  })
-}
-
-// Define editor mode types
-type EditorMode = 'live-preview' | 'source' | 'reading';
+// Import utilities and extensions
+import { EditorMode, getCoreExtensions, getSourceModeExtensions, toggleTaskInMarkdown } from './utils/editorUtils';
+import { createMarkdownParser, processObsidianSyntax, postProcessHtml } from './utils/markdownProcessing';
+import { createLivePreviewExtensions } from './extensions/livePreviewExtensions';
 
 // Define props
 const props = defineProps<{
@@ -125,17 +75,8 @@ const editorView = shallowRef<EditorView | null>(null);
 const isScrollSyncing = ref(false);
 const lastScrollPosition = ref({ editor: 0, preview: 0 });
 
-// Initialize markdown-it with Obsidian-specific features
-const md = new MarkdownIt({
-  html: true,
-  linkify: true,
-  typographer: true,
-  breaks: true,
-  highlight: highlightCodeBlocks
-});
-
-// Enhance markdown-it with Obsidian-specific extensions
-enhanceMarkdownParser(md);
+// Initialize markdown-it parser
+const md = createMarkdownParser();
 
 // Rendered markdown for reading view
 const renderedMarkdown = computed(() => {
@@ -149,7 +90,7 @@ const renderedMarkdown = computed(() => {
     let html = md.render(processedContent);
     
     // Post-process the HTML for interactive elements
-    html = postProcessHtml(html);
+    html = postProcessHtml(html, md);
     
     return html;
   } catch (error) {
@@ -172,10 +113,10 @@ watch(() => props.mode, (newValue) => {
   }
 }, { immediate: true });
 
-watch(() => props.isDarkTheme, (newValue) => {
+watch(() => props.isDarkTheme, () => {
   if (editorView.value) {
-    // Update theme in CodeMirror
-    updateEditorTheme();
+    // Update theme in CodeMirror (recreate editor with new theme)
+    createEditor();
   }
 }, { immediate: true });
 
@@ -188,52 +129,34 @@ function createEditor() {
     editorView.value.destroy();
   }
   
-  // Create extensions array based on current mode
+  // Handler for document changes
+  const handleDocChange = (content: string) => {
+    if (content !== markdownContent.value) {
+      markdownContent.value = content;
+      emit('update:modelValue', content);
+    }
+  };
+  
+  // Build up the extensions based on current mode
   const extensions = [
-    // Basic extensions
-    history(),
-    drawSelection(),
-    highlightActiveLine(),
-    highlightSpecialChars(),
-    syntaxHighlighting(defaultHighlightStyle),
-    bracketMatching(),
-    autocompletion(),
-    indentOnInput(),
+    // Core extensions for all modes
+    ...getCoreExtensions(props.placeholder || "Start writing...", props.isDarkTheme ?? false, handleDocChange),
     
-    // Markdown language support
-    markdown({
-      base: markdownLanguage,
-      codeLanguages: languages,
-      addKeymap: true
+    // Mode-specific extensions
+    ...(currentMode.value === 'live-preview' ? createLivePreviewExtensions(md) : []),
+    ...(currentMode.value === 'source' ? getSourceModeExtensions() : []),
+    
+    // Handle editor scroll
+    EditorView.updateListener.of(update => {
+      if (update.scrollEnough && !isScrollSyncing.value) {
+        // Get the current scroll position
+        const scrollTop = update.view.scrollDOM.scrollTop;
+        lastScrollPosition.value.editor = scrollTop;
+      }
     }),
     
-    // Keymaps
-    keymap.of([
-      ...defaultKeymap, 
-      ...historyKeymap, 
-      ...searchKeymap, 
-      ...completionKeymap, 
-      ...lintKeymap,
-      indentWithTab
-    ]),
-    
-    // Custom keymaps for Obsidian-like behavior
-    keymap.of([
-      { key: "Mod-b", run: toggleBold },
-      { key: "Mod-i", run: toggleItalic },
-      { key: "Mod-Shift-s", run: toggleStrikethrough },
-      { key: "Mod-k", run: toggleWikiLink },
-      { key: "Mod-Shift-k", run: toggleExternalLink },
-      { key: "Mod-Shift-h", run: toggleHighlight },
-      { key: "Mod-1", run: setHeading(1) },
-      { key: "Mod-2", run: setHeading(2) },
-      { key: "Mod-3", run: setHeading(3) },
-      { key: "Mod-4", run: setHeading(4) },
-      { key: "Mod-5", run: setHeading(5) },
-      { key: "Mod-6", run: setHeading(6) },
-      { key: "Mod-Shift-t", run: toggleTaskList },
-      { key: "Mod-`", run: toggleInlineCode },
-      { key: "Mod-Shift-c", run: toggleCodeBlock },
+    // Mode switch keymaps
+    EditorView.keymap.of([
       { key: "Mod-e", run: () => {
         const nextMode = currentMode.value === 'reading' ? 'live-preview' : 'reading';
         switchMode(nextMode);
@@ -244,55 +167,7 @@ function createEditor() {
         switchMode(nextMode);
         return true;
       }}
-    ]),
-    
-    // Live preview specific extensions
-    ...(currentMode.value === 'live-preview' ? getLivePreviewExtensions() : []),
-    
-    // Source mode specific extensions
-    ...(currentMode.value === 'source' ? getSourceModeExtensions() : []),
-    
-    // Custom theme
-    getEditorTheme(),
-    
-    // Update content on changes
-    EditorView.updateListener.of(update => {
-      if (update.docChanged) {
-        const content = update.state.doc.toString();
-        if (content !== markdownContent.value) {
-          markdownContent.value = content;
-          emit('update:modelValue', content);
-        }
-      }
-      
-      if (update.scrollEnough && !isScrollSyncing.value) {
-        // Get the current scroll position
-        const scrollTop = update.view.scrollDOM.scrollTop;
-        lastScrollPosition.value.editor = scrollTop;
-      }
-    }),
-    
-    // Placeholder text
-    placeholder(props.placeholder || "Start writing..."),
-    
-    // Editor style
-    EditorView.theme({
-      "&": {
-        height: "100%"
-      },
-      ".cm-scroller": {
-        fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
-        fontSize: "14px",
-        lineHeight: "1.6",
-        overflow: "auto"
-      },
-      ".cm-content": {
-        marginLeft: "4px",
-        marginRight: "4px",
-        minHeight: "100%",
-        caretColor: props.isDarkTheme ? "#d9e0ee" : "#333333"
-      }
-    })
+    ])
   ];
   
   // Create editor state
@@ -321,187 +196,12 @@ function createEditor() {
   });
 }
 
-// Get extensions specific to live preview mode
-function getLivePreviewExtensions(): Extension[] {
-  return [
-    // Custom extensions for live preview rendering
-    ViewPlugin.fromClass(class {
-      decorations: DecorationSet = Decoration.none;
-      
-      constructor(view: EditorView) {
-        this.decorations = this.buildDecorations(view);
-      }
-      
-      update(update: { docChanged: boolean; view: EditorView }) {
-        if (update.docChanged) {
-          this.decorations = this.buildDecorations(update.view);
-        }
-      }
-      
-      buildDecorations(view: EditorView) {
-        const decorations: Range<Decoration>[] = [];
-        const doc = view.state.doc;
-        
-        // Process the document content to find and decorate Obsidian specific syntax
-        for (let i = 1; i <= doc.lines; i++) {
-          const line = doc.line(i);
-          const text = line.text;
-          
-          // Decorate Obsidian WikiLinks [[Link]]
-          const wikiLinkRegex = /\[\[(.*?)\]\]/g;
-          let wikiMatch;
-          while ((wikiMatch = wikiLinkRegex.exec(text)) !== null) {
-            const start = line.from + wikiMatch.index;
-            const end = start + wikiMatch[0].length;
-            
-            decorations.push(Decoration.mark({
-              class: "cm-hmd-internal-link"
-            }).range(start, end));
-          }
-          
-          // Decorate tags #tag
-          const tagRegex = /(^|\s)#([a-zA-Z0-9_/-]+)/g;
-          let tagMatch;
-          while ((tagMatch = tagRegex.exec(text)) !== null) {
-            const start = line.from + tagMatch.index + tagMatch[1].length; // Skip the space before
-            const end = start + tagMatch[2].length + 1; // Include the # symbol
-            
-            decorations.push(Decoration.mark({
-              class: "cm-tag"
-            }).range(start, end));
-          }
-          
-          // Decorate highlights ==highlight==
-          const highlightRegex = /==(.*?)==/g;
-          let highlightMatch;
-          while ((highlightMatch = highlightRegex.exec(text)) !== null) {
-            const start = line.from + highlightMatch.index;
-            const end = start + highlightMatch[0].length;
-            
-            decorations.push(Decoration.mark({
-              class: "cm-highlight"
-            }).range(start, end));
-          }
-          
-          // Decorate comments %% comment %%
-          const commentRegex = /%%(.+?)%%/g;
-          let commentMatch;
-          while ((commentMatch = commentRegex.exec(text)) !== null) {
-            const start = line.from + commentMatch.index;
-            const end = start + commentMatch[0].length;
-            
-            decorations.push(Decoration.mark({
-              class: "cm-comment"
-            }).range(start, end));
-          }
-          
-          // Decorate dataview inline queries `=query`
-          const dataviewRegex = /`=(.+?)`/g;
-          let dataviewMatch;
-          while ((dataviewMatch = dataviewRegex.exec(text)) !== null) {
-            const start = line.from + dataviewMatch.index;
-            const end = start + dataviewMatch[0].length;
-            
-            decorations.push(Decoration.mark({
-              class: "cm-dataview-inline"
-            }).range(start, end));
-          }
-        }
-        
-        return Decoration.set(decorations);
-      }
-    }, {
-      decorations: v => v.decorations
-    })
-  ];
-}
-
-// Get extensions specific to source mode
-function getSourceModeExtensions(): Extension[] {
-  return [
-    // Optional line numbers for source mode
-    lineNumbers()
-  ];
-}
-
-// Get theme configuration for CodeMirror
-function getEditorTheme(): Extension {
-  return EditorView.theme({
-    // Base theme
-    "&": {
-      backgroundColor: props.isDarkTheme ? "#1e1e2e" : "#ffffff",
-      color: props.isDarkTheme ? "#d9e0ee" : "#2e3338",
-    },
-    // Syntax highlighting
-    ".cm-header": {
-      fontWeight: "bold",
-      color: props.isDarkTheme ? "#89b4fa" : "#0077cc"
-    },
-    ".cm-em": {
-      fontStyle: "italic"
-    },
-    ".cm-strong": {
-      fontWeight: "bold"
-    },
-    ".cm-link": {
-      color: props.isDarkTheme ? "#89b4fa" : "#0077cc",
-      textDecoration: "underline"
-    },
-    ".cm-url": {
-      color: props.isDarkTheme ? "#89dceb" : "#0099cc"
-    },
-    // Code blocks
-    ".cm-inline-code": {
-      fontFamily: "'Fira Code', 'Source Code Pro', monospace",
-      backgroundColor: props.isDarkTheme ? "rgba(40, 44, 52, 0.5)" : "rgba(0, 0, 0, 0.05)",
-      padding: "0.2em 0.4em",
-      borderRadius: "3px",
-      fontSize: "0.9em"
-    },
-    // Headers
-    ".cm-header-1": { fontSize: "2em", lineHeight: "1.2", marginTop: "0.5em", marginBottom: "0.5em" },
-    ".cm-header-2": { fontSize: "1.5em", lineHeight: "1.2", marginTop: "0.5em", marginBottom: "0.5em" },
-    ".cm-header-3": { fontSize: "1.25em", lineHeight: "1.2", marginTop: "0.5em", marginBottom: "0.5em" },
-    ".cm-header-4": { fontSize: "1.1em", lineHeight: "1.2", marginTop: "0.5em", marginBottom: "0.5em" },
-    ".cm-header-5": { fontSize: "1em", lineHeight: "1.2", marginTop: "0.5em", marginBottom: "0.5em" },
-    ".cm-header-6": { fontSize: "0.9em", lineHeight: "1.2", marginTop: "0.5em", marginBottom: "0.5em" },
-    // Lists
-    ".cm-list": {
-      color: props.isDarkTheme ? "#d9e0ee" : "#2e3338"
-    },
-    // Task lists
-    ".cm-taskmarker": {
-      color: props.isDarkTheme ? "#89b4fa" : "#0077cc"
-    },
-    // Highlight
-    ".cm-highlight": {
-      backgroundColor: props.isDarkTheme ? "rgba(246, 189, 96, 0.3)" : "rgba(255, 204, 0, 0.3)",
-      borderRadius: "2px"
-    },
-    // Wiki links
-    ".cm-wikilink": {
-      color: props.isDarkTheme ? "#a277ff" : "#8457d3",
-      textDecoration: "none"
-    }
-  });
-}
-
-// Update editor theme when dark/light mode changes
-function updateEditorTheme() {
-  if (!editorView.value) return;
-  
-  // This would require recreating the editor with new theme
-  // For simplicity, we'll recreate the entire editor
-  createEditor();
-}
-
 // Update editor content from external changes
 function updateEditorContent(content: string) {
   if (!editorView.value || editorView.value.state.doc.toString() === content) return;
   
   // Save scroll position and cursor position
   const scrollTop = editorView.value.scrollDOM.scrollTop;
-  const selection = editorView.value.state.selection;
   
   // Update content
   editorView.value.dispatch({
@@ -580,274 +280,6 @@ function handlePreviewScroll() {
   }, 50);
 }
 
-// Process Obsidian-specific syntax
-function processObsidianSyntax(content: string): string {
-  let processedContent = content;
-  
-  // Process Obsidian internal links [[Link]]
-  processedContent = processedContent.replace(
-    /\[\[(.*?)\]\]/g, 
-    (match, linkText) => {
-      // Handle links with a pipe for different display text: [[Link|Display Text]]
-      if (linkText.includes('|')) {
-        const [link, display] = linkText.split('|');
-        return `<a href="#" class="internal-link" data-link="${link.trim()}">${display.trim()}</a>`;
-      }
-      return `<a href="#" class="internal-link" data-link="${linkText.trim()}">${linkText.trim()}</a>`;
-    }
-  );
-  
-  // Process highlights ==text==
-  processedContent = processedContent.replace(
-    /==(.*?)==/g,
-    '<mark>$1</mark>'
-  );
-  
-  // Process callout blocks
-  processedContent = processedContent.replace(
-    />\s*\[!([\w-]+)\](.*?)(?:\n>.*?)*(?:\n\n|$)/gs,
-    (match, type, content) => {
-      const calloutTitle = type.charAt(0).toUpperCase() + type.slice(1).toLowerCase();
-      const calloutContent = match.replace(/>\s*\[![\w-]+\].*?\n/, '').replace(/>\s*/g, '');
-      
-      return `<div class="callout ${type.toLowerCase()}">
-        <div class="callout-title">${calloutTitle}</div>
-        <div class="callout-content">${md.render(calloutContent)}</div>
-      </div>`;
-    }
-  );
-  
-  // Process Obsidian comments %% comment %%
-  processedContent = processedContent.replace(
-    /%%(.+?)%%/gs,
-    '<span class="obsidian-comment">$1</span>'
-  );
-  
-  // Process dynamic dates like {{date}} or {{date:YYYY-MM-DD}}
-  processedContent = processedContent.replace(
-    /\{\{date(?::([^}]+))?\}\}/g,
-    (match, format) => {
-      const now = new Date();
-      if (format) {
-        // This is a simplistic approach - in a full implementation we would use date-fns format
-        return format.replace('YYYY', now.getFullYear().toString())
-                    .replace('MM', (now.getMonth() + 1).toString().padStart(2, '0'))
-                    .replace('DD', now.getDate().toString().padStart(2, '0'));
-      }
-      return now.toISOString().split('T')[0]; // YYYY-MM-DD format
-    }
-  );
-  
-  // Process Dataview inline queries (simplified version)
-  processedContent = processedContent.replace(
-    /`=(.+?)`/g,
-    '<span class="dataview-inline-query">$1</span>'
-  );
-  
-  // Process Dataview code blocks
-  processedContent = processedContent.replace(
-    /```dataview\n([\s\S]*?)```/g,
-    '<div class="dataview-block"><pre><code class="language-dataview">$1</code></pre></div>'
-  );
-  
-  // Process tag links #tag
-  processedContent = processedContent.replace(
-    /(^|\s)#([a-zA-Z0-9_/-]+)/g,
-    '$1<a href="#" class="tag-link" data-tag="$2">#$2</a>'
-  );
-  
-  return processedContent;
-}
-
-// Post-process HTML after markdown rendering
-function postProcessHtml(html: string): string {
-  // Process task list items for interactive checkboxes
-  html = html.replace(
-    /<li>\s*\[([ xX])\]\s*(.*?)<\/li>/g,
-    (match, checkChar, itemText) => {
-      const isChecked = checkChar === 'x' || checkChar === 'X';
-      const checkboxHtml = `<input type="checkbox" class="task-checkbox" ${isChecked ? 'checked' : ''}>`;
-      const itemClass = isChecked ? 'class="task-completed"' : '';
-      
-      return `<li class="task-list-item">${checkboxHtml} <span ${itemClass}>${itemText}</span></li>`;
-    }
-  );
-  
-  // Process math blocks
-  html = processKatexBlocks(html);
-  
-  // Process Mermaid diagrams
-  html = processMermaidDiagrams(html);
-  
-  // Handle Obsidian comments - make them visible but styled as comments
-  html = html.replace(
-    /<span class="obsidian-comment">([\s\S]*?)<\/span>/g,
-    '<span class="obsidian-comment" title="Obsidian Comment">$1</span>'
-  );
-  
-  // Process Dataview blocks to make them look better
-  html = html.replace(
-    /<div class="dataview-block">([\s\S]*?)<\/div>/g,
-    '<div class="dataview-block"><div class="dataview-block-header">Dataview Query</div>$1</div>'
-  );
-  
-  // Process dynamic date placeholders that remain
-  const now = new Date();
-  html = html.replace(
-    /\{\{date(?::[^}]+)?\}\}/g,
-    now.toISOString().split('T')[0] // YYYY-MM-DD format
-  );
-  
-  // Add special styling for tag links
-  html = html.replace(
-    /<a href="#" class="tag-link" data-tag="([^"]+)">(#[^<]+)<\/a>/g,
-    '<a href="#" class="tag-link" data-tag="$1">$2</a>'
-  );
-  
-  return html;
-}
-
-// Process KaTeX math blocks
-function processKatexBlocks(html: string): string {
-  try {
-    // Inline math: $...$
-    html = html.replace(/\$([^$\n]+?)\$/g, (match, expr) => {
-      try {
-        return katex.renderToString(expr, { displayMode: false, throwOnError: false });
-      } catch (e) {
-        console.error('KaTeX error (inline):', e);
-        return `<span class="math-error">${expr}</span>`;
-      }
-    });
-    
-    // Display math: $$...$$
-    html = html.replace(/\$\$([\s\S]+?)\$\$/g, (match, expr) => {
-      try {
-        return katex.renderToString(expr, { displayMode: true, throwOnError: false });
-      } catch (e) {
-        console.error('KaTeX error (display):', e);
-        return `<div class="math-error">${expr}</div>`;
-      }
-    });
-    
-    return html;
-  } catch (e) {
-    console.error('Error processing math:', e);
-    return html;
-  }
-}
-
-// Process Mermaid diagrams
-function processMermaidDiagrams(html: string): string {
-  try {
-    // Find code blocks with mermaid class
-    const mermaidBlocks = html.match(/<pre><code class="language-mermaid">([\s\S]*?)<\/code><\/pre>/g);
-    
-    if (!mermaidBlocks) return html;
-    
-    // Process each found diagram
-    for (const block of mermaidBlocks) {
-      const content = block.match(/<pre><code class="language-mermaid">([\s\S]*?)<\/code><\/pre>/)?.[1];
-      
-      if (content) {
-        try {
-          // Generate unique ID for the diagram
-          const id = `mermaid-${Math.random().toString(36).substring(2, 11)}`;
-          
-          // Replace the code block with a container
-          html = html.replace(
-            block,
-            `<div class="mermaid-diagram" id="${id}"></div>`
-          );
-          
-          // Render the diagram (in actual implementation, this would be better handled after mounting)
-          setTimeout(() => {
-            const element = document.getElementById(id);
-            if (element) {
-              mermaid.render(id, content).then(result => {
-                element.innerHTML = result.svg;
-              }).catch(error => {
-                element.innerHTML = `<div class="mermaid-error">Error rendering diagram: ${error.message}</div>`;
-              });
-            }
-          }, 0);
-        } catch (e) {
-          console.error('Mermaid error:', e);
-        }
-      }
-    }
-    
-    return html;
-  } catch (e) {
-    console.error('Error processing diagrams:', e);
-    return html;
-  }
-}
-
-// Highlight code blocks using syntax highlighting
-function highlightCodeBlocks(str: string, lang: string): string {
-  // Here you would integrate a syntax highlighter like Prism.js
-  // For simplicity, we're just returning the code with a language class
-  return `<pre class="language-${lang}"><code class="language-${lang}">${str}</code></pre>`;
-}
-
-// Enhance markdown parser with Obsidian-specific features
-function enhanceMarkdownParser(md: MarkdownIt): void {
-  // Add support for checkbox rendering
-  md.use((md) => {
-    // Override the renderer for task list items
-    const originalRender = md.renderer.rules.list_item_open || function(tokens, idx, options, env, self) {
-      return self.renderToken(tokens, idx, options);
-    };
-    
-    md.renderer.rules.list_item_open = function(tokens, idx, options, env, self) {
-      const token = tokens[idx];
-      
-      if (idx + 2 < tokens.length && 
-          tokens[idx + 1].type === 'inline' && 
-          (tokens[idx + 1].content.startsWith('[ ] ') || 
-           tokens[idx + 1].content.startsWith('[x] ') || 
-           tokens[idx + 1].content.startsWith('[X] '))) {
-        token.attrJoin('class', 'task-list-item');
-      }
-      
-      return originalRender(tokens, idx, options, env, self);
-    };
-  });
-  
-  // Custom renderer for improved handling of Obsidian-specific syntax
-  md.renderer.rules.link_open = function(tokens, idx, options, env, self) {
-    const token = tokens[idx];
-    const href = token.attrGet('href') || '';
-    
-    // Check if it looks like an Obsidian-style wikilink that was converted to HTML
-    if (href.startsWith('#') && token.attrGet('data-link')) {
-      token.attrSet('class', 'internal-link');
-    }
-    
-    return self.renderToken(tokens, idx, options);
-  };
-  
-  // Enhance code block rendering
-  const defaultFence = md.renderer.rules.fence || function(tokens, idx, options, env, self) {
-    return self.renderToken(tokens, idx, options);
-  };
-  
-  md.renderer.rules.fence = function(tokens, idx, options, env, self) {
-    const token = tokens[idx];
-    const lang = token.info.trim();
-    
-    // Special handling for mermaid, dataview, etc.
-    if (lang === 'mermaid') {
-      return `<div class="mermaid-diagram" data-content="${token.content}">${token.content}</div>`;
-    } else if (lang === 'dataview') {
-      return `<div class="dataview-block"><pre><code class="language-dataview">${token.content}</code></pre></div>`;
-    }
-    
-    return defaultFence(tokens, idx, options, env, self);
-  };
-}
-
 // Handle clicks in preview mode
 function handlePreviewClick(event: MouseEvent) {
   const target = event.target as HTMLElement;
@@ -867,409 +299,14 @@ function handlePreviewClick(event: MouseEvent) {
       textElement.classList.toggle('task-completed', checkbox.checked);
     }
     
-    // Convert rendered HTML back to original position in markdown
-    // This would require more complex logic to track the position
-    // For a more accurate implementation, we'd need a mapping between rendered elements and source positions
-    
-    // For demonstration, let's do a simple regex-based replacement
-    toggleTaskInMarkdown(listItem);
-  }
-}
-
-// Toggle a task item in the markdown content
-function toggleTaskInMarkdown(listItem: Element) {
-  // Get the text content of the task
-  const taskText = listItem.textContent?.trim().replace(/^\s*☐\s*|\s*☑\s*/, '') || '';
-  
-  // Find and toggle the task in the markdown
-  const lines = markdownContent.value.split('\n');
-  
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i].trim();
-    if ((line.startsWith('- [ ]') || line.startsWith('- [x]') || line.startsWith('- [X]')) && 
-        line.includes(taskText)) {
-      // Toggle the checkbox state
-      if (line.includes('- [ ]')) {
-        lines[i] = lines[i].replace('- [ ]', '- [x]');
-      } else {
-        lines[i] = lines[i].replace(/- \[[xX]\]/, '- [ ]');
-      }
-      
-      // Update the markdown content
-      markdownContent.value = lines.join('\n');
-      emit('update:modelValue', markdownContent.value);
-      updateEditorContent(markdownContent.value);
-      break;
+    // Toggle the task in the markdown content
+    const updatedContent = toggleTaskInMarkdown(listItem, markdownContent.value);
+    if (updatedContent !== markdownContent.value) {
+      markdownContent.value = updatedContent;
+      emit('update:modelValue', updatedContent);
+      updateEditorContent(updatedContent);
     }
   }
-}
-
-// --- CodeMirror Command Handlers ---
-
-// Toggle bold formatting
-function toggleBold({ state, dispatch }: EditorView) {
-  const selection = state.selection;
-  let changes = [];
-  
-  for (const range of selection.ranges) {
-    const from = range.from;
-    const to = range.to;
-    
-    if (from === to) {
-      // No selection, insert placeholders
-      changes.push({ from, to, insert: "**Bold text**" });
-    } else {
-      const selectedText = state.doc.sliceString(from, to);
-      // Check if already bold
-      if (selectedText.startsWith('**') && selectedText.endsWith('**')) {
-        changes.push({ 
-          from, 
-          to, 
-          insert: selectedText.substring(2, selectedText.length - 2) 
-        });
-      } else {
-        changes.push({ from, to, insert: `**${selectedText}**` });
-      }
-    }
-  }
-  
-  if (dispatch) {
-    dispatch({ changes });
-  }
-  
-  return true;
-}
-
-// Toggle italic formatting
-function toggleItalic({ state, dispatch }: EditorView) {
-  const selection = state.selection;
-  let changes = [];
-  
-  for (const range of selection.ranges) {
-    const from = range.from;
-    const to = range.to;
-    
-    if (from === to) {
-      // No selection, insert placeholders
-      changes.push({ from, to, insert: "*Italic text*" });
-    } else {
-      const selectedText = state.doc.sliceString(from, to);
-      // Check if already italic
-      if (selectedText.startsWith('*') && selectedText.endsWith('*')) {
-        changes.push({ 
-          from, 
-          to, 
-          insert: selectedText.substring(1, selectedText.length - 1) 
-        });
-      } else {
-        changes.push({ from, to, insert: `*${selectedText}*` });
-      }
-    }
-  }
-  
-  if (dispatch) {
-    dispatch({ changes });
-  }
-  
-  return true;
-}
-
-// Toggle strikethrough
-function toggleStrikethrough({ state, dispatch }: EditorView) {
-  const selection = state.selection;
-  let changes = [];
-  
-  for (const range of selection.ranges) {
-    const from = range.from;
-    const to = range.to;
-    
-    if (from === to) {
-      // No selection, insert placeholders
-      changes.push({ from, to, insert: "~~Strikethrough text~~" });
-    } else {
-      const selectedText = state.doc.sliceString(from, to);
-      // Check if already strikethrough
-      if (selectedText.startsWith('~~') && selectedText.endsWith('~~')) {
-        changes.push({ 
-          from, 
-          to, 
-          insert: selectedText.substring(2, selectedText.length - 2) 
-        });
-      } else {
-        changes.push({ from, to, insert: `~~${selectedText}~~` });
-      }
-    }
-  }
-  
-  if (dispatch) {
-    dispatch({ changes });
-  }
-  
-  return true;
-}
-
-// Toggle highlight
-function toggleHighlight({ state, dispatch }: EditorView) {
-  const selection = state.selection;
-  let changes = [];
-  
-  for (const range of selection.ranges) {
-    const from = range.from;
-    const to = range.to;
-    
-    if (from === to) {
-      // No selection, insert placeholders
-      changes.push({ from, to, insert: "==Highlighted text==" });
-    } else {
-      const selectedText = state.doc.sliceString(from, to);
-      // Check if already highlighted
-      if (selectedText.startsWith('==') && selectedText.endsWith('==')) {
-        changes.push({ 
-          from, 
-          to, 
-          insert: selectedText.substring(2, selectedText.length - 2) 
-        });
-      } else {
-        changes.push({ from, to, insert: `==${selectedText}==` });
-      }
-    }
-  }
-  
-  if (dispatch) {
-    dispatch({ changes });
-  }
-  
-  return true;
-}
-
-// Toggle wiki link
-function toggleWikiLink({ state, dispatch }: EditorView) {
-  const selection = state.selection;
-  let changes = [];
-  
-  for (const range of selection.ranges) {
-    const from = range.from;
-    const to = range.to;
-    
-    if (from === to) {
-      // No selection, insert placeholders
-      changes.push({ from, to, insert: "[[Link]]" });
-    } else {
-      const selectedText = state.doc.sliceString(from, to);
-      // Check if already a wiki link
-      if (selectedText.startsWith('[[') && selectedText.endsWith(']]')) {
-        changes.push({ 
-          from, 
-          to, 
-          insert: selectedText.substring(2, selectedText.length - 2) 
-        });
-      } else {
-        changes.push({ from, to, insert: `[[${selectedText}]]` });
-      }
-    }
-  }
-  
-  if (dispatch) {
-    dispatch({ changes });
-  }
-  
-  return true;
-}
-
-// Toggle external link
-function toggleExternalLink({ state, dispatch }: EditorView) {
-  const selection = state.selection;
-  let changes = [];
-  
-  for (const range of selection.ranges) {
-    const from = range.from;
-    const to = range.to;
-    
-    if (from === to) {
-      // No selection, insert placeholders
-      changes.push({ from, to, insert: "[Link text](https://example.com)" });
-    } else {
-      const selectedText = state.doc.sliceString(from, to);
-      // Check if already an external link
-      const linkMatch = selectedText.match(/^\[(.*?)\]\((.*?)\)$/);
-      if (linkMatch) {
-        changes.push({ from, to, insert: linkMatch[1] });
-      } else {
-        changes.push({ from, to, insert: `[${selectedText}](https://example.com)` });
-      }
-    }
-  }
-  
-  if (dispatch) {
-    dispatch({ changes });
-  }
-  
-  return true;
-}
-
-// Toggle task list item
-function toggleTaskList({ state, dispatch }: EditorView) {
-  const selection = state.selection;
-  let changes = [];
-  
-  for (const range of selection.ranges) {
-    const from = range.from;
-    
-    // Get the current line
-    const line = state.doc.lineAt(from);
-    const lineText = line.text;
-    
-    // Check if it's already a task list item
-    if (lineText.trim().match(/^- \[[ xX]\]/)) {
-      // Toggle task state
-      if (lineText.includes('- [ ]')) {
-        const newLine = lineText.replace('- [ ]', '- [x]');
-        changes.push({
-          from: line.from,
-          to: line.to,
-          insert: newLine
-        });
-      } else {
-        const newLine = lineText.replace(/- \[[xX]\]/, '- [ ]');
-        changes.push({
-          from: line.from,
-          to: line.to,
-          insert: newLine
-        });
-      }
-    } else if (lineText.trim().startsWith('- ')) {
-      // Convert bullet to task
-      const newLine = lineText.replace(/^(\s*)- /, '$1- [ ] ');
-      changes.push({
-        from: line.from,
-        to: line.to,
-        insert: newLine
-      });
-    } else {
-      // Add new task
-      changes.push({
-        from: line.from,
-        to: line.from,
-        insert: '- [ ] '
-      });
-    }
-  }
-  
-  if (dispatch) {
-    dispatch({ changes });
-  }
-  
-  return true;
-}
-
-// Toggle inline code
-function toggleInlineCode({ state, dispatch }: EditorView) {
-  const selection = state.selection;
-  let changes = [];
-  
-  for (const range of selection.ranges) {
-    const from = range.from;
-    const to = range.to;
-    
-    if (from === to) {
-      // No selection, insert placeholders
-      changes.push({ from, to, insert: "`code`" });
-    } else {
-      const selectedText = state.doc.sliceString(from, to);
-      // Check if already inline code
-      if (selectedText.startsWith('`') && selectedText.endsWith('`')) {
-        changes.push({ 
-          from, 
-          to, 
-          insert: selectedText.substring(1, selectedText.length - 1) 
-        });
-      } else {
-        changes.push({ from, to, insert: `\`${selectedText}\`` });
-      }
-    }
-  }
-  
-  if (dispatch) {
-    dispatch({ changes });
-  }
-  
-  return true;
-}
-
-// Toggle code block
-function toggleCodeBlock({ state, dispatch }: EditorView) {
-  const selection = state.selection;
-  let changes = [];
-  
-  for (const range of selection.ranges) {
-    const from = range.from;
-    const to = range.to;
-    
-    if (from === to) {
-      // No selection, insert placeholders
-      changes.push({ from, to, insert: "```\nCode block\n```" });
-    } else {
-      const selectedText = state.doc.sliceString(from, to);
-      // Check if already a code block
-      if (selectedText.startsWith('```') && selectedText.endsWith('```')) {
-        changes.push({ 
-          from, 
-          to, 
-          insert: selectedText.substring(3, selectedText.length - 3).trim() 
-        });
-      } else {
-        changes.push({ from, to, insert: `\`\`\`\n${selectedText}\n\`\`\`` });
-      }
-    }
-  }
-  
-  if (dispatch) {
-    dispatch({ changes });
-  }
-  
-  return true;
-}
-
-// Helper to create heading toggle functions
-function setHeading(level: number) {
-  return ({ state, dispatch }: EditorView) => {
-    const selection = state.selection;
-    let changes = [];
-    
-    for (const range of selection.ranges) {
-      const from = range.from;
-      
-      // Get the current line
-      const line = state.doc.lineAt(from);
-      const lineText = line.text;
-      
-      // Check if already a heading
-      const headingMatch = lineText.match(/^(#{1,6})\s/);
-      
-      if (headingMatch) {
-        // Replace existing heading
-        const newLine = lineText.replace(/^#{1,6}\s/, '#'.repeat(level) + ' ');
-        changes.push({
-          from: line.from,
-          to: line.to,
-          insert: newLine
-        });
-      } else {
-        // Add new heading
-        changes.push({
-          from: line.from,
-          to: line.from,
-          insert: '#'.repeat(level) + ' '
-        });
-      }
-    }
-    
-    if (dispatch) {
-      dispatch({ changes });
-    }
-    
-    return true;
-  };
 }
 
 // Lifecycle hooks
@@ -1446,25 +483,38 @@ defineExpose({
 }
 
 /* Internal links (Obsidian style) */
-.preview a.internal-link {
+.preview a.internal-link,
+.cm-rendered-markdown a.internal-link {
   color: #a277ff;
   text-decoration: none;
+  border-bottom: 1px dotted rgba(162, 119, 255, 0.4);
 }
 
-.light-theme .preview a.internal-link {
+.light-theme .preview a.internal-link,
+.light-theme .cm-rendered-markdown a.internal-link {
   color: #8457d3;
+  border-bottom: 1px dotted rgba(132, 87, 211, 0.4);
 }
 
-.preview a.internal-link:hover {
-  text-decoration: underline;
+.preview a.internal-link:hover,
+.cm-rendered-markdown a.internal-link:hover {
+  text-decoration: none;
+  border-bottom: 1px solid rgba(162, 119, 255, 0.8);
+}
+
+.light-theme .preview a.internal-link:hover,
+.light-theme .cm-rendered-markdown a.internal-link:hover {
+  border-bottom: 1px solid rgba(132, 87, 211, 0.8);
 }
 
 /* Text formatting */
-.preview strong {
+.preview strong,
+.cm-rendered-markdown strong {
   font-weight: bold;
 }
 
-.preview em {
+.preview em,
+.cm-rendered-markdown em {
   font-style: italic;
 }
 
@@ -1472,18 +522,21 @@ defineExpose({
   text-decoration: line-through;
 }
 
-.preview mark {
+.preview mark,
+.cm-rendered-markdown mark {
   background-color: rgba(246, 189, 96, 0.7);
   padding: 0 2px;
   border-radius: 2px;
 }
 
-.light-theme .preview mark {
+.light-theme .preview mark,
+.light-theme .cm-rendered-markdown mark {
   background-color: rgba(255, 204, 0, 0.4);
 }
 
 /* Code */
-.preview code {
+.preview code,
+.cm-rendered-markdown code {
   font-family: 'Fira Code', 'Source Code Pro', monospace;
   background-color: rgba(128, 128, 128, 0.2);
   padding: 0.2em 0.4em;
@@ -1491,25 +544,29 @@ defineExpose({
   font-size: 0.9em;
 }
 
-.preview pre {
+.preview pre,
+.cm-rendered-markdown pre {
   background-color: rgba(40, 44, 52, 0.85);
   padding: 1em;
   border-radius: 5px;
   overflow-x: auto;
 }
 
-.light-theme .preview pre {
+.light-theme .preview pre,
+.light-theme .cm-rendered-markdown pre {
   background-color: #f5f5f5;
 }
 
-.preview pre code {
+.preview pre code,
+.cm-rendered-markdown pre code {
   background-color: transparent;
   padding: 0;
   font-size: 0.9em;
   color: #d9e0ee;
 }
 
-.light-theme .preview pre code {
+.light-theme .preview pre code,
+.light-theme .cm-rendered-markdown pre code {
   color: #333333;
 }
 
@@ -1541,31 +598,40 @@ defineExpose({
 }
 
 /* Task lists */
-.preview .task-list-item {
+.preview .task-list-item,
+.cm-task-checkbox-wrapper {
   list-style: none;
-  margin-left: -1.5em;
   position: relative;
 }
 
-.preview .task-list-item input[type="checkbox"] {
+.preview .task-list-item {
+  margin-left: -1.5em;
+}
+
+.preview .task-list-item input[type="checkbox"],
+.cm-task-checkbox {
   margin-right: 0.5em;
   cursor: pointer;
 }
 
-.light-theme .preview .task-list-item input[type="checkbox"] {
+.light-theme .preview .task-list-item input[type="checkbox"],
+.light-theme .cm-task-checkbox {
   accent-color: #5073de;
 }
 
-.dark-theme .preview .task-list-item input[type="checkbox"] {
+.dark-theme .preview .task-list-item input[type="checkbox"],
+.dark-theme .cm-task-checkbox {
   accent-color: #7aa2f7;
 }
 
-.preview .task-completed {
+.preview .task-completed,
+.cm-rendered-markdown .task-completed {
   text-decoration: line-through;
   color: rgba(217, 224, 238, 0.6);
 }
 
-.light-theme .preview .task-completed {
+.light-theme .preview .task-completed,
+.light-theme .cm-rendered-markdown .task-completed {
   color: rgba(46, 51, 56, 0.6);
 }
 
@@ -1601,44 +667,58 @@ defineExpose({
 }
 
 /* Callouts */
-.preview .callout {
+.preview .callout,
+.cm-rendered-markdown .callout {
   margin: 1.5em 0;
   padding: 0.75em;
   border-radius: 4px;
   border-left: 4px solid;
 }
 
-.preview .callout-title {
+.preview .callout-title,
+.cm-rendered-markdown .callout-title {
   font-weight: 600;
   margin-bottom: 0.5em;
+  cursor: pointer;
 }
 
-.preview .callout-content {
+.preview .callout-content,
+.cm-rendered-markdown .callout-content {
   margin-top: 0.5em;
 }
 
+.preview .callout-content.collapsed,
+.cm-rendered-markdown .callout-content.collapsed {
+  display: none;
+}
+
 /* Callout types */
-.preview .callout.note {
+.preview .callout.note,
+.cm-rendered-markdown .callout.note {
   background-color: rgba(68, 138, 255, 0.1);
   border-left-color: #448aff;
 }
 
-.preview .callout.warning {
+.preview .callout.warning,
+.cm-rendered-markdown .callout.warning {
   background-color: rgba(255, 145, 0, 0.1);
   border-left-color: #ff9100;
 }
 
-.preview .callout.danger {
+.preview .callout.danger,
+.cm-rendered-markdown .callout.danger {
   background-color: rgba(255, 82, 82, 0.1);
   border-left-color: #ff5252;
 }
 
-.preview .callout.info {
+.preview .callout.info,
+.cm-rendered-markdown .callout.info {
   background-color: rgba(0, 184, 212, 0.1);
   border-left-color: #00b8d4;
 }
 
-.preview .callout.success {
+.preview .callout.success,
+.cm-rendered-markdown .callout.success {
   background-color: rgba(0, 200, 83, 0.1);
   border-left-color: #00c853;
 }
@@ -1661,12 +741,14 @@ defineExpose({
 }
 
 /* Mermaid diagrams */
-.preview .mermaid-diagram {
+.preview .mermaid-diagram,
+.cm-rendered-markdown .mermaid-diagram {
   text-align: center;
   margin: 1.5em 0;
 }
 
-.preview .mermaid-error {
+.preview .mermaid-error,
+.cm-rendered-markdown .mermaid-error {
   color: #ff5252;
   font-family: monospace;
   padding: 0.5em;
@@ -1687,27 +769,8 @@ defineExpose({
 }
 
 /* Obsidian-specific markdown features */
-.preview .internal-link {
-  color: #a277ff;
-  text-decoration: none;
-  border-bottom: 1px dotted rgba(162, 119, 255, 0.4);
-}
-
-.light-theme .preview .internal-link {
-  color: #8457d3;
-  border-bottom: 1px dotted rgba(132, 87, 211, 0.4);
-}
-
-.preview .internal-link:hover {
-  text-decoration: none;
-  border-bottom: 1px solid rgba(162, 119, 255, 0.8);
-}
-
-.light-theme .preview .internal-link:hover {
-  border-bottom: 1px solid rgba(132, 87, 211, 0.8);
-}
-
-.preview .tag-link {
+.preview .tag-link,
+.cm-rendered-markdown .tag-link {
   color: #89b4fa;
   text-decoration: none;
   background-color: rgba(137, 180, 250, 0.1);
@@ -1715,21 +778,25 @@ defineExpose({
   padding: 2px 4px;
 }
 
-.light-theme .preview .tag-link {
+.light-theme .preview .tag-link,
+.light-theme .cm-rendered-markdown .tag-link {
   color: #0077cc;
   background-color: rgba(0, 119, 204, 0.1);
 }
 
-.preview .tag-link:hover {
+.preview .tag-link:hover,
+.cm-rendered-markdown .tag-link:hover {
   text-decoration: none;
   background-color: rgba(137, 180, 250, 0.2);
 }
 
-.light-theme .preview .tag-link:hover {
+.light-theme .preview .tag-link:hover,
+.light-theme .cm-rendered-markdown .tag-link:hover {
   background-color: rgba(0, 119, 204, 0.2);
 }
 
-.preview .obsidian-comment {
+.preview .obsidian-comment,
+.cm-rendered-markdown .obsidian-comment {
   color: rgba(217, 224, 238, 0.5);
   font-style: italic;
   background-color: rgba(80, 80, 80, 0.1);
@@ -1737,12 +804,14 @@ defineExpose({
   border-radius: 2px;
 }
 
-.light-theme .preview .obsidian-comment {
+.light-theme .preview .obsidian-comment,
+.light-theme .cm-rendered-markdown .obsidian-comment {
   color: rgba(46, 51, 56, 0.5);
   background-color: rgba(200, 200, 200, 0.2);
 }
 
-.preview .dataview-block {
+.preview .dataview-block,
+.cm-rendered-markdown .dataview-block {
   background-color: rgba(137, 180, 250, 0.05);
   border: 1px solid rgba(137, 180, 250, 0.2);
   border-radius: 4px;
@@ -1750,7 +819,8 @@ defineExpose({
   overflow: hidden;
 }
 
-.preview .dataview-block-header {
+.preview .dataview-block-header,
+.cm-rendered-markdown .dataview-block-header {
   background-color: rgba(137, 180, 250, 0.1);
   padding: 4px 8px;
   font-size: 0.8em;
@@ -1759,11 +829,13 @@ defineExpose({
   border-bottom: 1px solid rgba(137, 180, 250, 0.2);
 }
 
-.light-theme .preview .dataview-block-header {
+.light-theme .preview .dataview-block-header,
+.light-theme .cm-rendered-markdown .dataview-block-header {
   color: #0077cc;
 }
 
-.preview .dataview-inline-query {
+.preview .dataview-inline-query,
+.cm-rendered-markdown .dataview-inline-query {
   color: #89b4fa;
   background-color: rgba(137, 180, 250, 0.1);
   padding: 2px 4px;
@@ -1772,111 +844,34 @@ defineExpose({
   font-size: 0.9em;
 }
 
-.light-theme .preview .dataview-inline-query {
+.light-theme .preview .dataview-inline-query,
+.light-theme .cm-rendered-markdown .dataview-inline-query {
   color: #0077cc;
   background-color: rgba(0, 119, 204, 0.1);
 }
 
-/* CodeMirror live preview extensions */
-.editor-container.live-preview .cm-formatting {
-  opacity: 0.6;
+/* Code block styles */
+.cm-rendered-markdown .code-block-wrapper {
+  background-color: rgba(40, 44, 52, 0.85);
+  border-radius: 5px;
+  margin: 1em 0;
+  overflow: hidden;
 }
 
-.editor-container.live-preview .cm-header {
-  font-weight: bold;
+.light-theme .cm-rendered-markdown .code-block-wrapper {
+  background-color: #f5f5f5;
 }
 
-.editor-container.live-preview .cm-em {
-  font-style: italic;
-}
-
-.editor-container.live-preview .cm-strong {
-  font-weight: bold;
-}
-
-.editor-container.live-preview .cm-strikethrough {
-  text-decoration: line-through;
-}
-
-.editor-container.live-preview .cm-highlight {
-  background-color: rgba(246, 189, 96, 0.3);
-  border-radius: 2px;
-}
-
-.editor-container.live-preview .cm-hmd-internal-link {
-  color: #a277ff;
-  text-decoration: none;
-}
-
-.light-theme .editor-container.live-preview .cm-hmd-internal-link {
-  color: #8457d3;
-}
-
-.editor-container.live-preview .cm-tag {
+.cm-rendered-markdown .code-block-language {
+  font-size: 0.8em;
+  padding: 2px 8px;
+  background-color: rgba(0, 0, 0, 0.2);
   color: #89b4fa;
 }
 
-.light-theme .editor-container.live-preview .cm-tag {
+.light-theme .cm-rendered-markdown .code-block-language {
   color: #0077cc;
-}
-
-.editor-container.live-preview .cm-comment {
-  color: rgba(217, 224, 238, 0.5);
-  font-style: italic;
-}
-
-.light-theme .editor-container.live-preview .cm-comment {
-  color: rgba(46, 51, 56, 0.5);
-}
-
-.editor-container.live-preview .cm-dataview-inline {
-  color: #89b4fa;
-  background-color: rgba(137, 180, 250, 0.1);
-  padding: 0 2px;
-  border-radius: 2px;
-}
-
-.light-theme .editor-container.live-preview .cm-dataview-inline {
-  color: #0077cc;
-  background-color: rgba(0, 119, 204, 0.1);
-}
-
-/* Additional styling for callouts in the editor */
-.editor-container.live-preview .cm-callout {
-  background-color: rgba(137, 180, 250, 0.05);
-  border-left: 4px solid #89b4fa;
-  padding-left: 8px;
-}
-
-/* Make task checkboxes appear more interactive */
-.editor-container.live-preview .cm-formatting-task {
-  color: #89b4fa;
-  font-weight: bold;
-}
-
-.light-theme .editor-container.live-preview .cm-formatting-task {
-  color: #0077cc;
-}
-
-/* Style for dynamic content like {{date}} */
-.editor-container.live-preview .cm-template-tag {
-  color: #f5c2e7;
-  background-color: rgba(245, 194, 231, 0.1);
-  border-radius: 2px;
-  padding: 0 2px;
-}
-
-.light-theme .editor-container.live-preview .cm-template-tag {
-  color: #d670d6;
-  background-color: rgba(214, 112, 214, 0.1);
-}
-
-/* Placeholder styling */
-.cm-placeholder {
-  color: #999;
-  display: inline-block;
-  font-style: italic;
-  pointer-events: none;
+  background-color: rgba(0, 0, 0, 0.1);
 }
 
 /* Mobile responsiveness */
@@ -1897,4 +892,22 @@ defineExpose({
     font-size: 0.9em;
   }
 }
+
+/* Rendered markdown in live preview */
+.cm-rendered-markdown {
+  display: inline-block;
+  position: relative;
+  pointer-events: all;
+}
+
+.cm-rendered-heading {
+  font-weight: bold;
+  margin: 0.5em 0;
+}
+.cm-heading-1 { font-size: 2em; }
+.cm-heading-2 { font-size: 1.5em; }
+.cm-heading-3 { font-size: 1.17em; }
+.cm-heading-4 { font-size: 1em; }
+.cm-heading-5 { font-size: 0.83em; }
+.cm-heading-6 { font-size: 0.67em; }
 </style>

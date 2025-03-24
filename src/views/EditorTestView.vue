@@ -12,19 +12,19 @@
     </div>
     <div class="editor-controls">
       <div class="mode-toggle">
-        <button 
+        <button
           @click="editorMode = 'live-preview'"
           :class="{ active: editorMode === 'live-preview' }"
         >
           Live Preview
         </button>
-        <button 
+        <button
           @click="editorMode = 'source'"
           :class="{ active: editorMode === 'source' }"
         >
           Source
         </button>
-        <button 
+        <button
           @click="editorMode = 'reading'"
           :class="{ active: editorMode === 'reading' }"
         >
@@ -40,13 +40,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
-import ObsidianNoteEditor from '@/components/ObsidianEditor/ObsidianNoteEditor.vue';
-import { useFrameworksStore } from '@/stores/frameworks';
+import { ref, onMounted } from "vue";
+import { ObsidianNoteEditor } from "@/components/ObsidianEditor/index";
+import { useFrameworksStore } from "@/stores/frameworks";
 
 // Editor state
-const editorContent = ref('');
-const editorMode = ref<'live-preview' | 'source' | 'reading'>('live-preview');
+const editorContent = ref("");
+const editorMode = ref<"live-preview" | "source" | "reading">("live-preview");
 const editorReady = ref(false);
 
 // Store
@@ -110,13 +110,13 @@ Try copying and pasting this content between Obsidian and this editor!
 // Handle editor ready event
 const onEditorReady = () => {
   editorReady.value = true;
-  console.log('Editor is ready');
+  console.log("Editor is ready");
 };
 
 // Load a sample template
 const loadSampleTemplate = () => {
   // Get a template from the frameworks store
-  const dailyJournal = frameworksStore.getTemplateById('1');
+  const dailyJournal = frameworksStore.getTemplateById("1");
   if (dailyJournal && dailyJournal.content) {
     editorContent.value = dailyJournal.content;
   }
@@ -124,7 +124,7 @@ const loadSampleTemplate = () => {
 
 // Clear the editor
 const clearEditor = () => {
-  editorContent.value = '';
+  editorContent.value = "";
 };
 </script>
 
@@ -161,7 +161,8 @@ h1 {
   gap: var(--spacing-md);
 }
 
-.mode-toggle, .sample-controls {
+.mode-toggle,
+.sample-controls {
   display: flex;
   gap: var(--spacing-xs);
 }
