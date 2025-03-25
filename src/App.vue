@@ -3,33 +3,29 @@
     class="app"
     :class="{ 'theme-dark': isDarkTheme, 'theme-light': !isDarkTheme }"
   >
-    <!-- Background with gradient and noise -->
     <GradientBackground />
 
     <div
       class="app-layout"
       :class="{
         'sidebar-collapsed': sidebarCollapsed,
-        'with-sidebar': authStore.isAuthenticated || shouldShowSidebar,
+        'with-sidebar': authStore.isAuthenticated && !isAuthRoute,
       }"
     >
-      <!-- Global Sidebar (only for authenticated users) -->
+      <!-- Sidebar for authenticated users -->
       <GlobalSidebar
-        v-if="authStore.isAuthenticated || shouldShowSidebar"
+        v-if="authStore.isAuthenticated"
         :is-modified="isModified"
-        @add-section="handleAddSection"
         @save-template="handleSaveTemplate"
-        @export-template="handleExportTemplate"
         @new-template="handleNewTemplate"
         @theme-change="handleThemeChange"
         @logout="handleLogout"
       />
 
-      <!-- Main Content Area -->
+      <!-- Main content -->
       <main class="app-content">
-        <!-- Mobile sidebar toggle (only when sidebar is visible) -->
         <button
-          v-if="authStore.isAuthenticated || shouldShowSidebar"
+          v-if="authStore.isAuthenticated"
           class="sidebar-toggle glass-button"
           @click="toggleSidebar"
           aria-label="Toggle sidebar"
@@ -45,10 +41,7 @@
       </main>
     </div>
 
-    <!-- Global components -->
     <ToastNotification ref="toastRef" position="top-right" />
-
-    <!-- Export Dialog (when triggered) -->
     <ExportDialog v-if="showExportDialog" @close="showExportDialog = false" />
   </div>
 </template>
@@ -67,54 +60,38 @@ import GlobalSidebar from "./components/Layout/GlobalSidebar.vue";
 import ToastNotification from "./components/UI/ToastNotification.vue";
 import ExportDialog from "./components/TemplateCreator/ExportDialog.vue";
 
-// Component references
-const toastRef = ref<InstanceType<typeof ToastNotification> | null>(null);
+// Refs and stores
 const router = useRouter();
+const toastRef = ref(null);
 const sidebarCollapsed = ref(false);
 const showExportDialog = ref(false);
 const isDarkTheme = ref(true);
+const appInitialized = ref(false);
 
-// Get stores
+const authStore = useAuthStore();
 const uiStore = useUIStore();
 const preferencesStore = usePreferencesStore();
 const templateStore = useTemplateStore();
-const authStore = useAuthStore();
 const obsidianStore = useObsidianStore();
 
-// Check if sidebar should be shown
-const shouldShowSidebar = computed(() => {
-  // Only show sidebar for authenticated users or on routes that need it
-  const currentRoute = router.currentRoute.value.name as string;
-  const sidebarRoutes = [
-    "editor",
-    "dashboard",
-    "library",
-    "templateLibrary",
-    "settings",
-  ];
-
-  // For debugging purposes
-  console.log('Route and auth check:', { 
-    route: currentRoute, 
-    authenticated: authStore.isAuthenticated,
-    showSidebar: authStore.isAuthenticated && sidebarRoutes.includes(currentRoute)
-  });
-
-  return authStore.isAuthenticated && sidebarRoutes.includes(currentRoute);
-});
-
-// Computed
 const isModified = computed(() => uiStore.isModified);
 
-// Toggle sidebar for mobile
+// Detect current route
+const isAuthRoute = computed(() => {
+  const name = router.currentRoute.value.name as string;
+  return [
+    "login",
+    "signup",
+    "resetPassword",
+    "auth-callback",
+    "landing",
+    "home",
+  ].includes(name);
+});
+
+// Handlers
 const toggleSidebar = () => {
   sidebarCollapsed.value = !sidebarCollapsed.value;
-};
-
-// Methods
-const handleAddSection = (section) => {
-  templateStore.addSection(section);
-  uiStore.setModified(true);
 };
 
 const handleSaveTemplate = async () => {
@@ -125,10 +102,6 @@ const handleSaveTemplate = async () => {
   } catch (error) {
     uiStore.showToast(`Error saving template: ${error}`, "error");
   }
-};
-
-const handleExportTemplate = () => {
-  showExportDialog.value = true;
 };
 
 const handleNewTemplate = () => {
@@ -156,84 +129,46 @@ const createNewTemplate = () => {
   router.push({ name: "editor" });
 };
 
-const handleThemeChange = (theme) => {
+const handleThemeChange = (theme: string) => {
   isDarkTheme.value = theme === "dark";
-  if (preferencesStore.setTheme) {
-    preferencesStore.setTheme(theme);
-  } else if (preferencesStore.setEditorTheme) {
-    preferencesStore.setEditorTheme(theme);
-  }
+  preferencesStore.setEditorTheme(theme);
 };
 
-const handleLogout = () => {
-  authStore.logout();
+const handleLogout = async () => {
+  await authStore.logout();
   router.push({ name: "landing" });
-  uiStore.showToast("You have been logged out", "info");
 };
 
-// Check auth on mount
+// Init logic
 onMounted(async () => {
-  console.log('App.vue mounting...');
-  
-  // Load stored data
-  preferencesStore.loadPreferences();
-  templateStore.loadTemplates();
-  if (uiStore.loadUIPreferences) {
-    uiStore.loadUIPreferences();
+  console.log("App.vue mounting...");
+
+  try {
+    await authStore.initialize();
+    preferencesStore.loadPreferences();
+
+    const savedTheme =
+      preferencesStore.editorTheme ||
+      (window.matchMedia("(prefers-color-scheme: dark)").matches
+        ? "dark"
+        : "light");
+
+    isDarkTheme.value = savedTheme === "dark";
+    document.documentElement.setAttribute("data-theme", savedTheme);
+
+    if (authStore.isAuthenticated) {
+      await Promise.allSettled([
+        templateStore.loadTemplates(),
+        obsidianStore.restoreConnection(),
+      ]);
+    }
+
+    uiStore.loadUIPreferences?.();
+  } catch (err) {
+    console.error("App initialization error:", err);
+  } finally {
+    appInitialized.value = true;
   }
-
-  // Set theme - default to dark or system preference
-  const themeKey = preferencesStore.theme ? "theme" : "editorTheme";
-  const savedTheme =
-    preferencesStore[themeKey] ||
-    (window.matchMedia("(prefers-color-scheme: dark)").matches
-      ? "dark"
-      : "light");
-
-  isDarkTheme.value = savedTheme === "dark";
-  document.documentElement.setAttribute("data-theme", savedTheme);
-
-  // Check authentication status - this will trigger auth state watchers
-  console.log('Initializing auth state...');
-  await authStore.checkAuth();
-  
-  // After auth check, explicitly sync router with auth state
-  await authStore.syncAuthStateWithRouter();
-  
-  // Attempt to restore Obsidian connection
-  await obsidianStore.restoreConnection();
-  
-  console.log('App initialization complete');
-});
-
-// Watch for toast messages
-watchEffect(() => {
-  if (uiStore.toastMessages.length > 0 && toastRef.value) {
-    uiStore.toastMessages.forEach((toast) => {
-      switch (toast.type) {
-        case "success":
-          toastRef.value?.success(toast.message);
-          break;
-        case "error":
-          toastRef.value?.error(toast.message);
-          break;
-        case "info":
-        default:
-          toastRef.value?.info(toast.message);
-      }
-      uiStore.removeToast(toast.id);
-    });
-  }
-});
-
-// Expose toast functionality to other components (will be deprecated in favor of store)
-defineExpose({
-  showToast: (
-    message: string,
-    type: "success" | "error" | "warning" | "info" = "info"
-  ) => {
-    uiStore.addToast(message, type as any);
-  },
 });
 </script>
 
@@ -319,14 +254,55 @@ defineExpose({
   z-index: 90;
   cursor: pointer;
   box-shadow: var(--glass-shadow);
-  backdrop-filter: blur(var(--glass-blur));
-  -webkit-backdrop-filter: blur(var(--glass-blur));
+  /* Removed blur effects that were causing readability issues */
   display: none;
 }
 
 .sidebar-toggle i {
   font-size: 1.1rem;
   color: var(--color-text);
+}
+
+/* App loading state */
+.app-loading {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  background: rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(5px);
+}
+
+.app-loading h2 {
+  margin-top: 1.5rem;
+  font-size: 1.5rem;
+  color: var(--color-text);
+}
+
+.app-loading .loader {
+  width: 48px;
+  height: 48px;
+  border: 5px solid var(--color-text-tertiary);
+  border-bottom-color: var(--color-primary);
+  border-radius: 50%;
+  display: inline-block;
+  box-sizing: border-box;
+  animation: rotation 1s linear infinite;
+}
+
+@keyframes rotation {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
 /* Media queries for responsive design */

@@ -30,11 +30,11 @@
   --color-text-tertiary: rgba(255, 255, 255, 0.5); /* ideal for placeholders, etc */
   --color-text-dark: #334155; /* retained for potential contrast use */
   
-  /* Glass Effect (fully compatible and unchanged—core of your aesthetic) */
+  /* Glass Effect (modified to remove blur effect) */
   --glass-background: rgba(255, 255, 255, 0.1);
   --glass-border: rgba(255, 255, 255, 0.15);
   --glass-shadow: 0 4px 24px -8px rgba(0, 0, 0, 0.3);
-  --glass-blur: 10px;
+  --glass-blur: 0px; /* Set to 0 to prevent blur effects */
   
   /* Spacing (unchanged—ideal already for your UI layout) */
   --spacing-xs: 3px;
@@ -117,8 +117,7 @@ small {
 /* Glassmorphism utility classes */
 .glass-card {
   background: var(--glass-background);
-  backdrop-filter: blur(var(--glass-blur));
-  -webkit-backdrop-filter: blur(var(--glass-blur));
+  /* Removed blur effects that were causing readability issues */
   border: 1px solid var(--glass-border);
   border-radius: var(--radius-md);
   box-shadow: var(--glass-shadow);
@@ -134,8 +133,7 @@ small {
 /* Maintain the existing glass class for compatibility */
 .glass {
   background: var(--glass-background);
-  backdrop-filter: blur(var(--glass-blur));
-  -webkit-backdrop-filter: blur(var(--glass-blur));
+  /* Removed blur effects that were causing readability issues */
   border: 1px solid var(--glass-border);
   box-shadow: var(--glass-shadow);
 }
@@ -250,8 +248,7 @@ input:focus, textarea:focus, select:focus {
 /* Card styles */
 .card {
   background-color: var(--glass-background);
-  backdrop-filter: blur(var(--glass-blur));
-  -webkit-backdrop-filter: blur(var(--glass-blur));
+  /* Removed blur effects that were causing readability issues */
   border: 1px solid var(--glass-border);
   border-radius: var(--radius-md);
   padding: var(--spacing-md);

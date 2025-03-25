@@ -4,23 +4,25 @@
       <div class="settings-header glass-card">
         <h1 class="settings-header__title">Settings</h1>
       </div>
-      
+
       <div class="settings-content glass-card">
         <!-- Account Info Section -->
         <div class="settings-section">
           <h2 class="settings-section__title">Account Information</h2>
-          
+
           <div class="profile-summary">
             <div class="profile-avatar">
-              {{ getInitials(authStore.user?.name || '') }}
+              {{ getInitials(authStore.user?.name || "") }}
             </div>
             <div class="profile-details">
               <div class="profile-name">{{ authStore.user?.name }}</div>
               <div class="profile-email">{{ authStore.user?.email }}</div>
-              <div class="profile-joined">Joined {{ formatDate(authStore.user?.createdAt) }}</div>
+              <div class="profile-joined">
+                Joined {{ formatDate(authStore.user?.createdAt) }}
+              </div>
             </div>
           </div>
-          
+
           <div class="settings-option">
             <label for="email">Email Address</label>
             <div class="input-with-button">
@@ -30,7 +32,7 @@
                 v-model="emailAddress"
                 placeholder="Your email address"
               />
-              <button 
+              <button
                 class="action-button"
                 @click="updateEmail"
                 :disabled="emailAddress === authStore.user?.email"
@@ -39,14 +41,14 @@
               </button>
             </div>
           </div>
-          
+
           <div class="settings-option">
             <label>Password</label>
             <button class="secondary-button" @click="showPasswordChange = true">
               <i class="fas fa-key"></i> Change Password
             </button>
           </div>
-          
+
           <div v-if="showPasswordChange" class="password-change-form">
             <div class="form-group">
               <label for="current-password">Current Password</label>
@@ -57,7 +59,7 @@
                 placeholder="Enter current password"
               />
             </div>
-            
+
             <div class="form-group">
               <label for="new-password">New Password</label>
               <input
@@ -67,7 +69,7 @@
                 placeholder="Enter new password"
               />
             </div>
-            
+
             <div class="form-group">
               <label for="confirm-password">Confirm New Password</label>
               <input
@@ -77,7 +79,7 @@
                 placeholder="Confirm new password"
               />
             </div>
-            
+
             <div class="password-strength" v-if="newPassword">
               <div class="strength-label">Password Strength:</div>
               <div class="strength-meter">
@@ -91,7 +93,7 @@
                 {{ getPasswordStrengthText }}
               </div>
             </div>
-            
+
             <div class="form-actions">
               <button class="cancel-button" @click="cancelPasswordChange">
                 Cancel
@@ -106,7 +108,7 @@
               </button>
             </div>
           </div>
-          
+
           <div class="settings-option">
             <label>Connected Accounts</label>
             <div class="connected-accounts">
@@ -114,101 +116,23 @@
                 <i class="fab fa-google"></i>
                 <span>Google</span>
                 <button class="connection-button" @click="connectGoogle">
-                  {{ googleConnected ? 'Disconnect' : 'Connect' }}
+                  {{ googleConnected ? "Disconnect" : "Connect" }}
                 </button>
               </div>
-              
+
               <div class="connection-item">
                 <i class="fab fa-github"></i>
                 <span>GitHub</span>
                 <button class="connection-button" @click="connectGithub">
-                  {{ githubConnected ? 'Disconnect' : 'Connect' }}
+                  {{ githubConnected ? "Disconnect" : "Connect" }}
                 </button>
               </div>
             </div>
           </div>
         </div>
-        
+
         <div class="settings-divider"></div>
-        
-        <!-- Subscription Section -->
-        <div class="settings-section">
-          <h2 class="settings-section__title">Subscription</h2>
-          
-          <div class="subscription-card">
-            <div class="subscription-header">
-              <h3 class="subscription-plan">{{ getPlanLabel(authStore.user?.subscription?.plan) }}</h3>
-              <div class="subscription-status" :class="getStatusClass">
-                {{ getStatusLabel(authStore.user?.subscription?.status) }}
-              </div>
-            </div>
-            
-            <div class="subscription-details">
-              <div v-if="authStore.user?.subscription?.expiresAt" class="subscription-info">
-                <span>Renews on {{ formatDate(authStore.user?.subscription?.expiresAt) }}</span>
-              </div>
-              <div class="subscription-features">
-                <div class="feature-item">
-                  <i class="fas fa-check"></i>
-                  <span>{{ getPlanFeatures(authStore.user?.subscription?.plan).templates }} Template Limit</span>
-                </div>
-                <div class="feature-item">
-                  <i class="fas fa-check"></i>
-                  <span>{{ getPlanFeatures(authStore.user?.subscription?.plan).sections }} Sections Per Template</span>
-                </div>
-                <div class="feature-item" v-if="getPlanFeatures(authStore.user?.subscription?.plan).cloudStorage">
-                  <i class="fas fa-check"></i>
-                  <span>Cloud Storage</span>
-                </div>
-                <div class="feature-item" v-if="getPlanFeatures(authStore.user?.subscription?.plan).sharing">
-                  <i class="fas fa-check"></i>
-                  <span>Template Sharing</span>
-                </div>
-                <div class="feature-item" v-if="getPlanFeatures(authStore.user?.subscription?.plan).themes">
-                  <i class="fas fa-check"></i>
-                  <span>Custom Themes</span>
-                </div>
-              </div>
-            </div>
-            
-            <div class="subscription-actions">
-              <button class="primary-button" @click="openChangePlan">
-                <i class="fas fa-sync-alt"></i> Change Plan
-              </button>
-              
-              <button v-if="authStore.user?.subscription?.status === 'active'" class="secondary-button" @click="openUpdatePayment">
-                <i class="fas fa-credit-card"></i> Update Payment Method
-              </button>
-              
-              <button v-if="authStore.user?.subscription?.status === 'active'" class="danger-button" @click="openCancelSubscription">
-                <i class="fas fa-times-circle"></i> Cancel Subscription
-              </button>
-              
-              <button v-if="authStore.user?.subscription?.status === 'canceled'" class="primary-button" @click="openReactivateSubscription">
-                <i class="fas fa-redo"></i> Reactivate Subscription
-              </button>
-            </div>
-          </div>
-          
-          <div v-if="showBillingCycle" class="billing-cycle-toggle">
-            <label>Billing Cycle</label>
-            <div class="toggle-container">
-              <span :class="{ 'active': billingCycle === 'monthly' }">Monthly</span>
-              <label class="toggle">
-                <input
-                  type="checkbox"
-                  v-model="annualBilling"
-                  @change="toggleBillingCycle"
-                />
-                <span class="toggle-slider"></span>
-              </label>
-              <span :class="{ 'active': billingCycle === 'annual' }">Annual <span class="discount">Save 20%</span></span>
-            </div>
-          </div>
-        </div>
-        
-        <div class="settings-divider"></div>
-        
+
         <!-- Appearance Section -->
         <div class="settings-section">
           <h2 class="settings-section__title">Appearance</h2>
@@ -220,44 +144,9 @@
             </select>
           </div>
         </div>
-        
+
         <div class="settings-divider"></div>
-        
-        <!-- Export Settings -->
-        <div class="settings-section">
-          <h2 class="settings-section__title">Export Settings</h2>
-          <div class="settings-option">
-            <label for="export-profile">Default Export Profile</label>
-            <select id="export-profile" v-model="exportProfileId" @change="updateExportProfile">
-              <option v-for="profile in exportProfiles" :key="profile.id" :value="profile.id">
-                {{ profile.name }}
-              </option>
-            </select>
-          </div>
-        </div>
-        
-        <div class="settings-divider"></div>
-        
-        <!-- Editor Settings -->
-        <div class="settings-section">
-          <h2 class="settings-section__title">Editor Settings</h2>
-          <div class="settings-option">
-            <label for="editor-width">Default Editor Panel Width (%)</label>
-            <input 
-              type="range" 
-              id="editor-width" 
-              v-model="editorWidth" 
-              min="20" 
-              max="80" 
-              step="5"
-              @change="updateEditorWidth"
-            />
-            <span class="settings-value">{{ editorWidth }}%</span>
-          </div>
-        </div>
-        
-        <div class="settings-divider"></div>
-        
+
         <!-- Storage Management -->
         <div class="settings-section">
           <h2 class="settings-section__title">Storage Management</h2>
@@ -272,7 +161,7 @@
         </div>
       </div>
     </div>
-    
+
     <!-- Confirmation Dialog -->
     <ConfirmationDialog
       v-if="uiStore.showConfirmDialog"
@@ -287,80 +176,57 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue';
-import { useRouter } from 'vue-router';
-import ConfirmationDialog from '../components/UI/ConfirmationDialog.vue';
-import { useTemplateStore, useUIStore, usePreferencesStore } from '../stores';
-import { useAuthStore } from '../stores/auth';
+// ⚠️ DO NOT IMPLEMENT NEW FEATURES UNLESS EXPLICITLY ASKED! ⚠️
 
-// Get stores and router
+import { ref, onMounted, computed } from "vue";
+import { useRouter } from "vue-router";
+import ConfirmationDialog from "../components/UI/ConfirmationDialog.vue";
+import { useTemplateStore, useUIStore, usePreferencesStore } from "../stores";
+import { useAuthStore } from "../stores/auth";
+
 const router = useRouter();
 const templateStore = useTemplateStore();
 const uiStore = useUIStore();
 const preferencesStore = usePreferencesStore();
 const authStore = useAuthStore();
 
-// Reactive state for appearance & editor
-const theme = ref('dark');
-const exportProfileId = ref('');
+const theme = ref("dark");
+const exportProfileId = ref("");
 const editorWidth = ref(50);
-
-// Reactive state for account management
-const emailAddress = ref('');
+const emailAddress = ref("");
 const showPasswordChange = ref(false);
-const currentPassword = ref('');
-const newPassword = ref('');
-const confirmPassword = ref('');
+const currentPassword = ref("");
+const newPassword = ref("");
+const confirmPassword = ref("");
 const authUpdating = ref(false);
-
-// Reactive state for OAuth connections
 const googleConnected = ref(false);
 const githubConnected = ref(false);
 
-// Reactive state for subscription
-const showBillingCycle = ref(false);
-const billingCycle = ref('monthly');
-const annualBilling = ref(false);
-
-// Computed properties
-const exportProfiles = computed(() => {
-  return preferencesStore.exportProfiles;
-});
-
 const passwordStrength = computed(() => {
   if (!newPassword.value) return 0;
-  
   let strength = 0;
-  
-  // Length check
   if (newPassword.value.length >= 8) strength++;
-  
-  // Contains number
   if (/\d/.test(newPassword.value)) strength++;
-  
-  // Contains lowercase and uppercase
-  if (/[a-z]/.test(newPassword.value) && /[A-Z]/.test(newPassword.value)) strength++;
-  
-  // Contains special character
+  if (/[a-z]/.test(newPassword.value) && /[A-Z]/.test(newPassword.value))
+    strength++;
   if (/[^a-zA-Z0-9]/.test(newPassword.value)) strength++;
-  
   return strength;
 });
 
 const getPasswordStrengthClass = computed(() => {
   const strength = passwordStrength.value;
-  if (strength <= 1) return 'weak';
-  if (strength === 2) return 'medium';
-  if (strength === 3) return 'good';
-  return 'strong';
+  if (strength <= 1) return "weak";
+  if (strength === 2) return "medium";
+  if (strength === 3) return "good";
+  return "strong";
 });
 
 const getPasswordStrengthText = computed(() => {
   const strength = passwordStrength.value;
-  if (strength <= 1) return 'Weak';
-  if (strength === 2) return 'Medium';
-  if (strength === 3) return 'Good';
-  return 'Strong';
+  if (strength <= 1) return "Weak";
+  if (strength === 2) return "Medium";
+  if (strength === 3) return "Good";
+  return "Strong";
 });
 
 const canUpdatePassword = computed(() => {
@@ -372,147 +238,55 @@ const canUpdatePassword = computed(() => {
   );
 });
 
-const getStatusClass = computed(() => {
-  const status = authStore.user?.subscription?.status;
-  if (status === 'active') return 'status-active';
-  if (status === 'canceled') return 'status-canceled';
-  return 'status-expired';
-});
-
-// Lifecycle hooks
 onMounted(() => {
-  // Load all settings from stores
   preferencesStore.loadPreferences();
-  
-  // Set current values
-  theme.value = preferencesStore.editorTheme || 'dark';
-  exportProfileId.value = preferencesStore.activeExportProfileId || '';
+  theme.value = preferencesStore.editorTheme || "dark";
+  exportProfileId.value = preferencesStore.activeExportProfileId || "";
   editorWidth.value = uiStore.editorWidth;
-  
-  // Set user info
+
   if (authStore.user) {
-    emailAddress.value = authStore.user.email;
+    emailAddress.value = authStore.user.email ?? "";
   }
-  
-  // Set the last visited view to 'settings'
-  preferencesStore.setLastVisitedView('settings');
+
+  preferencesStore.setLastVisitedView("settings");
 });
 
-// Helper methods
 const getInitials = (name: string) => {
-  if (!name) return '';
+  if (!name) return "";
   return name
-    .split(' ')
-    .map(part => part.charAt(0))
-    .join('')
+    .split(" ")
+    .map((part) => part.charAt(0))
+    .join("")
     .toUpperCase();
 };
 
 const formatDate = (dateString: string | null | undefined) => {
-  if (!dateString) return 'N/A';
+  if (!dateString) return "N/A";
   return new Date(dateString).toLocaleDateString();
 };
 
-const getPlanLabel = (plan: string | undefined) => {
-  switch (plan) {
-    case 'free': return 'Free Plan';
-    case 'premium': return 'Premium Plan';
-    case 'pro': return 'Pro Plan';
-    default: return 'Free Plan';
-  }
-};
-
-const getStatusLabel = (status: string | undefined) => {
-  switch (status) {
-    case 'active': return 'Active';
-    case 'canceled': return 'Canceled';
-    case 'expired': return 'Expired';
-    default: return 'Inactive';
-  }
-};
-
-const getPlanFeatures = (plan: string | undefined) => {
-  switch (plan) {
-    case 'free':
-      return {
-        templates: '3',
-        sections: '5',
-        cloudStorage: false,
-        sharing: false,
-        themes: false
-      };
-    case 'premium':
-      return {
-        templates: 'Unlimited',
-        sections: 'Unlimited',
-        cloudStorage: true,
-        sharing: true,
-        themes: false
-      };
-    case 'pro':
-      return {
-        templates: 'Unlimited',
-        sections: 'Unlimited',
-        cloudStorage: true,
-        sharing: true,
-        themes: true
-      };
-    default:
-      return {
-        templates: '3',
-        sections: '5',
-        cloudStorage: false,
-        sharing: false,
-        themes: false
-      };
-  }
-};
-
-// Methods for appearance & editor
 const updateTheme = () => {
   preferencesStore.setEditorTheme(theme.value);
-  document.documentElement.setAttribute('data-theme', theme.value);
+  document.documentElement.setAttribute("data-theme", theme.value);
 };
 
-const updateExportProfile = () => {
-  preferencesStore.setActiveExportProfile(exportProfileId.value);
-  uiStore.showToast('Export profile updated', 'success');
-};
-
-const updateEditorWidth = () => {
-  uiStore.setEditorWidth(Number(editorWidth.value));
-  preferencesStore.saveEditorWidth(Number(editorWidth.value));
-};
-
-// Methods for account management
 const updateEmail = async () => {
-  if (!emailAddress.value || emailAddress.value === authStore.user?.email) return;
-  
-  // Validate email format
+  if (!emailAddress.value || emailAddress.value === authStore.user?.email)
+    return;
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   if (!emailRegex.test(emailAddress.value)) {
-    uiStore.showToast('Please enter a valid email address', 'error');
+    uiStore.showToast("Please enter a valid email address", "error");
     return;
   }
-  
   authUpdating.value = true;
-  
   try {
-    // In a real app, this would be an API call
-    await new Promise(resolve => setTimeout(resolve, 800));
-    
-    // Mock updating the user's email
+    await new Promise((resolve) => setTimeout(resolve, 800));
     if (authStore.user) {
-      // This is just for demo - in a real app, the authStore would have an updateEmail method
-      authStore.user = {
-        ...authStore.user,
-        email: emailAddress.value
-      };
+      authStore.user = { ...authStore.user, email: emailAddress.value };
     }
-    
-    uiStore.showToast('Email updated successfully', 'success');
-  } catch (error) {
-    uiStore.showToast('Failed to update email', 'error');
+    uiStore.showToast("Email updated successfully", "success");
+  } catch {
+    uiStore.showToast("Failed to update email", "error");
   } finally {
     authUpdating.value = false;
   }
@@ -520,17 +294,13 @@ const updateEmail = async () => {
 
 const updatePassword = async () => {
   if (!canUpdatePassword.value) return;
-  
   authUpdating.value = true;
-  
   try {
-    // In a real app, this would be an API call
-    await new Promise(resolve => setTimeout(resolve, 800));
-    
-    uiStore.showToast('Password updated successfully', 'success');
+    await new Promise((resolve) => setTimeout(resolve, 800));
+    uiStore.showToast("Password updated successfully", "success");
     cancelPasswordChange();
-  } catch (error) {
-    uiStore.showToast('Failed to update password', 'error');
+  } catch {
+    uiStore.showToast("Failed to update password", "error");
   } finally {
     authUpdating.value = false;
   }
@@ -538,175 +308,75 @@ const updatePassword = async () => {
 
 const cancelPasswordChange = () => {
   showPasswordChange.value = false;
-  currentPassword.value = '';
-  newPassword.value = '';
-  confirmPassword.value = '';
+  currentPassword.value = "";
+  newPassword.value = "";
+  confirmPassword.value = "";
 };
 
-// Methods for OAuth connections
 const connectGoogle = async () => {
   if (googleConnected.value) {
-    // Disconnect
     uiStore.showConfirmationDialog(
-      'Disconnect Google Account',
-      'Are you sure you want to disconnect your Google account?',
-      'Disconnect',
-      'Cancel',
+      "Disconnect Google Account",
+      "Are you sure you want to disconnect your Google account?",
+      "Disconnect",
+      "Cancel",
       async () => {
         try {
-          // In a real app, this would be an API call
-          await new Promise(resolve => setTimeout(resolve, 500));
+          await new Promise((resolve) => setTimeout(resolve, 500));
           googleConnected.value = false;
-          uiStore.showToast('Google account disconnected', 'success');
-        } catch (error) {
-          uiStore.showToast('Failed to disconnect Google account', 'error');
+          uiStore.showToast("Google account disconnected", "success");
+        } catch {
+          uiStore.showToast("Failed to disconnect Google account", "error");
         }
       },
       () => {}
     );
   } else {
-    // Connect
     try {
-      // In a real app, this would open OAuth flow
-      await new Promise(resolve => setTimeout(resolve, 800));
+      await new Promise((resolve) => setTimeout(resolve, 800));
       googleConnected.value = true;
-      uiStore.showToast('Google account connected', 'success');
-    } catch (error) {
-      uiStore.showToast('Failed to connect Google account', 'error');
+      uiStore.showToast("Google account connected", "success");
+    } catch {
+      uiStore.showToast("Failed to connect Google account", "error");
     }
   }
 };
 
 const connectGithub = async () => {
   if (githubConnected.value) {
-    // Disconnect
     uiStore.showConfirmationDialog(
-      'Disconnect GitHub Account',
-      'Are you sure you want to disconnect your GitHub account?',
-      'Disconnect',
-      'Cancel',
+      "Disconnect GitHub Account",
+      "Are you sure you want to disconnect your GitHub account?",
+      "Disconnect",
+      "Cancel",
       async () => {
         try {
-          // In a real app, this would be an API call
-          await new Promise(resolve => setTimeout(resolve, 500));
+          await new Promise((resolve) => setTimeout(resolve, 500));
           githubConnected.value = false;
-          uiStore.showToast('GitHub account disconnected', 'success');
-        } catch (error) {
-          uiStore.showToast('Failed to disconnect GitHub account', 'error');
+          uiStore.showToast("GitHub account disconnected", "success");
+        } catch {
+          uiStore.showToast("Failed to disconnect GitHub account", "error");
         }
       },
       () => {}
     );
   } else {
-    // Connect
     try {
-      // In a real app, this would open OAuth flow
-      await new Promise(resolve => setTimeout(resolve, 800));
+      await new Promise((resolve) => setTimeout(resolve, 800));
       githubConnected.value = true;
-      uiStore.showToast('GitHub account connected', 'success');
-    } catch (error) {
-      uiStore.showToast('Failed to connect GitHub account', 'error');
+      uiStore.showToast("GitHub account connected", "success");
+    } catch {
+      uiStore.showToast("Failed to connect GitHub account", "error");
     }
   }
 };
 
-// Methods for subscription management
-const toggleBillingCycle = () => {
-  billingCycle.value = annualBilling.value ? 'annual' : 'monthly';
-};
-
-const openChangePlan = () => {
-  showBillingCycle.value = true;
-  
-  uiStore.showConfirmationDialog(
-    'Change Subscription Plan',
-    'Select your new subscription plan:',
-    'Continue',
-    'Cancel',
-    () => {
-      // In a real app, this would navigate to a payment page
-      uiStore.showToast('This would redirect to payment page in a real app', 'info');
-    },
-    () => {
-      showBillingCycle.value = false;
-    }
-  );
-};
-
-const openUpdatePayment = () => {
-  // In a real app, this would open a payment method update UI
-  uiStore.showToast('This would open payment method update in a real app', 'info');
-};
-
-const openCancelSubscription = () => {
-  uiStore.showConfirmationDialog(
-    'Cancel Subscription',
-    'Are you sure you want to cancel your subscription? You\'ll still have access until the end of your current billing period.',
-    'Cancel Subscription',
-    'Keep Subscription',
-    async () => {
-      try {
-        // In a real app, this would be an API call
-        await new Promise(resolve => setTimeout(resolve, 800));
-        
-        // Mock updating the subscription status
-        if (authStore.user) {
-          authStore.user = {
-            ...authStore.user,
-            subscription: {
-              ...authStore.user.subscription,
-              status: 'canceled'
-            }
-          };
-        }
-        
-        uiStore.showToast('Subscription canceled successfully', 'success');
-      } catch (error) {
-        uiStore.showToast('Failed to cancel subscription', 'error');
-      }
-    },
-    () => {}
-  );
-};
-
-const openReactivateSubscription = () => {
-  uiStore.showConfirmationDialog(
-    'Reactivate Subscription',
-    'Would you like to reactivate your subscription?',
-    'Reactivate',
-    'Cancel',
-    async () => {
-      try {
-        // In a real app, this would be an API call
-        await new Promise(resolve => setTimeout(resolve, 800));
-        
-        // Mock updating the subscription status
-        if (authStore.user) {
-          authStore.user = {
-            ...authStore.user,
-            subscription: {
-              ...authStore.user.subscription,
-              status: 'active'
-            }
-          };
-        }
-        
-        uiStore.showToast('Subscription reactivated successfully', 'success');
-      } catch (error) {
-        uiStore.showToast('Failed to reactivate subscription', 'error');
-      }
-    },
-    () => {}
-  );
-};
-
-// Methods for storage management
 const confirmClearStorage = () => {
   uiStore.showConfirmationDialog(
-    'Clear All Templates',
-    'Are you sure you want to delete all templates? This action cannot be undone.',
-    'Delete All',
-    'Cancel',
+    "Clear All Templates",
+    "Are you sure you want to delete all templates? This action cannot be undone.",
+    "Delete All",
+    "Cancel",
     clearAllTemplates,
     () => {}
   );
@@ -714,7 +384,7 @@ const confirmClearStorage = () => {
 
 const clearAllTemplates = () => {
   templateStore.clearAllTemplates();
-  uiStore.showToast('All templates have been deleted', 'success');
+  uiStore.showToast("All templates have been deleted", "success");
 };
 </script>
 
@@ -743,7 +413,11 @@ const clearAllTemplates = () => {
   margin: 0;
   font-size: 1.75rem;
   font-weight: 600;
-  background: linear-gradient(135deg, var(--color-primary-light), var(--color-primary));
+  background: linear-gradient(
+    135deg,
+    var(--color-primary-light),
+    var(--color-primary)
+  );
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -844,7 +518,11 @@ const clearAllTemplates = () => {
   width: 64px;
   height: 64px;
   border-radius: var(--radius-full);
-  background: linear-gradient(135deg, var(--color-primary-light), var(--color-primary));
+  background: linear-gradient(
+    135deg,
+    var(--color-primary-light),
+    var(--color-primary)
+  );
   display: flex;
   align-items: center;
   justify-content: center;
@@ -902,7 +580,11 @@ const clearAllTemplates = () => {
 }
 
 .action-button {
-  background: linear-gradient(135deg, var(--color-primary-light), var(--color-primary));
+  background: linear-gradient(
+    135deg,
+    var(--color-primary-light),
+    var(--color-primary)
+  );
   color: white;
   border: none;
 }
@@ -1031,10 +713,18 @@ const clearAllTemplates = () => {
   text-align: right;
 }
 
-.strength-text.weak { color: #f44336; }
-.strength-text.medium { color: #ff9800; }
-.strength-text.good { color: #4caf50; }
-.strength-text.strong { color: #2196f3; }
+.strength-text.weak {
+  color: #f44336;
+}
+.strength-text.medium {
+  color: #ff9800;
+}
+.strength-text.good {
+  color: #4caf50;
+}
+.strength-text.strong {
+  color: #2196f3;
+}
 
 /* Connected accounts */
 .connected-accounts {
@@ -1212,7 +902,7 @@ const clearAllTemplates = () => {
   background-color: rgba(255, 255, 255, 0.1);
   border: 1px solid var(--glass-border);
   border-radius: 34px;
-  transition: .4s;
+  transition: 0.4s;
 }
 
 .toggle-slider:before {
@@ -1224,7 +914,7 @@ const clearAllTemplates = () => {
   bottom: 3px;
   background-color: var(--color-text);
   border-radius: 50%;
-  transition: .4s;
+  transition: 0.4s;
 }
 
 input:checked + .toggle-slider {
@@ -1240,30 +930,30 @@ input:checked + .toggle-slider:before {
   .settings-container {
     padding: var(--spacing-md);
   }
-  
+
   .settings-header {
     padding: var(--spacing-md) var(--spacing-md);
   }
-  
+
   .settings-content {
     padding: var(--spacing-md);
   }
-  
+
   .profile-summary {
     flex-direction: column;
     text-align: center;
   }
-  
+
   .input-with-button {
     flex-direction: column;
   }
-  
+
   .subscription-header {
     flex-direction: column;
     align-items: flex-start;
     gap: var(--spacing-sm);
   }
-  
+
   .subscription-actions {
     flex-direction: column;
   }

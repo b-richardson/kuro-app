@@ -1,49 +1,84 @@
 import { createClient } from "@supabase/supabase-js";
 
-// Get your Supabase URL and keys from your .env.local file.
-// Make sure your .env.local file contains:
-//   VITE_SUPABASE_URL=your-supabase-url
-//   VITE_SUPABASE_ANON_KEY=your-anon-key
-//   VITE_SUPABASE_SERVICE_KEY=your-service-key (optional, for development)
+/**
+ * Supabase Client Configuration
+ * 
+ * This file configures and exports the Supabase client for use throughout the application.
+ * It's set up with optimal settings for authentication and session handling.
+ */
+
+// Get Supabase URL and keys from environment variables
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-// In development, if you have a service key defined, use it for full access.
-// Otherwise, use the anon key.
-const SUPABASE_KEY =
-  import.meta.env.DEV && import.meta.env.VITE_SUPABASE_SERVICE_KEY
-    ? import.meta.env.VITE_SUPABASE_SERVICE_KEY
-    : import.meta.env.VITE_SUPABASE_ANON_KEY;
+// In development, use service key if available (for admin operations)
+const SUPABASE_KEY = import.meta.env.DEV && import.meta.env.VITE_SUPABASE_SERVICE_KEY
+  ? import.meta.env.VITE_SUPABASE_SERVICE_KEY
+  : SUPABASE_ANON_KEY;
 
-// Log the mode for debugging purposes.
+// Log runtime mode for debugging
 console.log(
   import.meta.env.DEV
     ? "Running in development mode"
     : "Running in production mode"
 );
 
-// Create and export the Supabase client.
-// Configure session handling for the application with enhanced persistence
+// Storage key for consistent session management
+const STORAGE_KEY = 'obsidian-template-creator-auth';
+
+/**
+ * Supabase client with optimal auth configuration
+ * 
+ * Key configuration points:
+ * - autoRefreshToken: Automatically refreshes the token before it expires
+ * - persistSession: Maintains the session across page reloads
+ * - detectSessionInUrl: Handles OAuth redirects automatically
+ * - storage: Uses browser's localStorage for session persistence
+ * - asyncStorage: false for better refresh reliability
+ */
 export const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
   auth: {
     autoRefreshToken: true,
     persistSession: true,
     detectSessionInUrl: true,
-    // Explicitly set storage to localStorage to ensure sessions persist
     storage: localStorage,
-    storageKey: 'obsidian-template-creator-auth', // Use a specific key for our app
-    flowType: 'implicit' // Use implicit flow for better vite dev server compatibility
+    storageKey: STORAGE_KEY,
+    flowType: 'pkce',
+    debug: import.meta.env.DEV, // Enable debug logs in development
+    asyncStorage: false, // Use synchronous storage for reliability
   },
-  // Set global database schema
+  // Global database schema
   db: {
     schema: 'public',
   },
-  // Configure cookie options for better persistence
-  cookies: {
-    // Use a long-lived cookie (30 days)
-    lifetime: 60 * 60 * 24 * 30, 
-    domain: window.location.hostname, // Set to current domain
-    sameSite: 'lax',
-    path: '/',
-    secure: window.location.protocol === 'https:'
+  // Robust global fetch timeout configuration
+  global: {
+    headers: {
+      'X-Client-Info': 'obsidian-template-creator'
+    },
+    fetch: (url, options) => {
+      // Add a more reasonable timeout for auth requests
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Request timeout')), 30000)
+      );
+      
+      return Promise.race([fetch(url, options), timeoutPromise]);
+    }
   }
 });
+
+// For debugging: Detect any stuck pending auth state in localStorage
+try {
+  const data = localStorage.getItem(STORAGE_KEY);
+  if (data) {
+    const parsed = JSON.parse(data);
+    const hasPendingAuthState = parsed?.pendingAuthState?.status === 'in-progress';
+    
+    if (hasPendingAuthState) {
+      console.warn('Detected pending auth state that might be stuck. This could cause auth issues.', parsed.pendingAuthState);
+      // We don't auto-clear this as it could be legitimate, but this log helps with debugging
+    }
+  }
+} catch (e) {
+  console.error('Error checking for pending auth state:', e);
+}

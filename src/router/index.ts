@@ -1,5 +1,16 @@
-import { createRouter, createWebHistory } from "vue-router";
+import {
+  createRouter,
+  createWebHistory,
+  RouteLocationNormalized,
+} from "vue-router";
 import { useAuthStore } from "@/stores/auth";
+
+/**
+ * Router Configuration
+ *
+ * This file defines the application routes without complex navigation guards.
+ * Auth is handled directly by Supabase and the auth store.
+ */
 
 // Import view components
 import LandingPage from "../views/LandingPage.vue";
@@ -15,174 +26,119 @@ import ObsidianExplorer from "../views/ObsidianExplorer.vue";
 import FrameworksView from "../views/Frameworks/FrameworksView.vue";
 import EditorTestView from "../views/EditorTestView.vue";
 
+// Route definitions
 const routes = [
+  // Public routes
   {
     path: "/",
+    name: "home",
+    component: LandingPage,
+  },
+  {
+    path: "/landing",
     name: "landing",
     component: LandingPage,
-    meta: {
-      requiresAuth: false,
-      hideForAuth: true, // Hide for authenticated users
-    },
   },
   {
     path: "/login",
     name: "login",
     component: LoginView,
-    meta: {
-      requiresAuth: false,
-      hideForAuth: true, // Hide for authenticated users
-    },
   },
   {
     path: "/signup",
     name: "signup",
-    component: LoginView, // Reuse login view with a prop to indicate signup mode
+    component: LoginView,
     props: { isSignup: true },
-    meta: {
-      requiresAuth: false,
-      hideForAuth: true, // Hide for authenticated users
-    },
   },
   {
     path: "/reset-password",
     name: "resetPassword",
-    component: LoginView, // Reuse login view with a prop to indicate reset mode
-    props: { isResetPassword: true },
-    meta: {
-      requiresAuth: false,
-      hideForAuth: false, // Allow authenticated users to reset password
-    },
+    component: LoginView,
+    props: (route: RouteLocationNormalized) => ({
+      isResetPassword: true,
+      token: route.query.token,
+      isUpdate: route.query.update === "true",
+    }),
   },
+  {
+    path: "/design",
+    name: "design",
+    component: DesignView,
+  },
+  {
+    path: "/editor-test",
+    name: "editor-test",
+    component: EditorTestView,
+  },
+
+  // Other routes (no auth requirements enforced by router)
   {
     path: "/dashboard",
     name: "dashboard",
     component: DashboardView,
-    meta: {
-      requiresAuth: true, // Requires authentication
-    },
   },
   {
     path: "/library",
     name: "library",
     component: LibraryView,
-    meta: {
-      requiresAuth: true, // Requires authentication
-    },
   },
   {
     path: "/template-library",
     name: "templateLibrary",
     component: TemplateLibraryView,
-    meta: {
-      requiresAuth: true, // Requires authentication
-    },
   },
   {
     path: "/editor/:id?",
     name: "editor",
     component: EditorView,
     props: true,
-    meta: {
-      requiresAuth: true, // Requires authentication
-    },
   },
   {
     path: "/settings",
     name: "settings",
     component: SettingsView,
-    meta: {
-      requiresAuth: true, // Requires authentication
-    },
-  },
-  {
-    path: "/design",
-    name: "design",
-    component: DesignView,
-    meta: {
-      requiresAuth: false, // Available without authentication
-    },
   },
   {
     path: "/obsidian-connect",
     name: "obsidian-connect",
     component: ObsidianOnboarding,
-    meta: {
-      requiresAuth: true, // Requires authentication
-    },
   },
   {
     path: "/obsidian-explorer",
     name: "obsidian-explorer",
     component: ObsidianExplorer,
-    meta: {
-      requiresAuth: true, // Requires authentication
-    },
   },
   {
     path: "/frameworks",
     name: "frameworks",
     component: FrameworksView,
-    meta: {
-      requiresAuth: true, // Requires authentication
-    },
   },
+
+  // Catch-all route - redirect to home
   {
-    path: "/editor-test",
-    name: "editor-test",
-    component: EditorTestView,
-    meta: {
-      requiresAuth: false, // Available without authentication for testing
-      skipAuthRedirect: true, // Skip any auth redirects for this route
-    },
+    path: "/:pathMatch(.*)*",
+    name: "not-found",
+    redirect: { name: "home" },
   },
 ];
 
+// Create router instance
 const router = createRouter({
-  history: createWebHistory(import.meta.env.BASE_URL || "/"),
+  history: createWebHistory(import.meta.env.BASE_URL),
   routes,
+  // Scroll behavior for navigations
+  scrollBehavior(to, from, savedPosition) {
+    if (savedPosition) {
+      return savedPosition;
+    } else {
+      return { top: 0 };
+    }
+  },
 });
 
-// Navigation guards - simplified to avoid conflicts with auth store
-router.beforeEach(async (to, from, next) => {
-  const authStore = useAuthStore();
-  
-  // Log what we're trying to do
-  console.log('Router guard running for:', to.path, {
-    from: from.path,
-    isAuthenticated: authStore.isAuthenticated,
-    sessionChecked: authStore.sessionChecked
-  });
-  
-  // If the session hasn't been checked yet, let's do it
-  if (!authStore.sessionChecked) {
-    console.log('Session not checked yet, checking auth status...');
-    await authStore.checkAuth();
-  }
-  
-  // Let the authStore's reactive system handle the redirects
-  // This reduces the risk of redirect loops and state inconsistencies
-  if (authStore.sessionChecked) {
-    console.log('Session checked, proceeding with navigation');
-    next();
-    
-    // After navigation completes successfully, sync auth state with router
-    // This ensures that any subsequent navigation will be properly handled
-    // based on updated auth state
-    setTimeout(() => {
-      authStore.syncAuthStateWithRouter();
-    }, 0);
-  } else {
-    // If the session check is still pending, continue navigation
-    // The auth state watcher will handle redirects later if needed
-    console.log('Session check still pending, continuing navigation');
-    next();
-  }
-});
-
-// After each navigation, sync auth state if needed
+// Simple logging for debugging
 router.afterEach((to) => {
-  console.log('Navigation completed to:', to.path);
+  console.log("Navigation completed to:", to.path);
 });
 
 export default router;

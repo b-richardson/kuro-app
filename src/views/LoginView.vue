@@ -14,7 +14,11 @@
       </div>
 
       <!-- Sign In / Sign Up Form -->
-      <form v-if="!isResetPassword && !isEmailSent" class="login-form" @submit.prevent="handleSubmit">
+      <form
+        v-if="!isResetPassword && !isEmailSent"
+        class="login-form"
+        @submit.prevent="handleSubmit"
+      >
         <div class="form-group">
           <label for="email">Email</label>
           <input
@@ -94,7 +98,11 @@
       </form>
 
       <!-- Password Reset Request Form -->
-      <form v-if="isResetPassword && !isEmailSent" class="login-form" @submit.prevent="handleResetRequest">
+      <form
+        v-if="isResetPassword && !isEmailSent"
+        class="login-form"
+        @submit.prevent="handleResetRequest"
+      >
         <div class="form-group">
           <label for="resetEmail">Email</label>
           <input
@@ -116,9 +124,7 @@
             <i class="fas fa-spinner fa-spin"></i>
             Sending reset link...
           </span>
-          <span v-else>
-            Send Reset Link
-          </span>
+          <span v-else> Send Reset Link </span>
         </button>
       </form>
 
@@ -136,7 +142,14 @@
       </div>
 
       <div class="login-footer">
-        <p v-if="!isSignup && !isResetPassword && !isEmailVerification && !isEmailSent">
+        <p
+          v-if="
+            !isSignup &&
+            !isResetPassword &&
+            !isEmailVerification &&
+            !isEmailSent
+          "
+        >
           Don't have an account?
           <a href="#" @click.prevent="goToSignup">Sign up</a>
         </p>
@@ -156,9 +169,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from "vue";
+import { ref, computed, onMounted, watch } from "vue";
 import { useRouter, useRoute } from "vue-router";
-import * as supabaseAuth from "@/services/supabase/auth";
 import { useUIStore } from "@/stores/ui";
 import { useAuthStore } from "@/stores/auth";
 
@@ -167,6 +179,8 @@ const props = defineProps({
   isSignup: { type: Boolean, default: false },
   isResetPassword: { type: Boolean, default: false },
   isEmailVerification: { type: Boolean, default: false },
+  token: { type: String, default: null },
+  isUpdate: { type: Boolean, default: false },
 });
 
 const router = useRouter();
@@ -183,18 +197,24 @@ const successMessage = ref("");
 const isLoading = ref(false);
 const isEmailSent = ref(false);
 const emailSentTitle = ref("Check your email");
-const emailSentMessage = ref("We've sent you a link to verify your email address.");
+const emailSentMessage = ref(
+  "We've sent you a link to verify your email address."
+);
 
 // Computed properties for dynamic text content
 const pageTitle = computed(() => {
   if (props.isResetPassword) return "Reset your password";
   if (props.isEmailVerification) return "Verify your email";
-  return props.isSignup ? "Sign Up to Obsidian Template Builder" : "Sign In to Obsidian Template Builder";
+  return props.isSignup
+    ? "Sign Up to Obsidian Template Builder"
+    : "Sign In to Obsidian Template Builder";
 });
 
 const pageSubtitle = computed(() => {
-  if (props.isResetPassword) return "Enter your email to receive a password reset link";
-  if (props.isEmailVerification) return "Check your email for a verification code";
+  if (props.isResetPassword)
+    return "Enter your email to receive a password reset link";
+  if (props.isEmailVerification)
+    return "Check your email for a verification code";
   return props.isSignup ? "Create a new account" : "Sign in to your account";
 });
 
@@ -213,18 +233,20 @@ const loadingText = computed(() => {
 // Check if we're in signup mode
 const isSignup = computed(() => props.isSignup);
 
-// Handle form submission based on current mode
+/**
+ * Handle form submission for both login and signup
+ */
 const handleSubmit = async () => {
   // Clear previous errors/messages
   error.value = "";
   successMessage.value = "";
-  
+
   // Validate form
   if (!email.value || !password.value) {
     error.value = "Please fill in all fields";
     return;
   }
-  
+
   // In signup mode, check if passwords match
   if (isSignup.value && password.value !== confirmPassword.value) {
     error.value = "Passwords do not match";
@@ -236,83 +258,110 @@ const handleSubmit = async () => {
   try {
     if (isSignup.value) {
       // Handle sign-up
-      const { success, confirmationRequired } = await authStore.signUp(email.value, password.value);
-      
+      const { success, confirmationRequired } = await authStore.signUp(
+        email.value,
+        password.value
+      );
+
       if (success) {
         if (confirmationRequired) {
           // Show email confirmation message
           isEmailSent.value = true;
           emailSentTitle.value = "Verify your email";
-          emailSentMessage.value = "We've sent you a link to verify your email address. Please check your inbox.";
+          emailSentMessage.value =
+            "We've sent you a link to verify your email address. Please check your inbox.";
         } else {
+          // Ensure auth state is fully updated
+          await authStore.checkAuth();
+
           // Show success toast
           uiStore.showToast("Successfully signed up and logged in", "success");
-          
-          // Redirect to dashboard or the intended destination
+
+          // Get the redirect path from query parameter or default to dashboard
           const redirectPath = (route.query.redirect as string) || "/dashboard";
-          console.log('Redirecting after signup to:', redirectPath);
-          
-          // Force a complete page reload to reinitialize everything
-          console.log('Forcing complete page reload after signup to:', redirectPath);
-          window.location.replace(redirectPath.startsWith('/') ? redirectPath : `/${redirectPath}`);
+
+          // Use vue-router for navigation
+          if (authStore.isAuthenticated) {
+            router.replace(redirectPath);
+          } else {
+            console.error("Signup completed but user is not authenticated");
+            error.value =
+              "Signup completed but authentication failed. Please try again.";
+          }
         }
       } else {
         // Handle sign-up error from authStore
-        error.value = authStore.error || "Something went wrong with the sign up process";
+        error.value =
+          authStore.error || "Something went wrong with the sign up process";
       }
     } else {
       // Handle sign-in
       const success = await authStore.login(email.value, password.value);
-      
+
       if (success) {
-        // Log authentication state for debugging
-        console.log('After login auth state:', {
-          authenticated: authStore.isAuthenticated,
-          user: authStore.user,
-          route: route.path
-        });
-        
+        // Double-check authentication state to ensure it's updated
+        if (!authStore.isAuthenticated) {
+          await authStore.checkAuth();
+        }
+
         // Show success toast
         uiStore.showToast("Successfully signed in", "success");
-        
-        // Redirect to dashboard or the intended destination
-        // Use nextTick to ensure the DOM is updated and state changes are processed
+
+        // Get the redirect path from query parameter or default to dashboard
         const redirectPath = (route.query.redirect as string) || "/dashboard";
-        console.log('Redirecting to:', redirectPath);
-        
-        // Force a complete page reload to reinitialize everything
-        // This is the most reliable way to handle auth state changes
-        console.log('Forcing complete page reload to:', redirectPath);
-        window.location.replace(redirectPath.startsWith('/') ? redirectPath : `/${redirectPath}`);
+
+        // Only navigate when we're sure auth state is correct
+        if (authStore.isAuthenticated) {
+          // Use vue-router for navigation
+          router.replace(redirectPath);
+        } else {
+          console.error("Login completed but user is not authenticated");
+          error.value =
+            "Login completed but authentication failed. Please try again.";
+          // Force a fresh auth check
+          await authStore.checkAuth();
+        }
       } else {
         // Handle sign-in error from authStore
         error.value = authStore.error || "Invalid email or password";
       }
     }
   } catch (err: any) {
+    console.error("Error during authentication:", err);
     error.value = err.message || "An unexpected error occurred";
   } finally {
     isLoading.value = false;
   }
 };
 
-// Handle OAuth login
-const handleOAuthLogin = async (provider: 'google' | 'github' | 'facebook' | 'twitter') => {
+/**
+ * Handle OAuth login
+ */
+const handleOAuthLogin = async (
+  provider: "google" | "github" | "facebook" | "twitter"
+) => {
   isLoading.value = true;
   error.value = "";
-  
+
   try {
-    const { data, error: authError } = await supabaseAuth.signInWithOAuth({ provider });
-    
-    if (authError) {
-      throw authError;
+    // Use the new signInWithOAuth method that handles redirects
+    const { success, data } = await authStore.signInWithOAuth(provider, {
+      redirectTo: `${
+        window.location.origin
+      }/auth/callback?redirect=${encodeURIComponent(
+        (route.query.redirect as string) || "/dashboard"
+      )}`,
+    });
+
+    if (!success) {
+      throw new Error(`Could not sign in with ${provider}`);
     }
-    
-    // The OAuth flow will redirect the user away from the app,
-    // so we don't need to do anything more here
-    if (!data) {
-      uiStore.showToast(`Redirecting to ${provider} for authentication...`, "info");
-    }
+
+    // The OAuth flow will redirect the user away from the app
+    uiStore.showToast(
+      `Redirecting to ${provider} for authentication...`,
+      "info"
+    );
   } catch (err: any) {
     error.value = err.message || `Could not sign in with ${provider}`;
     uiStore.showToast(error.value, "error");
@@ -321,20 +370,24 @@ const handleOAuthLogin = async (provider: 'google' | 'github' | 'facebook' | 'tw
   }
 };
 
-// Handle password reset request
+/**
+ * Handle password reset request
+ */
 const handleResetRequest = async () => {
   isLoading.value = true;
   error.value = "";
-  
+
   try {
     const success = await authStore.resetPassword(email.value);
-    
+
     if (success) {
       isEmailSent.value = true;
       emailSentTitle.value = "Reset link sent";
-      emailSentMessage.value = "We've sent you a password reset link. Please check your inbox.";
+      emailSentMessage.value =
+        "We've sent you a password reset link. Please check your inbox.";
     } else {
-      error.value = authStore.error || "Something went wrong sending the reset link";
+      error.value =
+        authStore.error || "Something went wrong sending the reset link";
     }
   } catch (err: any) {
     error.value = err.message || "An unexpected error occurred";
@@ -360,50 +413,37 @@ const goBackToLogin = () => {
   router.push({ name: "login" });
 };
 
-// Check for OAuth redirects on mount
-onMounted(async () => {
-  console.log('LoginView mounted, checking for OAuth redirects');
-  
-  // Parse the hash URL for an access token to determine if returning from OAuth
-  const hashParams = new URLSearchParams(window.location.hash.substring(1));
-  const accessToken = hashParams.get('access_token');
-  
-  if (accessToken) {
-    console.log('OAuth access token detected, processing authentication');
-    // If we have an access token, the user has been authenticated via OAuth
-    
-    // First check if the user is already properly authenticated in our store
-    await authStore.checkAuth();
-    
-    if (authStore.isAuthenticated) {
-      uiStore.showToast("Successfully authenticated", "success");
-      
-      // We should redirect to the dashboard
-      const redirectPath = (route.query.redirect as string) || "/dashboard";
-      console.log('Redirecting after OAuth login to:', redirectPath);
-      
-      // Force a complete page reload to reinitialize everything
-      console.log('Forcing complete page reload after OAuth to:', redirectPath);
-      window.location.replace(redirectPath.startsWith('/') ? redirectPath : `/${redirectPath}`);
-    } else {
-      console.log('OAuth token detected but user not authenticated in store');
-      uiStore.showToast("Authentication in progress...", "info");
-      // Give a bit more time for auth state to sync before redirecting
-      setTimeout(() => {
-        const redirectPath = (route.query.redirect as string) || "/dashboard";
-        console.log('OAuth fallback timeout triggered, forcing reload to:', redirectPath);
-        window.location.replace(redirectPath.startsWith('/') ? redirectPath : `/${redirectPath}`);
-      }, 1000);
-    }
+// Handle password reset update if token is provided
+const handlePasswordReset = async () => {
+  if (props.isResetPassword && props.isUpdate && props.token) {
+    // This would handle when a user clicks the reset link from their email
+    // and needs to set a new password
+    // Implementation depends on how Supabase handles this flow
   }
-  
-  // Check for any reset token in the URL
-  const resetToken = route.query.reset_token;
-  if (resetToken) {
-    // Handle password reset logic here
-    uiStore.showToast("Password reset token detected", "info");
+};
+
+// Initialize form based on route and auth status
+onMounted(async () => {
+  // Handle password reset token if present
+  if (props.isResetPassword && props.token) {
+    await handlePasswordReset();
+  }
+
+  // If we're already authenticated and on a hideForAuth page, redirect
+  if (authStore.isAuthenticated && route.meta.hideForAuth) {
+    router.replace({ name: "dashboard" });
   }
 });
+
+// Watch for auth state changes
+watch(
+  () => authStore.isAuthenticated,
+  (isAuthenticated) => {
+    if (isAuthenticated && route.meta.hideForAuth) {
+      router.replace({ name: "dashboard" });
+    }
+  }
+);
 </script>
 
 <style scoped>
