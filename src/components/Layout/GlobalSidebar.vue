@@ -43,15 +43,6 @@
       </router-link>
 
       <router-link
-        to="/template-library"
-        class="nav-item"
-        :class="{ active: currentRoute === 'templateLibrary' }"
-      >
-        <i class="fas fa-book"></i>
-        <span>Template Library</span>
-      </router-link>
-
-      <router-link
         to="/frameworks"
         class="nav-item"
         :class="{ active: currentRoute === 'frameworks' }"
@@ -68,15 +59,6 @@
       >
         <i class="fas fa-mountain"></i>
         <span>Obsidian Explorer</span>
-      </router-link>
-
-      <router-link
-        to="/editor-test"
-        class="nav-item"
-        :class="{ active: currentRoute === 'editor-test' }"
-      >
-        <i class="fas fa-edit"></i>
-        <span>Editor Test</span>
       </router-link>
 
       <router-link

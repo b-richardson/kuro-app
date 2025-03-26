@@ -1,8 +1,8 @@
 <template>
   <div class="export-dropdown" ref="dropdownRef">
-    <button 
-      class="export-btn" 
-      :class="{ 'active': isOpen }" 
+    <button
+      class="export-btn"
+      :class="{ active: isOpen }"
       @click="toggleDropdown"
       aria-haspopup="true"
       :aria-expanded="isOpen ? 'true' : 'false'"
@@ -16,21 +16,19 @@
       </span>
     </button>
 
-    <div 
-      v-if="isOpen" 
-      class="export-dropdown__menu"
-      @click.stop
-    >
+    <div v-if="isOpen" class="export-dropdown__menu" @click.stop>
       <div class="export-dropdown__header">
         <h3 class="export-dropdown__title">Export Template</h3>
       </div>
 
       <div class="export-dropdown__profiles">
-        <div 
-          v-for="profile in exportProfiles" 
+        <div
+          v-for="profile in exportProfiles"
           :key="profile.id"
           class="export-dropdown__profile"
-          :class="{ 'export-dropdown__profile--active': selectedProfile === profile.id }"
+          :class="{
+            'export-dropdown__profile--active': selectedProfile === profile.id,
+          }"
           @click="selectProfile(profile.id)"
         >
           <div class="export-dropdown__profile-radio">
@@ -38,7 +36,9 @@
           </div>
           <div class="export-dropdown__profile-details">
             <div class="export-dropdown__profile-name">{{ profile.name }}</div>
-            <div class="export-dropdown__profile-description">{{ profile.description }}</div>
+            <div class="export-dropdown__profile-description">
+              {{ profile.description }}
+            </div>
           </div>
           <div class="export-dropdown__profile-icon">
             <i :class="profile.icon"></i>
@@ -48,11 +48,13 @@
 
       <div class="export-dropdown__actions">
         <div class="export-dropdown__filename">
-          <label for="export-filename" class="export-dropdown__label">Filename:</label>
-          <input 
+          <label for="export-filename" class="export-dropdown__label"
+            >Filename:</label
+          >
+          <input
             id="export-filename"
-            v-model="filename" 
-            type="text" 
+            v-model="filename"
+            type="text"
             class="export-dropdown__input"
             placeholder="Enter filename"
           />
@@ -60,14 +62,14 @@
         </div>
 
         <div class="export-dropdown__buttons">
-          <button 
+          <button
             class="export-dropdown__copy-btn"
             @click="copyToClipboard"
             :disabled="!hasSections"
           >
             <i class="fas fa-clipboard"></i> Copy to Clipboard
           </button>
-          <button 
+          <button
             class="export-dropdown__download-btn"
             @click="downloadMarkdown"
             :disabled="!hasSections"
@@ -82,10 +84,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue';
-import { TemplateSection } from '@/types/TemplateSection';
-import { generateMarkdown } from '@/utils/markdownUtils';
-import { ExportProfileId } from './ExportProfileSelector.vue';
+import { ref, computed, onMounted, onBeforeUnmount, watch } from "vue";
+import { TemplateSection } from "@/types/TemplateSect";
+import { generateMarkdown } from "@/utils/markdownUtils";
+import { ExportProfileId } from "./ExportProfileSelector.vue";
 
 // Define props
 const props = defineProps<{
@@ -95,24 +97,28 @@ const props = defineProps<{
 
 // Define emits
 const emit = defineEmits<{
-  (e: 'profileChanged', value: ExportProfileId): void;
-  (e: 'close'): void;
-  (e: 'exportSuccess', method: 'download' | 'clipboard', profile: ExportProfileId): void;
-  (e: 'exportError', error: string): void;
+  (e: "profileChanged", value: ExportProfileId): void;
+  (e: "close"): void;
+  (
+    e: "exportSuccess",
+    method: "download" | "clipboard",
+    profile: ExportProfileId
+  ): void;
+  (e: "exportError", error: string): void;
 }>();
 
 // State variables
 const isOpen = ref(false);
 const dropdownRef = ref<HTMLElement | null>(null);
 const filename = ref(generateDefaultFilename());
-const selectedProfile = ref<ExportProfileId>(props.initialProfile || 'full');
+const selectedProfile = ref<ExportProfileId>(props.initialProfile || "full");
 const isLoading = ref(false);
 
 // Dropdown toggle
 const toggleDropdown = () => {
   isOpen.value = !isOpen.value;
   if (!isOpen.value) {
-    emit('close');
+    emit("close");
   }
 };
 
@@ -120,37 +126,41 @@ const toggleDropdown = () => {
 function generateDefaultFilename(): string {
   const now = new Date();
   const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, '0');
-  const day = String(now.getDate()).padStart(2, '0');
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
   return `obsidian-template-${year}-${month}-${day}`;
 }
 
 // Export profile definitions
 const exportProfiles = [
   {
-    id: 'plain' as ExportProfileId,
-    name: 'Plain Markdown',
-    description: 'Converts all plugin-specific syntax to plain markdown. Works without any plugins.',
-    icon: 'fas fa-file-alt'
+    id: "plain" as ExportProfileId,
+    name: "Plain Markdown",
+    description:
+      "Converts all plugin-specific syntax to plain markdown. Works without any plugins.",
+    icon: "fas fa-file-alt",
   },
   {
-    id: 'templater' as ExportProfileId,
-    name: 'Templater-Ready',
-    description: 'Maintains Templater fields but converts other plugin syntax to plain markdown.',
-    icon: 'fas fa-calendar-alt'
+    id: "templater" as ExportProfileId,
+    name: "Templater-Ready",
+    description:
+      "Maintains Templater fields but converts other plugin syntax to plain markdown.",
+    icon: "fas fa-calendar-alt",
   },
   {
-    id: 'dataview' as ExportProfileId,
-    name: 'Dataview-Compatible',
-    description: 'Preserves Dataview queries but converts other plugin syntax to plain markdown.',
-    icon: 'fas fa-database'
+    id: "dataview" as ExportProfileId,
+    name: "Dataview-Compatible",
+    description:
+      "Preserves Dataview queries but converts other plugin syntax to plain markdown.",
+    icon: "fas fa-database",
   },
   {
-    id: 'full' as ExportProfileId,
-    name: 'Full Plugin Suite',
-    description: 'Keeps all plugin-specific syntax (Templater, Dataview, Kanban) intact.',
-    icon: 'fas fa-puzzle-piece'
-  }
+    id: "full" as ExportProfileId,
+    name: "Full Plugin Suite",
+    description:
+      "Keeps all plugin-specific syntax (Templater, Dataview, Kanban) intact.",
+    icon: "fas fa-puzzle-piece",
+  },
 ];
 
 // Check if there are sections to export
@@ -159,29 +169,36 @@ const hasSections = computed(() => props.sections.length > 0);
 // Handle profile selection
 const selectProfile = (profileId: ExportProfileId) => {
   selectedProfile.value = profileId;
-  emit('profileChanged', profileId);
+  emit("profileChanged", profileId);
 };
 
 // Copy markdown to clipboard
 const copyToClipboard = async () => {
   if (!hasSections.value) return;
-  
+
   try {
     isLoading.value = true;
-    
+
     // Generate markdown content with selected export profile
-    const markdownContent = generateMarkdown(props.sections, selectedProfile.value);
-    
+    const markdownContent = generateMarkdown(
+      props.sections,
+      selectedProfile.value
+    );
+
     // Copy to clipboard
     await navigator.clipboard.writeText(markdownContent);
-    
+
     // Notify success
-    emit('exportSuccess', 'clipboard', selectedProfile.value);
-    
+    emit("exportSuccess", "clipboard", selectedProfile.value);
+
     // Close dropdown
     isOpen.value = false;
   } catch (error) {
-    emit('exportError', 'Failed to copy to clipboard: ' + (error instanceof Error ? error.message : String(error)));
+    emit(
+      "exportError",
+      "Failed to copy to clipboard: " +
+        (error instanceof Error ? error.message : String(error))
+    );
   } finally {
     isLoading.value = false;
   }
@@ -190,40 +207,50 @@ const copyToClipboard = async () => {
 // Download markdown as file
 const downloadMarkdown = () => {
   if (!hasSections.value) return;
-  
+
   try {
     isLoading.value = true;
-    
+
     // Generate markdown content with selected export profile
-    const markdownContent = generateMarkdown(props.sections, selectedProfile.value);
-    
+    const markdownContent = generateMarkdown(
+      props.sections,
+      selectedProfile.value
+    );
+
     // Create blob and download link
-    const blob = new Blob([markdownContent], { type: 'text/markdown' });
+    const blob = new Blob([markdownContent], { type: "text/markdown" });
     const url = URL.createObjectURL(blob);
-    
+
     // Create download link element
-    const link = document.createElement('a');
+    const link = document.createElement("a");
     link.href = url;
-    
+
     // Add export profile indicator to filename for clarity (except for full)
-    const profileIndicator = selectedProfile.value === 'full' ? '' : `-${selectedProfile.value}`;
-    link.download = `${filename.value || generateDefaultFilename()}${profileIndicator}.md`;
-    
+    const profileIndicator =
+      selectedProfile.value === "full" ? "" : `-${selectedProfile.value}`;
+    link.download = `${
+      filename.value || generateDefaultFilename()
+    }${profileIndicator}.md`;
+
     // Append to body, click, and remove
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    
+
     // Revoke the object URL to free memory
     URL.revokeObjectURL(url);
-    
+
     // Notify success
-    emit('exportSuccess', 'download', selectedProfile.value);
-    
+    emit("exportSuccess", "download", selectedProfile.value);
+
     // Close dropdown
     isOpen.value = false;
   } catch (error) {
-    emit('exportError', 'Failed to download markdown: ' + (error instanceof Error ? error.message : String(error)));
+    emit(
+      "exportError",
+      "Failed to download markdown: " +
+        (error instanceof Error ? error.message : String(error))
+    );
   } finally {
     isLoading.value = false;
   }
@@ -231,22 +258,26 @@ const downloadMarkdown = () => {
 
 // Close dropdown when clicking outside
 const handleClickOutside = (event: MouseEvent) => {
-  if (dropdownRef.value && !dropdownRef.value.contains(event.target as Node) && isOpen.value) {
+  if (
+    dropdownRef.value &&
+    !dropdownRef.value.contains(event.target as Node) &&
+    isOpen.value
+  ) {
     isOpen.value = false;
-    emit('close');
+    emit("close");
   }
 };
 
 // Handle keyboard shortcuts
 const handleKeyDown = (event: KeyboardEvent) => {
   // Close on Escape
-  if (event.key === 'Escape' && isOpen.value) {
+  if (event.key === "Escape" && isOpen.value) {
     isOpen.value = false;
-    emit('close');
+    emit("close");
   }
-  
+
   // Toggle on Ctrl+E or Cmd+E
-  if ((event.ctrlKey || event.metaKey) && event.key === 'e') {
+  if ((event.ctrlKey || event.metaKey) && event.key === "e") {
     event.preventDefault();
     toggleDropdown();
   }
@@ -254,25 +285,29 @@ const handleKeyDown = (event: KeyboardEvent) => {
 
 // Watch for profile changes
 watch(selectedProfile, (newProfile) => {
-  emit('profileChanged', newProfile);
+  emit("profileChanged", newProfile);
 });
 
 // Setup event listeners
 onMounted(() => {
-  document.addEventListener('click', handleClickOutside);
-  document.addEventListener('keydown', handleKeyDown);
+  document.addEventListener("click", handleClickOutside);
+  document.addEventListener("keydown", handleKeyDown);
 });
 
 // Clean up event listeners
 onBeforeUnmount(() => {
-  document.removeEventListener('click', handleClickOutside);
-  document.removeEventListener('keydown', handleKeyDown);
+  document.removeEventListener("click", handleClickOutside);
+  document.removeEventListener("keydown", handleKeyDown);
 });
 
 // Expose methods for external control
 defineExpose({
-  open: () => { isOpen.value = true; },
-  close: () => { isOpen.value = false; }
+  open: () => {
+    isOpen.value = true;
+  },
+  close: () => {
+    isOpen.value = false;
+  },
 });
 </script>
 
@@ -306,7 +341,7 @@ defineExpose({
   box-shadow: 0 4px 8px rgba(99, 102, 241, 0.4);
 }
 
-.export-btn:active, 
+.export-btn:active,
 .export-btn.active {
   transform: translateY(0);
   box-shadow: 0 2px 4px rgba(99, 102, 241, 0.3);
@@ -337,8 +372,14 @@ defineExpose({
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(-5px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(-5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .export-dropdown__header {
@@ -562,20 +603,20 @@ defineExpose({
     width: 280px;
     right: -20px; /* Offset to align better on mobile */
   }
-  
+
   .export-dropdown__profile-description {
     display: none;
   }
-  
+
   .export-dropdown__filename {
     flex-wrap: wrap;
   }
-  
+
   .export-dropdown__label {
     width: 100%;
     margin-bottom: 0.25rem;
   }
-  
+
   .export-dropdown__buttons {
     flex-direction: column;
   }

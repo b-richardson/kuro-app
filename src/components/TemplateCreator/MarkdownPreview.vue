@@ -30,13 +30,13 @@
 <script setup lang="ts">
 import { computed, ref, watch, inject } from "vue";
 import MarkdownIt from "markdown-it";
-import { TemplateSection } from "@/types/TemplateSection";
+import { TemplateModule } from "@/types/TemplateModule";
 import { ExportProfile, ViewMode } from "@/types/Editor";
 import { generateMarkdown } from "@/utils/markdownUtils";
 
 // Define props
 const props = defineProps<{
-  sections: TemplateSection[];
+  sections: TemplateModule[];
   exportProfile?: ExportProfile;
   viewMode?: ViewMode;
   templaterSyntax?: boolean;

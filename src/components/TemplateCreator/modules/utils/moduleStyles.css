@@ -1,0 +1,137 @@
+/* Common styles for template modules */
+
+.template-module-editor-line {
+  margin-bottom: var(--spacing-md);
+}
+
+.template-module-editor-input-group {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+/* Input elements */
+.template-module-editor-input {
+  flex: 1;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border: 1px solid var(--color-surface);
+  border-radius: var(--radius-sm);
+  font-size: 0.875rem;
+  background-color: rgba(255, 255, 255, 0.05);
+  color: var(--color-text);
+  transition: all 0.2s;
+}
+
+.template-module-editor-input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px rgba(255, 171, 88, 0.2);
+}
+
+.template-module-editor-select {
+  width: 80px;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border: 1px solid var(--color-surface);
+  border-radius: var(--radius-sm);
+  font-size: 0.875rem;
+  background-color: rgba(255, 255, 255, 0.05);
+  color: var(--color-text);
+  transition: all 0.2s;
+}
+
+.template-module-editor-select:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px rgba(255, 171, 88, 0.2);
+}
+
+.template-module-editor-textarea {
+  flex: 1;
+  padding: var(--spacing-sm);
+  border: 1px solid var(--color-surface);
+  border-radius: var(--radius-sm);
+  font-size: 0.875rem;
+  min-height: 100px;
+  resize: vertical;
+  width: 100%;
+  background-color: rgba(255, 255, 255, 0.05);
+  color: var(--color-text);
+  transition: all 0.2s;
+  line-height: 1.5;
+}
+
+.template-module-editor-textarea:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px rgba(255, 171, 88, 0.2);
+}
+
+/* Buttons and actions */
+.template-module-editor-line-action {
+  background: none;
+  border: none;
+  cursor: pointer;
+  width: 30px;
+  height: 30px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-muted);
+  transition: all 0.2s;
+  opacity: 0.7;
+}
+
+.template-module-editor-line-action:hover {
+  background-color: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+  opacity: 1;
+}
+
+/* Checkbox styling */
+.template-module-editor-checkbox {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.template-module-editor-checkbox input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  accent-color: var(--color-primary);
+}
+
+/* Button styling */
+.module-button {
+  padding: var(--spacing-xs) var(--spacing-sm);
+  background-color: rgba(255, 171, 88, 0.07);
+  border: 1px solid rgba(255, 171, 88, 0.1);
+  border-radius: var(--radius-sm);
+  font-size: 0.8125rem;
+  color: var(--color-primary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+}
+
+.module-button:hover {
+  background-color: rgba(255, 171, 88, 0.15);
+}
+
+.module-button i {
+  font-size: 0.75rem;
+}
+
+.module-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background-color: rgba(255, 171, 88, 0.03);
+}
+
+.module-button:disabled:hover {
+  background-color: rgba(255, 171, 88, 0.03);
+  transform: none;
+}

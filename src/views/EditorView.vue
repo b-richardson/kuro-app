@@ -60,14 +60,13 @@
           <h2>Template Module Editor</h2>
         </div>
 
-        <!-- Drag and Drop Editor Component -->
-        <!-- change these section references to MODULES -->
-        <DragDropEditor
-          :sections="templateStore.currentSections"
+        <!-- Module Canvas Component -->
+        <ModuleCanvas
+          :modules="templateStore.currentSections"
           @update="updateSections"
           @delete="deleteModule"
           @module-change="markAsModified"
-          ref="dragDropEditorRef"
+          ref="moduleCanvasRef"
         />
       </div>
 
@@ -335,7 +334,7 @@ import { generateMarkdown } from "@/utils/markdownUtils";
 
 // Import components
 import TemplateModuleLibrary from "@/components/TemplateCreator/TemplateModuleLibrary.vue";
-import DragDropEditor from "@/components/TemplateCreator/DragDropEditor.vue";
+import ModuleCanvas from "@/components/TemplateCreator/ModuleCanvas.vue";
 import MarkdownPreview from "@/components/TemplateCreator/MarkdownPreview.vue";
 import ConfirmationDialog from "@/components/UI/ConfirmationDialog.vue";
 
@@ -363,7 +362,7 @@ const showPluginMenu = ref(false);
 const currentViewMode = ref<ViewMode>("Rendered");
 const isPreviewFocused = ref(false);
 const isLoading = ref(false); // General loading state for operations
-const dragDropEditorRef = ref<InstanceType<typeof DragDropEditor> | null>(null);
+const moduleCanvasRef = ref<InstanceType<typeof ModuleCanvas> | null>(null);
 
 // Plugin syntax toggle options
 const showTemplaterSyntax = ref(false);
@@ -475,9 +474,9 @@ const addModuleToCanvas = (module: TemplateModule) => {
 
   // Scroll to the new module after it's added
   setTimeout(() => {
-    if (dragDropEditorRef.value) {
+    if (moduleCanvasRef.value) {
       const container =
-        dragDropEditorRef.value.$el.querySelector(".modules-list");
+        moduleCanvasRef.value.$el.querySelector(".modules-list");
       if (container) {
         container.scrollTop = container.scrollHeight;
       }

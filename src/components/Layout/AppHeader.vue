@@ -2,7 +2,7 @@
   <header class="app-header glass-card">
     <div class="header-container">
       <!-- Back Button (if enabled) -->
-      <button 
+      <button
         v-if="showBackButton"
         @click="handleBack"
         class="app-header__back-button"
@@ -11,15 +11,17 @@
         <i class="fas fa-arrow-left"></i>
         <span>Back</span>
       </button>
-      
+
       <!-- App Logo and Title -->
       <div class="app-branding">
         <div class="app-logo">
           <i class="fas fa-file-alt"></i>
         </div>
-        <h1 class="app-header__title">{{ title || 'Obsidian Template Builder' }}</h1>
+        <h1 class="app-header__title">
+          {{ title || "Obsidian Template Builder" }}
+        </h1>
       </div>
-      
+
       <!-- Actions Toolbar -->
       <div class="actions">
         <!-- Slot for custom actions -->
@@ -27,7 +29,7 @@
           <!-- Default actions based on current view -->
           <template v-if="view === 'library'">
             <!-- New Template Button in Library View -->
-            <button 
+            <button
               @click="createNewTemplate"
               class="btn btn-primary action-btn"
               aria-label="Create new template"
@@ -35,19 +37,19 @@
               <i class="fas fa-plus"></i> New Template
             </button>
           </template>
-          
+
           <template v-else-if="view === 'editor'">
             <!-- Save button -->
-            <button 
+            <button
               @click="saveTemplate"
               class="btn btn-primary action-btn"
               aria-label="Save template"
             >
               <i class="fas fa-save"></i> Save
             </button>
-            
+
             <!-- Enhanced Export Dropdown -->
-            <ExportDropdown 
+            <ExportDropdown
               v-if="sections.length > 0"
               ref="exportDropdownRef"
               :sections="sections"
@@ -58,7 +60,7 @@
             />
           </template>
         </slot>
-        
+
         <!-- Theme Toggle (always visible) -->
         <button
           class="theme-toggle"
@@ -70,38 +72,38 @@
         </button>
       </div>
     </div>
-    
+
     <!-- Global Toast Notifications -->
     <ToastNotification ref="toastRef" position="top-right" />
   </header>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
-import { TemplateSection } from '@/types/TemplateSection';
-import ExportDropdown from '@/components/TemplateCreator/ExportDropdown.vue';
-import ToastNotification from '@/components/UI/ToastNotification.vue';
-import { ExportProfileId } from '@/components/TemplateCreator/ExportProfileSelector.vue';
-import { usePreferencesStore } from '@/stores/preferences';
+import { ref, computed, onMounted, onBeforeUnmount } from "vue";
+import { TemplateSection } from "@/types/TemplateSect";
+import ExportDropdown from "@/components/TemplateCreator/ExportDropdown.vue";
+import ToastNotification from "@/components/UI/ToastNotification.vue";
+import { ExportProfileId } from "@/components/TemplateCreator/ExportProfileSelector.vue";
+import { usePreferencesStore } from "@/stores/preferences";
 
 // Props
 const props = defineProps({
   title: {
     type: String,
-    default: ''
+    default: "",
   },
   sections: {
     type: Array as () => TemplateSection[],
-    default: () => []
+    default: () => [],
   },
   view: {
-    type: String as () => 'library' | 'editor' | 'home',
-    default: 'home'
+    type: String as () => "library" | "editor" | "home",
+    default: "home",
   },
   showBackButton: {
     type: Boolean,
-    default: false
-  }
+    default: false,
+  },
 });
 
 // References
@@ -113,53 +115,58 @@ const preferencesStore = usePreferencesStore();
 
 // Reactive state
 const isDarkTheme = ref(false);
-const exportProfile = ref<ExportProfileId>(preferencesStore.currentExportProfile?.id as ExportProfileId || 'full');
+const exportProfile = ref<ExportProfileId>(
+  (preferencesStore.currentExportProfile?.id as ExportProfileId) || "full"
+);
 
 // Emits
 const emit = defineEmits<{
-  (e: 'view-change', view: 'library' | 'editor' | 'home'): void;
-  (e: 'preview-toggle', visible: boolean): void;
-  (e: 'save'): void;
-  (e: 'export', format: string): void;
-  (e: 'new-template'): void;
-  (e: 'back'): void; 
-  (e: 'export-profile-changed', profile: ExportProfileId): void;
+  (e: "view-change", view: "library" | "editor" | "home"): void;
+  (e: "preview-toggle", visible: boolean): void;
+  (e: "save"): void;
+  (e: "export", format: string): void;
+  (e: "new-template"): void;
+  (e: "back"): void;
+  (e: "export-profile-changed", profile: ExportProfileId): void;
 }>();
 
 // Methods
 const createNewTemplate = () => {
-  emit('new-template');
+  emit("new-template");
 };
 
 const handleBack = () => {
-  emit('back');
+  emit("back");
 };
 
 const saveTemplate = () => {
-  emit('save');
+  emit("save");
 };
 
 // Handle export profile changes
 const handleProfileChanged = (profile: ExportProfileId) => {
   exportProfile.value = profile;
-  emit('export-profile-changed', profile);
+  emit("export-profile-changed", profile);
 };
 
 // Handle export success
-const handleExportSuccess = (method: 'download' | 'clipboard', profile: ExportProfileId) => {
+const handleExportSuccess = (
+  method: "download" | "clipboard",
+  profile: ExportProfileId
+) => {
   if (!toastRef.value) return;
-  
+
   const profileName = getProfileDisplayName(profile);
-  
-  if (method === 'download') {
+
+  if (method === "download") {
     toastRef.value.success(`Downloaded as ${profileName}`, {
-      description: 'Your template has been downloaded as a Markdown file.',
-      duration: 4000
+      description: "Your template has been downloaded as a Markdown file.",
+      duration: 4000,
     });
   } else {
     toastRef.value.success(`Copied to clipboard as ${profileName}`, {
-      description: 'The template content has been copied to your clipboard.',
-      duration: 4000
+      description: "The template content has been copied to your clipboard.",
+      duration: 4000,
     });
   }
 };
@@ -167,42 +174,44 @@ const handleExportSuccess = (method: 'download' | 'clipboard', profile: ExportPr
 // Handle export errors
 const handleExportError = (error: string) => {
   if (toastRef.value) {
-    toastRef.value.error('Export failed', {
+    toastRef.value.error("Export failed", {
       description: error,
-      duration: 5000
+      duration: 5000,
     });
   }
 };
 
 // Get display name for profile
 const getProfileDisplayName = (profile: ExportProfileId): string => {
-  const foundProfile = preferencesStore.exportProfiles.find(p => p.id === profile);
+  const foundProfile = preferencesStore.exportProfiles.find(
+    (p) => p.id === profile
+  );
   if (foundProfile) {
     return foundProfile.name;
   }
-  
+
   switch (profile) {
-    case 'plain':
-      return 'Plain Markdown';
-    case 'templater':
-      return 'Templater Format';
-    case 'dataview':
-      return 'Dataview Format';
-    case 'full':
-      return 'Full Plugin Format';
+    case "plain":
+      return "Plain Markdown";
+    case "templater":
+      return "Templater Format";
+    case "dataview":
+      return "Dataview Format";
+    case "full":
+      return "Full Plugin Format";
     default:
-      return 'Markdown';
+      return "Markdown";
   }
 };
 
 const toggleTheme = () => {
   isDarkTheme.value = !isDarkTheme.value;
-  const themeName = isDarkTheme.value ? 'dark' : 'light';
-  
+  const themeName = isDarkTheme.value ? "dark" : "light";
+
   // Update the document theme
-  document.documentElement.setAttribute('data-theme', themeName);
-  document.body.classList.toggle('dark-theme', isDarkTheme.value);
-  
+  document.documentElement.setAttribute("data-theme", themeName);
+  document.body.classList.toggle("dark-theme", isDarkTheme.value);
+
   // Store preference
   preferencesStore.setEditorTheme(themeName);
 };
@@ -210,21 +219,21 @@ const toggleTheme = () => {
 // Keyboard shortcuts
 const handleKeyDown = (e: KeyboardEvent) => {
   // Shortcut for export (Ctrl/Cmd+E)
-  if ((e.ctrlKey || e.metaKey) && e.key === 'e' && props.view === 'editor') {
+  if ((e.ctrlKey || e.metaKey) && e.key === "e" && props.view === "editor") {
     e.preventDefault();
     if (exportDropdownRef.value) {
       exportDropdownRef.value.open();
     }
   }
-  
+
   // Shortcut for save (Ctrl/Cmd+S)
-  if ((e.ctrlKey || e.metaKey) && e.key === 's' && props.view === 'editor') {
+  if ((e.ctrlKey || e.metaKey) && e.key === "s" && props.view === "editor") {
     e.preventDefault();
     saveTemplate();
   }
-  
+
   // Shortcut for new template (Ctrl/Cmd+N)
-  if ((e.ctrlKey || e.metaKey) && e.key === 'n' && props.view === 'library') {
+  if ((e.ctrlKey || e.metaKey) && e.key === "n" && props.view === "library") {
     e.preventDefault();
     createNewTemplate();
   }
@@ -233,44 +242,50 @@ const handleKeyDown = (e: KeyboardEvent) => {
 // Lifecycle hooks
 onMounted(() => {
   // Check for saved theme preference or use system preference
-  const savedTheme = preferencesStore.editorTheme || 
-    (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
-  
+  const savedTheme =
+    preferencesStore.editorTheme ||
+    (window.matchMedia("(prefers-color-scheme: dark)").matches
+      ? "dark"
+      : "light");
+
   // Set initial theme state
-  isDarkTheme.value = savedTheme === 'dark';
-  
+  isDarkTheme.value = savedTheme === "dark";
+
   // Apply theme
-  document.documentElement.setAttribute('data-theme', savedTheme);
-  document.body.classList.toggle('dark-theme', isDarkTheme.value);
-  
+  document.documentElement.setAttribute("data-theme", savedTheme);
+  document.body.classList.toggle("dark-theme", isDarkTheme.value);
+
   // Add keyboard shortcut listener
-  document.addEventListener('keydown', handleKeyDown);
+  document.addEventListener("keydown", handleKeyDown);
 });
 
 onBeforeUnmount(() => {
   // Remove keyboard shortcut listener when component is unmounted
-  document.removeEventListener('keydown', handleKeyDown);
+  document.removeEventListener("keydown", handleKeyDown);
 });
 
 // Expose toast for other components to use
 defineExpose({
-  showToast: (message: string, type: 'success' | 'error' | 'info' | 'warning' = 'info') => {
+  showToast: (
+    message: string,
+    type: "success" | "error" | "info" | "warning" = "info"
+  ) => {
     if (toastRef.value) {
       switch (type) {
-        case 'success':
+        case "success":
           toastRef.value.success(message);
           break;
-        case 'error':
+        case "error":
           toastRef.value.error(message);
           break;
-        case 'warning':
+        case "warning":
           toastRef.value.warning(message);
           break;
         default:
           toastRef.value.info(message);
       }
     }
-  }
+  },
 });
 </script>
 
@@ -280,16 +295,17 @@ defineExpose({
   top: 0;
   z-index: 100;
   border-bottom: 1px solid var(--glass-border);
-  
+
   /* Enhanced glassmorphism effect */
   background: rgba(30, 30, 46, 0.7) !important;
   backdrop-filter: blur(var(--glass-blur));
   -webkit-backdrop-filter: blur(var(--glass-blur));
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-  
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1),
+    0 2px 4px -1px rgba(0, 0, 0, 0.06);
+
   /* Remove border radius for header */
   border-radius: 0;
-  
+
   /* Animation for header appearance */
   animation: headerAppear 0.3s ease-out;
 }
@@ -328,7 +344,11 @@ defineExpose({
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(to bottom right, var(--color-primary-light), var(--color-primary));
+  background: linear-gradient(
+    to bottom right,
+    var(--color-primary-light),
+    var(--color-primary)
+  );
   border-radius: var(--radius-md);
   box-shadow: var(--glass-shadow);
 }
@@ -342,7 +362,11 @@ defineExpose({
   font-size: 1.25rem;
   font-weight: 600;
   margin: 0;
-  background: linear-gradient(135deg, var(--color-primary-light), var(--color-primary));
+  background: linear-gradient(
+    135deg,
+    var(--color-primary-light),
+    var(--color-primary)
+  );
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -421,18 +445,18 @@ defineExpose({
     padding: var(--spacing-sm);
     height: auto;
   }
-  
+
   .actions {
     width: 100%;
     justify-content: center;
     flex-wrap: wrap;
   }
-  
+
   .action-btn {
     flex: 1;
     min-width: 0;
   }
-  
+
   .app-header__title {
     font-size: 1.125rem;
     white-space: nowrap;
@@ -440,11 +464,11 @@ defineExpose({
     text-overflow: ellipsis;
     max-width: 200px;
   }
-  
+
   .theme-toggle {
     margin-left: var(--spacing-sm);
   }
-  
+
   .app-header__back-button span {
     display: none;
   }
@@ -455,15 +479,15 @@ defineExpose({
     width: 32px;
     height: 32px;
   }
-  
+
   .app-header__title {
     font-size: 1rem;
   }
-  
+
   .actions {
     gap: var(--spacing-xs);
   }
-  
+
   .action-btn {
     font-size: 0.8rem;
     padding: var(--spacing-xs) var(--spacing-sm);

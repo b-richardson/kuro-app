@@ -1,4 +1,4 @@
-import { PluginType, SectionType } from "@/types/TemplateSection";
+import { PluginType, ModuleType } from "@/types/TemplateModule";
 
 /**
  * Constants for Templater plugin
@@ -180,16 +180,16 @@ function validateKanbanSyntax(content: string[]): {
 }
 
 /**
- * Generates default template content for a given section type and plugin
- * @param sectionType Type of section to generate
+ * Generates default template content for a given module type and plugin
+ * @param moduleType Type of module to generate
  * @param pluginType Associated plugin type (if applicable)
  * @returns Array of strings with default content
  */
 export function generateDefaultContent(
-  sectionType: SectionType,
+  moduleType: ModuleType,
   pluginType: PluginType = null
 ): string[] {
-  switch (sectionType) {
+  switch (moduleType) {
     case "yaml":
       return [
         "---",
@@ -208,7 +208,7 @@ export function generateDefaultContent(
     case "kanban":
       return KANBAN.DEFAULT_BOARD.split("\n");
 
-    // Basic section types (existing types)
+    // Basic module types (existing types)
     case "header":
       return ["# New Header"];
 
@@ -250,12 +250,12 @@ export function getPluginDisplayName(pluginType: PluginType): string {
 }
 
 /**
- * Gets the icon class for a section type
- * @param sectionType The section type
+ * Gets the icon class for a module type
+ * @param moduleType The module type
  * @returns Font Awesome icon class
  */
-export function getModuleIcon(sectionType: SectionType): string {
-  switch (sectionType) {
+export function getModuleIcon(moduleType: ModuleType): string {
+  switch (moduleType) {
     case "header":
       return "fas fa-heading";
     case "checklist":

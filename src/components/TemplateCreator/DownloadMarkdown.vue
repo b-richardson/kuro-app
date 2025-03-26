@@ -3,23 +3,23 @@
     <div class="download-markdown__options">
       <div class="download-markdown__filename">
         <label for="filename" class="download-markdown__label">Filename:</label>
-        <input 
+        <input
           id="filename"
-          v-model="filename" 
-          type="text" 
+          v-model="filename"
+          type="text"
           class="download-markdown__input"
           placeholder="Enter filename"
         />
         <span class="download-markdown__extension">.md</span>
       </div>
-      
+
       <!-- Export Profile Selector -->
       <div class="download-markdown__profile">
         <ExportProfileSelector v-model="exportProfile" />
       </div>
     </div>
-    
-    <button 
+
+    <button
       class="download-markdown__button"
       @click="downloadMarkdown"
       :disabled="!sections.length"
@@ -34,10 +34,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue';
-import { TemplateSection } from '@/types/TemplateSection';
-import { generateMarkdown } from '@/utils/markdownUtils';
-import ExportProfileSelector, { ExportProfileId } from './ExportProfileSelector.vue';
+import { ref, computed, watch } from "vue";
+import { TemplateSection } from "@/types/TemplateSect";
+import { generateMarkdown } from "@/utils/markdownUtils";
+import ExportProfileSelector, {
+  ExportProfileId,
+} from "./ExportProfileSelector.vue";
 
 // Define props
 const props = defineProps<{
@@ -47,15 +49,15 @@ const props = defineProps<{
 
 // Define emits
 const emit = defineEmits<{
-  (e: 'profileChanged', value: ExportProfileId): void;
+  (e: "profileChanged", value: ExportProfileId): void;
 }>();
 
 // Generate default filename with date
 const defaultFilename = computed(() => {
   const now = new Date();
   const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, '0');
-  const day = String(now.getDate()).padStart(2, '0');
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
   return `obsidian-template-${year}-${month}-${day}`;
 });
 
@@ -63,11 +65,11 @@ const defaultFilename = computed(() => {
 const filename = ref(defaultFilename.value);
 
 // Export profile selection (default to full if not provided)
-const exportProfile = ref<ExportProfileId>(props.initialProfile || 'full');
+const exportProfile = ref<ExportProfileId>(props.initialProfile || "full");
 
 // Watch for export profile changes
 watch(exportProfile, (newProfile) => {
-  emit('profileChanged', newProfile);
+  emit("profileChanged", newProfile);
 });
 
 /**
@@ -75,16 +77,16 @@ watch(exportProfile, (newProfile) => {
  */
 const getProfileDisplayName = (profile: ExportProfileId): string => {
   switch (profile) {
-    case 'plain':
-      return 'Plain Markdown';
-    case 'templater':
-      return 'Templater Format';
-    case 'dataview':
-      return 'Dataview Format';
-    case 'full':
-      return 'Full Plugin Format';
+    case "plain":
+      return "Plain Markdown";
+    case "templater":
+      return "Templater Format";
+    case "dataview":
+      return "Dataview Format";
+    case "full":
+      return "Full Plugin Format";
     default:
-      return 'Markdown';
+      return "Markdown";
   }
 };
 
@@ -96,24 +98,27 @@ const downloadMarkdown = () => {
 
   // Generate markdown content with selected export profile
   const markdownContent = generateMarkdown(props.sections, exportProfile.value);
-  
+
   // Create blob and download link
-  const blob = new Blob([markdownContent], { type: 'text/markdown' });
+  const blob = new Blob([markdownContent], { type: "text/markdown" });
   const url = URL.createObjectURL(blob);
-  
+
   // Create download link element
-  const link = document.createElement('a');
+  const link = document.createElement("a");
   link.href = url;
-  
+
   // Add export profile indicator to filename for clarity
-  const profileIndicator = exportProfile.value === 'full' ? '' : `-${exportProfile.value}`;
-  link.download = `${filename.value || defaultFilename.value}${profileIndicator}.md`;
-  
+  const profileIndicator =
+    exportProfile.value === "full" ? "" : `-${exportProfile.value}`;
+  link.download = `${
+    filename.value || defaultFilename.value
+  }${profileIndicator}.md`;
+
   // Append to body, click, and remove
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
-  
+
   // Revoke the object URL to free memory
   URL.revokeObjectURL(url);
 };
@@ -242,11 +247,11 @@ const downloadMarkdown = () => {
     flex-direction: row;
     align-items: flex-start;
   }
-  
+
   .download-markdown__options {
     flex: 1;
   }
-  
+
   .download-markdown__button {
     align-self: flex-end;
     width: auto;
@@ -258,15 +263,15 @@ const downloadMarkdown = () => {
   .download-markdown__label {
     display: none;
   }
-  
+
   .download-markdown__filename {
     flex-wrap: nowrap;
   }
-  
+
   .download-markdown__input {
     min-width: 0;
   }
-  
+
   .download-markdown__button-text {
     font-size: 0.875rem;
   }

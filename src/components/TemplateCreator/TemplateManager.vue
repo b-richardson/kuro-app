@@ -2,8 +2,8 @@
   <div class="template-manager">
     <!-- Template actions -->
     <div class="template-manager__actions">
-      <button 
-        class="template-manager__save-btn" 
+      <button
+        class="template-manager__save-btn"
         @click="showSaveDialog = true"
         :class="{ 'has-changes': isModified }"
       >
@@ -13,11 +13,14 @@
         <span v-else>Save Template</span>
         <span v-if="isModified" class="modified-indicator">•</span>
       </button>
-      
-      <button class="template-manager__menu-btn" @click="isMenuOpen = !isMenuOpen">
+
+      <button
+        class="template-manager__menu-btn"
+        @click="isMenuOpen = !isMenuOpen"
+      >
         <i class="fas fa-ellipsis-h"></i>
       </button>
-      
+
       <!-- Template actions menu -->
       <div class="template-manager__menu" v-if="isMenuOpen">
         <button @click="showTemplateLibrary = true">
@@ -34,37 +37,39 @@
         </button>
       </div>
     </div>
-    
+
     <!-- Save template dialog -->
     <div class="template-dialog" v-if="showSaveDialog">
       <div class="template-dialog__content">
         <h3>Save Template</h3>
-        
+
         <div class="form-group">
           <label for="template-name">Template Name</label>
-          <input 
-            id="template-name" 
-            v-model="templateName" 
-            placeholder="Enter template name" 
+          <input
+            id="template-name"
+            v-model="templateName"
+            placeholder="Enter template name"
             @keyup.enter="handleSave"
           />
         </div>
-        
+
         <div class="form-group">
           <label for="template-description">Description (optional)</label>
-          <textarea 
-            id="template-description" 
-            v-model="templateDescription" 
+          <textarea
+            id="template-description"
+            v-model="templateDescription"
             placeholder="Enter template description"
             rows="3"
           ></textarea>
         </div>
-        
+
         <div class="dialog-buttons">
-          <button class="cancel-btn" @click="showSaveDialog = false">Cancel</button>
-          <button 
-            class="save-btn" 
-            @click="handleSave" 
+          <button class="cancel-btn" @click="showSaveDialog = false">
+            Cancel
+          </button>
+          <button
+            class="save-btn"
+            @click="handleSave"
             :disabled="!templateName.trim()"
           >
             Save
@@ -72,9 +77,12 @@
         </div>
       </div>
     </div>
-    
+
     <!-- Template library dialog -->
-    <div class="template-dialog template-dialog--large" v-if="showTemplateLibrary">
+    <div
+      class="template-dialog template-dialog--large"
+      v-if="showTemplateLibrary"
+    >
       <div class="template-dialog__content">
         <div class="template-dialog__header">
           <h3>My Templates</h3>
@@ -82,32 +90,38 @@
             <i class="fas fa-times"></i>
           </button>
         </div>
-        
+
         <div class="template-list">
           <div v-if="templates.length === 0" class="empty-state">
             <i class="fas fa-folder-open"></i>
             <p>No saved templates yet</p>
           </div>
-          
-          <div 
-            v-for="template in templates" 
-            :key="template.id" 
+
+          <div
+            v-for="template in templates"
+            :key="template.id"
             class="template-item"
-            :class="{ 'active': currentTemplateId === template.id }"
+            :class="{ active: currentTemplateId === template.id }"
           >
-            <div class="template-item__details" @click="handleLoadTemplate(template.id)">
+            <div
+              class="template-item__details"
+              @click="handleLoadTemplate(template.id)"
+            >
               <h4>{{ template.name }}</h4>
               <p v-if="template.description">{{ template.description }}</p>
               <p class="template-date">
                 Last updated: {{ formatDate(template.updatedAt) }}
               </p>
             </div>
-            
+
             <div class="template-item__actions">
               <button class="load-btn" @click="handleLoadTemplate(template.id)">
                 <i class="fas fa-download"></i>
               </button>
-              <button class="delete-btn" @click="confirmDelete(template.id, template.name)">
+              <button
+                class="delete-btn"
+                @click="confirmDelete(template.id, template.name)"
+              >
                 <i class="fas fa-trash"></i>
               </button>
             </div>
@@ -115,34 +129,36 @@
         </div>
       </div>
     </div>
-    
+
     <!-- Import dialog -->
     <div class="template-dialog" v-if="showImportDialog">
       <div class="template-dialog__content">
         <h3>Import Templates</h3>
-        
+
         <div class="form-group">
           <label for="import-file">Import from file</label>
-          <input 
-            id="import-file" 
-            type="file" 
-            accept=".json" 
+          <input
+            id="import-file"
+            type="file"
+            accept=".json"
             @change="handleFileSelect"
           />
         </div>
-        
+
         <div class="import-options">
           <label>
             <input type="checkbox" v-model="replaceAllTemplates" />
             Replace all existing templates
           </label>
         </div>
-        
+
         <div class="dialog-buttons">
-          <button class="cancel-btn" @click="showImportDialog = false">Cancel</button>
-          <button 
-            class="import-btn" 
-            @click="handleImport" 
+          <button class="cancel-btn" @click="showImportDialog = false">
+            Cancel
+          </button>
+          <button
+            class="import-btn"
+            @click="handleImport"
             :disabled="!importFile"
           >
             Import
@@ -150,29 +166,28 @@
         </div>
       </div>
     </div>
-    
+
     <!-- Confirmation dialog -->
     <div class="template-dialog" v-if="showConfirmDialog">
       <div class="template-dialog__content">
         <h3>{{ confirmDialogTitle }}</h3>
         <p>{{ confirmDialogMessage }}</p>
-        
+
         <div class="dialog-buttons">
-          <button class="cancel-btn" @click="showConfirmDialog = false">Cancel</button>
-          <button 
-            class="confirm-btn" 
-            @click="handleConfirmAction"
-          >
+          <button class="cancel-btn" @click="showConfirmDialog = false">
+            Cancel
+          </button>
+          <button class="confirm-btn" @click="handleConfirmAction">
             {{ confirmDialogAction }}
           </button>
         </div>
       </div>
     </div>
-    
+
     <!-- Notification toast -->
-    <div 
-      class="notification-toast" 
-      v-if="notification.show" 
+    <div
+      class="notification-toast"
+      v-if="notification.show"
       :class="notification.type"
     >
       {{ notification.message }}
@@ -181,45 +196,40 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, defineProps, defineEmits, watch } from 'vue';
-import { TemplateSection } from '@/types/TemplateSection';
-import { ExportProfileId } from './ExportProfileSelector.vue';
-import { 
-  saveTemplate, 
-  getTemplateList, 
-  loadTemplate, 
-  deleteTemplate, 
-  exportTemplatesAsJson, 
+import { ref, computed, onMounted, defineProps, defineEmits, watch } from "vue";
+import { TemplateSection } from "@/types/TemplateSect";
+import { ExportProfileId } from "./ExportProfileSelector.vue";
+import {
+  saveTemplate,
+  getTemplateList,
+  loadTemplate,
+  deleteTemplate,
+  exportTemplatesAsJson,
   importTemplatesFromJson,
-  TemplateMeta
-} from '@/utils/templateStorage';
+  TemplateMeta,
+} from "@/utils/templateStorage";
 
 // Define props and emits
 const props = defineProps({
   currentTemplateId: {
     type: String,
-    default: ''
+    default: "",
   },
   isModified: {
     type: Boolean,
-    default: false
+    default: false,
   },
   sections: {
     type: Array as () => TemplateSection[],
-    required: true
+    required: true,
   },
   exportProfile: {
     type: String as () => ExportProfileId,
-    required: true
-  }
+    required: true,
+  },
 });
 
-const emit = defineEmits([
-  'save', 
-  'load', 
-  'new',
-  'template-change'
-]);
+const emit = defineEmits(["save", "load", "new", "template-change"]);
 
 // Local state
 const templates = ref<TemplateMeta[]>([]);
@@ -228,39 +238,42 @@ const showSaveDialog = ref(false);
 const showTemplateLibrary = ref(false);
 const showImportDialog = ref(false);
 const showConfirmDialog = ref(false);
-const templateName = ref('');
-const templateDescription = ref('');
+const templateName = ref("");
+const templateDescription = ref("");
 const importFile = ref<File | null>(null);
 const replaceAllTemplates = ref(false);
-const confirmDialogTitle = ref('');
-const confirmDialogMessage = ref('');
-const confirmDialogAction = ref('');
+const confirmDialogTitle = ref("");
+const confirmDialogMessage = ref("");
+const confirmDialogAction = ref("");
 const confirmDialogCallback = ref<(() => void) | null>(null);
 const notification = ref({
   show: false,
-  message: '',
-  type: 'success',
-  timeoutId: null as number | null
+  message: "",
+  type: "success",
+  timeoutId: null as number | null,
 });
 
 // Load saved templates on component mount
 onMounted(() => {
   loadTemplateList();
-  
+
   // Add keyboard shortcut for save (Ctrl+S or Command+S)
-  window.addEventListener('keydown', handleKeydown);
+  window.addEventListener("keydown", handleKeydown);
 });
 
 // Watch for current template changes to update form
-watch(() => props.currentTemplateId, (newId) => {
-  if (newId) {
-    const template = loadTemplate(newId);
-    if (template) {
-      templateName.value = template.name;
-      templateDescription.value = template.description || '';
+watch(
+  () => props.currentTemplateId,
+  (newId) => {
+    if (newId) {
+      const template = loadTemplate(newId);
+      if (template) {
+        templateName.value = template.name;
+        templateDescription.value = template.description || "";
+      }
     }
   }
-});
+);
 
 // Methods
 function loadTemplateList() {
@@ -269,10 +282,10 @@ function loadTemplateList() {
 
 function handleSave() {
   if (!templateName.value.trim()) {
-    showNotification('Please enter a template name', 'error');
+    showNotification("Please enter a template name", "error");
     return;
   }
-  
+
   try {
     const id = saveTemplate(
       templateName.value.trim(),
@@ -281,22 +294,26 @@ function handleSave() {
       props.exportProfile,
       props.currentTemplateId || undefined
     );
-    
-    emit('save', id);
-    showNotification('Template saved successfully');
+
+    emit("save", id);
+    showNotification("Template saved successfully");
     showSaveDialog.value = false;
     loadTemplateList();
   } catch (error) {
-    showNotification(`Failed to save template: ${(error as Error).message}`, 'error');
+    showNotification(
+      `Failed to save template: ${(error as Error).message}`,
+      "error"
+    );
   }
 }
 
 function handleLoadTemplate(id: string) {
   // If there are unsaved changes, show confirmation
   if (props.isModified) {
-    confirmDialogTitle.value = 'Unsaved Changes';
-    confirmDialogMessage.value = 'You have unsaved changes that will be lost. Do you want to continue?';
-    confirmDialogAction.value = 'Continue';
+    confirmDialogTitle.value = "Unsaved Changes";
+    confirmDialogMessage.value =
+      "You have unsaved changes that will be lost. Do you want to continue?";
+    confirmDialogAction.value = "Continue";
     confirmDialogCallback.value = () => {
       loadTemplateById(id);
     };
@@ -309,60 +326,61 @@ function handleLoadTemplate(id: string) {
 
 function loadTemplateById(id: string) {
   const template = loadTemplate(id);
-  
+
   if (template) {
-    emit('load', {
+    emit("load", {
       id: template.id,
       sections: template.sections,
-      exportProfile: template.exportProfile
+      exportProfile: template.exportProfile,
     });
-    
+
     showTemplateLibrary.value = false;
-    showNotification('Template loaded successfully');
+    showNotification("Template loaded successfully");
     templateName.value = template.name;
-    templateDescription.value = template.description || '';
+    templateDescription.value = template.description || "";
   } else {
-    showNotification('Failed to load template', 'error');
+    showNotification("Failed to load template", "error");
   }
 }
 
 function handleNewTemplate() {
   // If there are unsaved changes, show confirmation
   if (props.isModified) {
-    confirmDialogTitle.value = 'Unsaved Changes';
-    confirmDialogMessage.value = 'You have unsaved changes that will be lost. Do you want to continue?';
-    confirmDialogAction.value = 'Continue';
+    confirmDialogTitle.value = "Unsaved Changes";
+    confirmDialogMessage.value =
+      "You have unsaved changes that will be lost. Do you want to continue?";
+    confirmDialogAction.value = "Continue";
     confirmDialogCallback.value = () => {
-      emit('new');
-      templateName.value = '';
-      templateDescription.value = '';
+      emit("new");
+      templateName.value = "";
+      templateDescription.value = "";
       isMenuOpen.value = false;
     };
     showConfirmDialog.value = true;
   } else {
-    emit('new');
-    templateName.value = '';
-    templateDescription.value = '';
+    emit("new");
+    templateName.value = "";
+    templateDescription.value = "";
     isMenuOpen.value = false;
   }
 }
 
 function confirmDelete(id: string, name: string) {
-  confirmDialogTitle.value = 'Delete Template';
+  confirmDialogTitle.value = "Delete Template";
   confirmDialogMessage.value = `Are you sure you want to delete "${name}"? This cannot be undone.`;
-  confirmDialogAction.value = 'Delete';
+  confirmDialogAction.value = "Delete";
   confirmDialogCallback.value = () => {
     if (deleteTemplate(id)) {
-      showNotification('Template deleted successfully');
-      
+      showNotification("Template deleted successfully");
+
       // If the deleted template is the current one, reset
       if (id === props.currentTemplateId) {
-        emit('new');
+        emit("new");
       }
-      
+
       loadTemplateList();
     } else {
-      showNotification('Failed to delete template', 'error');
+      showNotification("Failed to delete template", "error");
     }
   };
   showConfirmDialog.value = true;
@@ -378,26 +396,29 @@ function handleConfirmAction() {
 function handleExport() {
   try {
     const jsonData = exportTemplatesAsJson();
-    
+
     // Create file for download
-    const blob = new Blob([jsonData], { type: 'application/json' });
+    const blob = new Blob([jsonData], { type: "application/json" });
     const url = URL.createObjectURL(blob);
-    
+
     // Create link and trigger download
-    const link = document.createElement('a');
+    const link = document.createElement("a");
     link.href = url;
-    link.download = 'obsidian-templates.json';
+    link.download = "obsidian-templates.json";
     document.body.appendChild(link);
     link.click();
-    
+
     // Clean up
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
     isMenuOpen.value = false;
-    
-    showNotification('Templates exported successfully');
+
+    showNotification("Templates exported successfully");
   } catch (error) {
-    showNotification(`Failed to export templates: ${(error as Error).message}`, 'error');
+    showNotification(
+      `Failed to export templates: ${(error as Error).message}`,
+      "error"
+    );
   }
 }
 
@@ -410,42 +431,48 @@ function handleFileSelect(event: Event) {
 
 function handleImport() {
   if (!importFile.value) {
-    showNotification('Please select a file to import', 'error');
+    showNotification("Please select a file to import", "error");
     return;
   }
-  
+
   const reader = new FileReader();
-  
+
   reader.onload = (e) => {
     try {
       const jsonString = e.target?.result as string;
-      const importedCount = importTemplatesFromJson(jsonString, replaceAllTemplates.value);
-      
+      const importedCount = importTemplatesFromJson(
+        jsonString,
+        replaceAllTemplates.value
+      );
+
       showNotification(`Successfully imported ${importedCount} templates`);
       showImportDialog.value = false;
       loadTemplateList();
-      
+
       // Reset file input
       importFile.value = null;
       replaceAllTemplates.value = false;
     } catch (error) {
-      showNotification(`Import failed: ${(error as Error).message}`, 'error');
+      showNotification(`Import failed: ${(error as Error).message}`, "error");
     }
   };
-  
+
   reader.onerror = () => {
-    showNotification('Failed to read the import file', 'error');
+    showNotification("Failed to read the import file", "error");
   };
-  
+
   reader.readAsText(importFile.value);
 }
 
-function showNotification(message: string, type: 'success' | 'error' = 'success') {
+function showNotification(
+  message: string,
+  type: "success" | "error" = "success"
+) {
   // Clear any existing timeout
   if (notification.value.timeoutId !== null) {
     clearTimeout(notification.value.timeoutId);
   }
-  
+
   // Show new notification
   notification.value = {
     show: true,
@@ -453,15 +480,15 @@ function showNotification(message: string, type: 'success' | 'error' = 'success'
     type,
     timeoutId: setTimeout(() => {
       notification.value.show = false;
-    }, 3000) as unknown as number
+    }, 3000) as unknown as number,
   };
 }
 
 function handleKeydown(event: KeyboardEvent) {
   // Detect Ctrl+S or Command+S
-  if ((event.ctrlKey || event.metaKey) && event.key === 's') {
+  if ((event.ctrlKey || event.metaKey) && event.key === "s") {
     event.preventDefault();
-    
+
     if (props.isModified || !props.currentTemplateId) {
       showSaveDialog.value = true;
     }
@@ -469,16 +496,16 @@ function handleKeydown(event: KeyboardEvent) {
 }
 
 function formatDate(dateString: string): string {
-  if (!dateString) return '';
-  
+  if (!dateString) return "";
+
   try {
     const date = new Date(dateString);
-    return date.toLocaleDateString(undefined, { 
-      year: 'numeric', 
-      month: 'short', 
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
+    return date.toLocaleDateString(undefined, {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
     });
   } catch (error) {
     return dateString;
@@ -869,11 +896,11 @@ function formatDate(dateString: string): string {
   .template-dialog__content {
     padding: 1rem;
   }
-  
+
   .template-item {
     flex-direction: column;
   }
-  
+
   .template-item__actions {
     margin-top: 0.75rem;
     justify-content: flex-end;

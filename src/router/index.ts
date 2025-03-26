@@ -17,14 +17,12 @@ import LandingPage from "../views/LandingPage.vue";
 import LoginView from "../views/LoginView.vue";
 import DashboardView from "../views/DashboardView.vue";
 import LibraryView from "../views/LibraryView.vue";
-import TemplateLibraryView from "../views/TemplateLibraryView.vue";
 import EditorView from "../views/EditorView.vue";
 import SettingsView from "../views/SettingsView.vue";
 import DesignView from "../views/DesignView.vue";
 import ObsidianOnboarding from "../views/ObsidianOnboarding.vue";
 import ObsidianExplorer from "../views/ObsidianExplorer.vue";
 import FrameworksView from "../views/Frameworks/FrameworksView.vue";
-import EditorTestView from "../views/EditorTestView.vue";
 
 // Route definitions
 const routes = [
@@ -65,11 +63,6 @@ const routes = [
     name: "design",
     component: DesignView,
   },
-  {
-    path: "/editor-test",
-    name: "editor-test",
-    component: EditorTestView,
-  },
 
   // Other routes (no auth requirements enforced by router)
   {
@@ -82,11 +75,7 @@ const routes = [
     name: "library",
     component: LibraryView,
   },
-  {
-    path: "/template-library",
-    name: "templateLibrary",
-    component: TemplateLibraryView,
-  },
+
   {
     path: "/editor/:id?",
     name: "editor",

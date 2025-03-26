@@ -367,7 +367,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from "vue";
-import { TemplateSection } from "@/types/TemplateSection";
+import { TemplateSection } from "@/types/TemplateSect";
 import {
   yamlPresets,
   getPresetById,
