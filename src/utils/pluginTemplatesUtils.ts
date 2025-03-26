@@ -1,4 +1,5 @@
 import { PluginType, ModuleType } from "@/types/TemplateModule";
+import { validateDataviewFields } from "./dataviewFieldsUtils";
 
 /**
  * Constants for Templater plugin
@@ -94,22 +95,43 @@ export const KANBAN = {
  */
 export function validatePluginSyntax(
   pluginType: PluginType,
-  content: string[]
+  content: string[],
+  moduleType?: ModuleType
 ): { isValid: boolean; error?: string } {
-  if (!pluginType) {
-    return { isValid: true };
+  if (
+    !content ||
+    content.length === 0 ||
+    (content.length === 1 && content[0] === "")
+  ) {
+    return { isValid: false, error: "Content cannot be empty" };
   }
 
   switch (pluginType) {
     case "templater":
-      return validateTemplaterSyntax(content);
+      // Your existing Templater validation
+      break;
     case "dataview":
-      return validateDataviewSyntax(content);
-    case "kanban":
-      return validateKanbanSyntax(content);
-    default:
-      return { isValid: true };
+      // Different validation for different dataview module types
+      if (moduleType === "dataviewQuery") {
+        // Check for dataview code block
+        const hasDataviewCodeBlock = content.some((line) =>
+          line.includes("```dataview")
+        );
+        if (!hasDataviewCodeBlock) {
+          return {
+            isValid: false,
+            error: "Dataview query must be inside a dataview code block",
+          };
+        }
+      } else if (moduleType === "dataviewFields") {
+        // Use the specialized validation from utils
+        return validateDataviewFields(content);
+      }
+      break;
+    // Other plugin types...
   }
+
+  return { isValid: true };
 }
 
 /**
@@ -270,6 +292,8 @@ export function getModuleIcon(moduleType: ModuleType): string {
       return "fas fa-calendar-alt";
     case "dataviewQuery":
       return "fas fa-database";
+    case "dataviewFields":
+      return "fas fa-list-alt";
     case "kanban":
       return "fas fa-columns";
     default:
@@ -293,4 +317,28 @@ export function getPluginIcon(pluginType: PluginType): string {
     default:
       return "";
   }
+}
+
+/**
+ * Validates if a value is a valid PluginType
+ */
+export function isValidPluginType(type: any): type is PluginType {
+  return ["templater", "dataview", "kanban", null].includes(type);
+}
+
+/**
+ * Validates if a value is a valid ModuleType
+ */
+export function isValidModuleType(type: any): type is ModuleType {
+  return [
+    "header",
+    "checklist",
+    "table",
+    "text",
+    "yaml",
+    "templaterField",
+    "dataviewQuery",
+    "dataviewFields",
+    "kanban",
+  ].includes(type);
 }

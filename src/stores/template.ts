@@ -6,11 +6,11 @@ import { useActivityStore } from "./activity";
 
 // Import the types directly from the type definitions file
 import {
-  TemplateSection,
-  SectionType,
+  TemplateModule,
+  ModuleType,
   PluginType,
-  SectionMetadata,
-} from "@/types/TemplateSect";
+  ModuleMetadata,
+} from "@/types/TemplateModule";
 
 /**
  * Interface defining the structure of a template
@@ -26,7 +26,7 @@ export interface Template {
   description: string;
 
   /** Sections that make up the template */
-  sections: TemplateSection[];
+  sections: TemplateModule[];
 
   /** Tags for categorizing the template */
   tags: string[];
@@ -67,16 +67,16 @@ export const useTemplateStore = defineStore("template", () => {
   });
 
   // Computed property for current sections
-  const currentSections = computed((): TemplateSection[] => {
+  const currentSections = computed((): TemplateModule[] => {
     return currentTemplate.value?.sections || [];
   });
 
   /**
-   * Ensures a section conforms to the TemplateSection interface
+   * Ensures a section conforms to the TemplateModule interface
    */
   const normalizeSection = (
-    section: Partial<TemplateSection>
-  ): TemplateSection => {
+    section: Partial<TemplateModule>
+  ): TemplateModule => {
     // Ensure content is always a string array
     const content = Array.isArray(section.content)
       ? section.content
@@ -88,9 +88,7 @@ export const useTemplateStore = defineStore("template", () => {
       id: section.id || uuidv4(),
       // Default to 'text' if no type is provided or type is invalid
       type:
-        section.type && isValidSectionType(section.type)
-          ? section.type
-          : "text",
+        section.type && isValidModuleType(section.type) ? section.type : "text",
       content,
       // Default to null if no plugin type is provided or type is invalid
       pluginType:
@@ -103,10 +101,10 @@ export const useTemplateStore = defineStore("template", () => {
   };
 
   /**
-   * Validates if a section type is one of the allowed SectionType values
+   * Validates if a section type is one of the allowed ModuleType values
    */
-  const isValidSectionType = (type: any): type is SectionType => {
-    const validTypes: SectionType[] = [
+  const isValidModuleType = (type: any): type is ModuleType => {
+    const validTypes: ModuleType[] = [
       "header",
       "checklist",
       "table",
@@ -116,7 +114,7 @@ export const useTemplateStore = defineStore("template", () => {
       "dataviewQuery",
       "kanban",
     ];
-    return validTypes.includes(type as SectionType);
+    return validTypes.includes(type as ModuleType);
   };
 
   /**
@@ -289,6 +287,7 @@ export const useTemplateStore = defineStore("template", () => {
         // Instead of using Object.assign which can break reactivity with nested objects
         Object.keys(template).forEach((key) => {
           if (key === "sections") {
+            if (!currentTemplate.value) return;
             // Create a deep reactive copy of sections
             currentTemplate.value.sections = normalizedSections.map(
               (section) => ({
@@ -300,6 +299,7 @@ export const useTemplateStore = defineStore("template", () => {
               })
             );
           } else if (key === "tags") {
+            if (!currentTemplate.value) return;
             // Create a fresh copy of the tags array
             currentTemplate.value.tags = [...template.tags];
           } else {
@@ -456,7 +456,7 @@ export const useTemplateStore = defineStore("template", () => {
   /**
    * Adds a section to the current template
    */
-  const addSection = (section: Partial<TemplateSection>) => {
+  const addSection = (section: Partial<TemplateModule>) => {
     // If no current template, create one
     if (!currentTemplate.value && currentTemplateId.value === "") {
       createTemplate();
@@ -478,7 +478,7 @@ export const useTemplateStore = defineStore("template", () => {
    */
   const updateSection = (
     sectionId: string,
-    updatedSection: Partial<TemplateSection>
+    updatedSection: Partial<TemplateModule>
   ) => {
     if (currentTemplate.value) {
       const index = currentTemplate.value.sections.findIndex(
@@ -524,7 +524,7 @@ export const useTemplateStore = defineStore("template", () => {
   /**
    * Updates all sections in the current template
    */
-  const updateSections = (newSections: Partial<TemplateSection>[]) => {
+  const updateSections = (newSections: Partial<TemplateModule>[]) => {
     if (currentTemplate.value) {
       // Create normalized sections with proper reactivity
       const normalizedSections = newSections.map((section) => {

@@ -19,7 +19,10 @@
 <script setup lang="ts">
 import { ref } from "vue";
 import ModuleCard from "./ModuleCard.vue";
-import { generateDefaultContent, getModuleIcon } from "@/utils/pluginTemplates";
+import {
+  generateDefaultContent,
+  getModuleIcon,
+} from "@/utils/pluginTemplatesUtils";
 import { v4 as uuidv4 } from "uuid";
 import { TemplateModule } from "@/types/TemplateModule";
 

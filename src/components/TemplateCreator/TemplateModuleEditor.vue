@@ -28,6 +28,7 @@ import YamlModule from "./modules/YamlModule.vue";
 import TemplaterModule from "./modules/TemplaterModule.vue";
 import DataviewModule from "./modules/DataviewModule.vue";
 import KanbanModule from "./modules/KanbanModule.vue";
+import InlineDataviewFieldsModule from "./modules/InlineDataviewFieldsModule.vue";
 
 // Define props
 const props = defineProps<{
@@ -65,6 +66,8 @@ const moduleComponent = computed(() => {
       return TemplaterModule;
     case "dataviewQuery":
       return DataviewModule;
+    case "dataviewFields":
+      return InlineDataviewFieldsModule;
     case "kanban":
       return KanbanModule;
     default:

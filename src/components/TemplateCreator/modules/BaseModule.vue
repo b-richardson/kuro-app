@@ -10,7 +10,6 @@
       { 'template-module-editor--editing': isEditing },
     ]"
     @click="handleModuleClick"
-    @keydown="handleKeyboardShortcut"
     tabindex="0"
     ref="moduleRef"
   >
@@ -21,7 +20,7 @@
           class="module-move-button"
           @click.stop="moveModule('up')"
           :disabled="index === 0"
-          title="Move module up (Alt+ArrowUp)"
+          title="Move module up"
         >
           <i class="fas fa-arrow-up"></i>
         </button>
@@ -29,7 +28,7 @@
           class="module-move-button"
           @click.stop="moveModule('down')"
           :disabled="index === modules.length - 1"
-          title="Move module down (Alt+ArrowDown)"
+          title="Move module down"
         >
           <i class="fas fa-arrow-down"></i>
         </button>
@@ -48,21 +47,21 @@
       <div class="template-module-editor-actions">
         <button
           class="template-module-editor-action"
-          title="Add line (Alt+A)"
+          title="Add line"
           @click.stop="addContentLine"
         >
           <i class="fas fa-plus"></i>
         </button>
         <button
           class="template-module-editor-action template-module-editor-action--duplicate"
-          title="Duplicate module (Alt+D)"
+          title="Duplicate module"
           @click.stop="$emit('duplicate')"
         >
           <i class="fas fa-copy"></i>
         </button>
         <button
           class="template-module-editor-action template-module-editor-action--delete"
-          title="Delete module (Alt+Delete)"
+          title="Delete module"
           @click.stop="confirmDeleteModule"
         >
           <i class="fas fa-trash"></i>
@@ -99,14 +98,11 @@
 import { computed, ref, onMounted, watch, nextTick } from "vue";
 import { TemplateModule } from "@/types/TemplateModule";
 import {
-  TEMPLATER,
-  DATAVIEW,
-  KANBAN,
   getPluginDisplayName,
   getModuleIcon,
   validatePluginSyntax,
   getPluginIcon,
-} from "@/utils/pluginTemplates";
+} from "@/utils/pluginTemplatesUtils";
 
 // Define props
 const props = defineProps<{
@@ -149,9 +145,9 @@ const setInputRef = (el: HTMLElement | null) => {
   }
 };
 
-// Focus the first input if autoFocus is true
+// Initialize the module on mount
 onMounted(() => {
-  // Initialize the module
+  // Focus the first input if autoFocus is true
   if (props.isSelected && props.autoFocus && firstInputRef.value) {
     nextTick(() => {
       firstInputRef.value?.focus();
@@ -162,7 +158,7 @@ onMounted(() => {
   document.addEventListener("click", handleOutsideClick);
 });
 
-// Handle module selection/deselection
+// Handle module selection
 const handleModuleClick = () => {
   emit("select");
 };
@@ -186,64 +182,6 @@ const setEditing = (editing: boolean) => {
   if (editing) {
     lastActiveElement.value = document.activeElement as HTMLElement;
   }
-};
-
-// Keyboard shortcut handling
-const handleKeyboardShortcut = (event: KeyboardEvent) => {
-  // Don't intercept shortcuts when editing text fields
-  const target = event.target as HTMLElement;
-  const isEditingInput = ["INPUT", "TEXTAREA", "SELECT"].includes(
-    target.tagName
-  );
-
-  // Check for Alt+key shortcuts that can be used while editing
-  if (event.altKey) {
-    if (event.key === "a") {
-      event.preventDefault();
-      emit("add-line");
-      return;
-    }
-
-    if (event.key === "d") {
-      event.preventDefault();
-      emit("duplicate");
-      return;
-    }
-
-    if (event.key === "Delete" || event.key === "Backspace") {
-      event.preventDefault();
-      confirmDeleteModule();
-      return;
-    }
-
-    // Module movement shortcuts
-    if (event.key === "ArrowUp") {
-      event.preventDefault();
-      if (props.index > 0) {
-        moveModule("up");
-      }
-      return;
-    }
-
-    if (event.key === "ArrowDown") {
-      event.preventDefault();
-      if (props.index < props.modules.length - 1) {
-        moveModule("down");
-      }
-      return;
-    }
-  }
-
-  // Don't process other shortcuts if editing an input
-  if (isEditingInput) return;
-
-  // Regular shortcuts when not editing
-  if (event.key === "Delete" || event.key === "Backspace") {
-    event.preventDefault();
-    confirmDeleteModule();
-  }
-
-  // Add more keyboard shortcuts as needed
 };
 
 // Toast management
@@ -369,7 +307,7 @@ const moveModule = (direction: "up" | "down") => {
   }
 };
 
-// Basic module methods - called from parent component
+// Add a new content line
 const addContentLine = () => {
   emit("add-line");
 };

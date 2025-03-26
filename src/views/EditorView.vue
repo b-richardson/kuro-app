@@ -486,7 +486,7 @@ const addModuleToCanvas = (module: TemplateModule) => {
 
 /**
  * Update modules in the template store
- * Called by DragDropEditor when modules are reordered via drag and drop
+ * Called by ModuleCanvas when modules are reordered via drag and drop
  */
 const updateSections = (sections: TemplateModule[]) => {
   // Guard against invalid parameters or unmounted component

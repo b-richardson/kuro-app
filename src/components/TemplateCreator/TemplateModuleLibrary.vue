@@ -1,24 +1,22 @@
 <template>
-  <div class="template-module-library" :class="{ 'collapsed': collapsed }">
+  <div class="template-module-library" :class="{ collapsed: collapsed }">
     <div class="library-header">
       <div class="header-content">
         <h2 class="library-title">Template Modules</h2>
-        <p class="library-description">
-          Click to add modules to your template
-        </p>
+        <p class="library-description">Click to add modules to your template</p>
       </div>
-      
+
       <div class="library-actions">
-        <button 
-          class="module-settings-btn" 
-          @click="toggleSettings" 
+        <button
+          class="module-settings-btn"
+          @click="toggleSettings"
           v-tooltip="'Module settings'"
         >
           <i class="fas fa-sliders-h"></i>
         </button>
       </div>
     </div>
-    
+
     <!-- Settings Panel (conditionally displayed) -->
     <div v-if="showSettings" class="settings-panel">
       <div class="settings-header">
@@ -27,49 +25,48 @@
           <i class="fas fa-times"></i>
         </button>
       </div>
-      
+
       <div class="settings-options">
         <div class="setting-option">
           <label class="setting-label">
-            <input 
-              type="checkbox" 
-              v-model="showPluginModules"
-            >
+            <input type="checkbox" v-model="showPluginModules" />
             <span>Show Plugin Modules</span>
           </label>
-          <small class="setting-description">Display modules for Obsidian plugins like Templater, Dataview, and Kanban</small>
+          <small class="setting-description"
+            >Display modules for Obsidian plugins like Templater, Dataview, and
+            Kanban</small
+          >
         </div>
-        
+
         <div class="setting-option">
           <label class="setting-label">
-            <input 
-              type="checkbox" 
-              v-model="showModuleDescriptions"
-            >
+            <input type="checkbox" v-model="showModuleDescriptions" />
             <span>Show Descriptions</span>
           </label>
-          <small class="setting-description">Display detailed descriptions for each module</small>
+          <small class="setting-description"
+            >Display detailed descriptions for each module</small
+          >
         </div>
       </div>
     </div>
-    
+
     <!-- Module Categories -->
     <div class="module-categories">
       <!-- Basic Modules -->
-      <BasicModules 
-        @add-module="handleAddModule" 
-        :show-descriptions="showModuleDescriptions"
-      />
-      
-      <!-- YAML Preset Modules -->
-      <YamlPresetModules 
+      <BasicModules
         @add-module="handleAddModule"
         :show-descriptions="showModuleDescriptions"
       />
-      
+
+      <!-- YAML Preset Modules -->
+      <YamlPresetModules
+        @add-module="handleAddModule"
+        :show-descriptions="showModuleDescriptions"
+      />
+
       <!-- Plugin-aware Modules -->
-      <PluginModules 
-        v-if="showPluginModules" 
+      <PluginModules
+        v-if="showPluginModules"
         @add-module="handleAddModule"
         :show-descriptions="showModuleDescriptions"
       />
@@ -78,12 +75,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue';
-import BasicModules from './BasicModules.vue';
-import YamlPresetModules from './YamlPresetModules.vue';
-import PluginModules from './PluginModules.vue';
-import { TemplateModule } from '@/types/TemplateModule';
-import { usePreferencesStore } from '@/stores/preferences';
+import { ref, computed } from "vue";
+import BasicModules from "./BasicModules.vue";
+import YamlPresetModules from "./YamlPresetModules.vue";
+import PluginModules from "./PluginModules.vue";
+import { TemplateModule } from "@/types/TemplateModule";
+import { usePreferencesStore } from "@/stores/preferences";
 
 const preferencesStore = usePreferencesStore();
 
@@ -101,18 +98,18 @@ const toggleSettings = () => {
 const props = defineProps({
   collapsed: {
     type: Boolean,
-    default: false
-  }
+    default: false,
+  },
 });
 
 // Define emits
-const emit = defineEmits(['add-module']);
+const emit = defineEmits(["add-module"]);
 
 // Handle module addition (emitted from child components)
 const handleAddModule = (moduleData: TemplateModule) => {
   // Simply pass the event up to parent component
-  emit('add-module', moduleData);
-  
+  emit("add-module", moduleData);
+
   // Automatically close settings panel if open
   if (showSettings.value) {
     showSettings.value = false;

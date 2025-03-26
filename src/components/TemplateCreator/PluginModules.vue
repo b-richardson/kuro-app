@@ -11,7 +11,7 @@
         :class="{ active: activePlugin === plugin.type }"
         @click="activePlugin = plugin.type"
       >
-        <i :class="getPluginIcon(plugin.type)"></i>
+        <i :class="resolvePluginIcon(plugin.type)"></i>
         {{ plugin.name }}
       </button>
     </div>
@@ -27,7 +27,7 @@
             :key="module.id"
             :title="module.title"
             :description="module.description"
-            :icon="getModuleIcon(module.sectionType)"
+            :icon="getModuleIcon(module.moduleType)"
             :plugin-icon="getPluginIcon('templater')"
             :show-description="showDescriptions"
             @click="addPluginModule(module.id, 'templater')"
@@ -53,7 +53,7 @@
               :key="module.id"
               :title="module.title"
               :description="module.description"
-              :icon="getModuleIcon(module.sectionType)"
+              :icon="getModuleIcon(module.moduleType)"
               :plugin-icon="getPluginIcon('templater')"
               :show-description="showDescriptions"
               @click="addPluginModule(module.id, 'templater')"
@@ -71,7 +71,7 @@
             :key="module.id"
             :title="module.title"
             :description="module.description"
-            :icon="getModuleIcon(module.sectionType)"
+            :icon="getModuleIcon(module.moduleType)"
             :plugin-icon="getPluginIcon('dataview')"
             :show-description="showDescriptions"
             @click="addPluginModule(module.id, 'dataview')"
@@ -95,7 +95,7 @@
               :key="module.id"
               :title="module.title"
               :description="module.description"
-              :icon="getModuleIcon(module.sectionType)"
+              :icon="getModuleIcon(module.moduleType)"
               :plugin-icon="getPluginIcon('dataview')"
               :show-description="showDescriptions"
               @click="addPluginModule(module.id, 'dataview')"
@@ -113,7 +113,7 @@
             :key="module.id"
             :title="module.title"
             :description="module.description"
-            :icon="getModuleIcon(module.sectionType)"
+            :icon="getModuleIcon(module.moduleType)"
             :plugin-icon="getPluginIcon('kanban')"
             :show-description="showDescriptions"
             @click="addPluginModule(module.id, 'kanban')"
@@ -139,7 +139,7 @@
               :key="module.id"
               :title="module.title"
               :description="module.description"
-              :icon="getModuleIcon(module.sectionType)"
+              :icon="getModuleIcon(module.moduleType)"
               :plugin-icon="getPluginIcon('kanban')"
               :show-description="showDescriptions"
               @click="addPluginModule(module.id, 'kanban')"
@@ -172,8 +172,13 @@
 <script setup lang="ts">
 import { ref, computed } from "vue";
 import ModuleCard from "./ModuleCard.vue";
-import { getModuleIcon, getPluginIcon } from "@/utils/pluginTemplates";
+import {
+  getModuleIcon,
+  getPluginIcon,
+  isValidPluginType,
+} from "@/utils/pluginTemplatesUtils";
 import { usePresetStore, ModulePriority } from "@/stores/presets";
+import { ModuleType, PluginType } from "@/types/TemplateModule";
 import { v4 as uuidv4 } from "uuid";
 
 // Define props
@@ -259,17 +264,21 @@ const toggleSecondaryModules = () => {
 const emit = defineEmits(["add-module"]);
 
 // Function to add a plugin module
-const addPluginModule = (moduleId, pluginType) => {
+const addPluginModule = (moduleId: string, pluginType: PluginType) => {
   const module = presetStore.getPluginModuleById(moduleId, pluginType);
   if (!module) return;
 
   emit("add-module", {
     id: uuidv4(),
-    type: module.sectionType,
+    type: module.moduleType,
     content: [...module.content],
     pluginType: pluginType,
   });
 };
+
+function resolvePluginIcon(type: string | null): string {
+  return isValidPluginType(type) ? getPluginIcon(type) : "fas fa-puzzle-piece";
+}
 </script>
 
 <style scoped>

@@ -59,7 +59,7 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
 import ModuleCard from "./ModuleCard.vue";
-import { getModuleIcon } from "@/utils/pluginTemplates";
+import { getModuleIcon } from "@/utils/pluginTemplatesUtils";
 import { usePresetStore, ModulePriority } from "@/stores/presets";
 import { v4 as uuidv4 } from "uuid";
 
