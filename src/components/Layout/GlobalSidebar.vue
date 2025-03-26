@@ -6,7 +6,7 @@
         <i class="fas fa-file-alt"></i>
       </div>
       <h1 class="app-title">Template Builder</h1>
-      
+
       <!-- Obsidian connection status -->
       <ObsidianStatusIndicator />
     </div>
@@ -18,9 +18,6 @@
       </div>
       <div class="user-info">
         <div class="user-name">{{ authStore.user.name }}</div>
-        <div class="user-plan">
-          {{ getPlanLabel(authStore.user.subscription.plan) }}
-        </div>
       </div>
     </div>
 
@@ -62,7 +59,7 @@
         <i class="fas fa-puzzle-piece"></i>
         <span>Frameworks</span>
       </router-link>
-      
+
       <router-link
         to="/obsidian-explorer"
         class="nav-item"
@@ -72,7 +69,7 @@
         <i class="fas fa-mountain"></i>
         <span>Obsidian Explorer</span>
       </router-link>
-      
+
       <router-link
         to="/editor-test"
         class="nav-item"
@@ -192,7 +189,8 @@ const router = useRouter();
 const route = useRoute();
 const currentRoute = computed(() => {
   if (route.path === "/dashboard") return "dashboard";
-  if (route.path.includes("/editor") && !route.path.includes("/editor-test")) return "editor";
+  if (route.path.includes("/editor") && !route.path.includes("/editor-test"))
+    return "editor";
   if (route.path === "/editor-test") return "editor-test";
   if (route.path === "/library") return "library";
   if (route.path === "/template-library") return "templateLibrary";
@@ -263,7 +261,7 @@ const toggleTheme = () => {
 .global-sidebar {
   display: flex;
   flex-direction: column;
-  width: 260px; /* Was 280px */
+  width: 200px;
   height: 100vh;
   background: rgba(30, 30, 46, 0.8);
   border-right: 1px solid var(--glass-border);

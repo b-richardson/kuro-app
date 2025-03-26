@@ -5,14 +5,8 @@
       class="markdown-preview__content"
       :class="{ 'dark-content': isDarkTheme, 'light-content': !isDarkTheme }"
     >
-      <!-- Loading indicator -->
-      <div v-if="isGenerating" class="markdown-preview__loading">
-        <div class="spinner"></div>
-        <p>Generating preview...</p>
-      </div>
-
       <!-- Empty state -->
-      <div v-else-if="sections.length === 0" class="markdown-preview__empty">
+      <div v-if="sections.length === 0" class="markdown-preview__empty">
         <i class="fas fa-file-alt empty-icon"></i>
         <p>Add sections to see your template preview</p>
       </div>
@@ -94,13 +88,10 @@ const generateMarkdownContent = () => {
   try {
     isGenerating.value = true;
     emit("generation-start");
-    
+
     // Generate markdown immediately without artificial timeout
-    markdownText.value = generateMarkdown(
-      props.sections,
-      exportProfile.value
-    );
-    
+    markdownText.value = generateMarkdown(props.sections, exportProfile.value);
+
     isGenerating.value = false;
     emit("generation-complete");
   } catch (error) {
@@ -879,12 +870,18 @@ const highlightSyntax = (text: string): string => {
   margin-bottom: 0.375rem;
 }
 
-.light-content .markdown-preview__rendered :deep(input[type="checkbox"]:checked) + span {
+.light-content
+  .markdown-preview__rendered
+  :deep(input[type="checkbox"]:checked)
+  + span {
   text-decoration: line-through;
   opacity: 0.7;
 }
 
-.dark-content .markdown-preview__rendered :deep(input[type="checkbox"]:checked) + span {
+.dark-content
+  .markdown-preview__rendered
+  :deep(input[type="checkbox"]:checked)
+  + span {
   text-decoration: line-through;
   opacity: 0.7;
 }

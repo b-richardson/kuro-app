@@ -61,6 +61,7 @@
         </div>
 
         <!-- Drag and Drop Editor Component -->
+        <!-- change these section references to MODULES -->
         <DragDropEditor
           :sections="templateStore.currentSections"
           @update="updateSections"
