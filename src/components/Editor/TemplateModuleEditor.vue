@@ -20,15 +20,15 @@ import { computed } from "vue";
 import { TemplateModule } from "@/types/TemplateModule";
 
 // Import module components
-import HeaderModule from "./modules/HeaderModule.vue";
-import ChecklistModule from "./modules/ChecklistModule.vue";
-import TableModule from "./modules/TableModule.vue";
-import TextModule from "./modules/TextModule.vue";
-import YamlModule from "./modules/YamlModule.vue";
-import TemplaterModule from "./modules/TemplaterModule.vue";
-import DataviewModule from "./modules/DataviewModule.vue";
-import KanbanModule from "./modules/KanbanModule.vue";
-import InlineDataviewFieldsModule from "./modules/InlineDataviewFieldsModule.vue";
+import HeaderModule from "@/components/TemplateCreator/modules/content/HeaderModule.vue";
+import ChecklistModule from "@/components/TemplateCreator/modules/content/ChecklistModule.vue";
+import TableModule from "@/components/TemplateCreator/modules/content/TableModule.vue";
+import TextModule from "@/components/TemplateCreator/modules/content/TextModule.vue";
+import YamlModule from "@/components/TemplateCreator/modules/plugins/yaml/YamlModule.vue";
+import TemplaterModule from "@/components/TemplateCreator/modules/plugins/templater/TemplaterModule.vue";
+import DataviewModule from "@/components/TemplateCreator/modules/plugins/dataview/DataviewModule.vue";
+import KanbanModule from "@/components/TemplateCreator/modules/plugins/kanban/KanbanModule.vue";
+import InlineDataviewFieldsModule from "@/components/TemplateCreator/modules/plugins/dataview/InlineDataviewFieldsModule.vue";
 
 // Define props
 const props = defineProps<{

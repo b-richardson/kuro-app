@@ -333,9 +333,9 @@ import {
 import { generateMarkdown } from "@/utils/markdownUtils";
 
 // Import components
-import TemplateModuleLibrary from "@/components/TemplateCreator/TemplateModuleLibrary.vue";
-import ModuleCanvas from "@/components/TemplateCreator/ModuleCanvas.vue";
-import MarkdownPreview from "@/components/TemplateCreator/MarkdownPreview.vue";
+import TemplateModuleLibrary from "@/components/ModuleLibrary/TemplateModuleLibrary.vue";
+import ModuleCanvas from "@/components/Editor/ModuleCanvas.vue";
+import MarkdownPreview from "@/components/MarkdownPreview/MarkdownPreview.vue";
 import ConfirmationDialog from "@/components/UI/ConfirmationDialog.vue";
 
 // Router and stores

@@ -58,7 +58,7 @@ import { useObsidianStore } from "./stores/obsidian";
 import GradientBackground from "./components/UI/GradientBackground.vue";
 import GlobalSidebar from "./components/Layout/GlobalSidebar.vue";
 import ToastNotification from "./components/UI/ToastNotification.vue";
-import ExportDialog from "./components/TemplateCreator/ExportDialog.vue";
+import ExportDialog from "./components/Export/ExportDialog.vue";
 
 // Refs and stores
 const router = useRouter();

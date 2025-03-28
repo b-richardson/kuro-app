@@ -122,9 +122,8 @@
 
 <script setup lang="ts">
 import { ref, computed, nextTick } from "vue";
-import BaseModule from "./BaseModule.vue";
+import BaseModule from "@/components/TemplateCreator/modules/core/BaseModule.vue";
 import { TemplateModule } from "@/types/TemplateModule";
-import { handleTableKeyboardNavigation as keyboardHandler } from "./utils/moduleKeyboardHandlers";
 
 const props = defineProps<{
   module: TemplateModule;
@@ -385,29 +384,23 @@ const initializeEmptyTable = () => {
   baseModuleRef.value?.displayToast("Table created", "success");
 };
 
-// Handle keyboard navigation for the table
+// Handle keyboard events if needed
 const handleTableKeyboardNavigation = (
   event: KeyboardEvent,
   rowIndex: number,
   colIndex: number
 ) => {
-  keyboardHandler(
-    event,
-    rowIndex,
-    colIndex,
-    tableData.value,
-    focusCell,
-    addTableRow
-  );
+  // Keyboard navigation was removed to simplify the code
 };
 
 // Helper method to focus a specific cell
 const focusCell = (rowIndex: number, colIndex: number) => {
+  // Simplified focus cell functionality
   nextTick(() => {
     const element = baseModuleRef.value?.$el;
     if (!element) return;
     
-    // For header row (rowIndex === 0), use header inputs
+    // For header row
     if (rowIndex === 0) {
       const headerInputs = element.querySelectorAll(
         ".template-module-editor-table-header-input"
@@ -415,23 +408,21 @@ const focusCell = (rowIndex: number, colIndex: number) => {
       if (headerInputs && headerInputs[colIndex]) {
         (headerInputs[colIndex] as HTMLElement).focus();
       }
-      return;
-    }
-
-    // For data rows
-    const cells = element.querySelectorAll(
-      ".template-module-editor-table-input"
-    );
-    if (!cells) return;
-
-    // Calculate index in the nodelist based on current row and column
-    // We need to account for the header row being separate
-    const rowOffset = rowIndex - 1; // Adjust for header row
-    const columnCount = tableData.value[0]?.length || 0;
-    const cellIndex = rowOffset * columnCount + colIndex;
-
-    if (cells[cellIndex]) {
-      (cells[cellIndex] as HTMLElement).focus();
+    } else {
+      // For data cells - simplified approach
+      const cells = element.querySelectorAll(
+        ".template-module-editor-table-input"
+      );
+      // Find the right cell if possible
+      if (cells && cells.length > 0) {
+        const rowOffset = rowIndex - 1;
+        const columnCount = tableData.value[0]?.length || 0;
+        const cellIndex = rowOffset * columnCount + colIndex;
+        
+        if (cells[cellIndex]) {
+          (cells[cellIndex] as HTMLElement).focus();
+        }
+      }
     }
   });
 };

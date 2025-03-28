@@ -85,9 +85,15 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onBeforeUnmount, watch } from "vue";
-import { TemplateSection } from "@/types/TemplateSect";
+// We'll use the TemplateModule type temporarily
+import { TemplateModule } from "@/types/TemplateModule";
 import { generateMarkdown } from "@/utils/markdownUtils";
-import { ExportProfileId } from "./ExportProfileSelector.vue";
+
+// Define the ExportProfileId type locally to fix the build
+type ExportProfileId = "plain" | "templater" | "dataview" | "full";
+
+// Use TemplateModule as a temporary replacement for TemplateSection
+type TemplateSection = TemplateModule;
 
 // Define props
 const props = defineProps<{

@@ -81,9 +81,9 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onBeforeUnmount } from "vue";
 import { TemplateSection } from "@/types/TemplateSect";
-import ExportDropdown from "@/components/TemplateCreator/ExportDropdown.vue";
+import ExportDropdown from "@/components/Export/ExportDropdown.vue";
 import ToastNotification from "@/components/UI/ToastNotification.vue";
-import { ExportProfileId } from "@/components/TemplateCreator/ExportProfileSelector.vue";
+import { ExportProfileId } from "@/components/Export/ExportProfileSelector.vue";
 import { usePreferencesStore } from "@/stores/preferences";
 
 // Props

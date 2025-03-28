@@ -13,9 +13,9 @@
     @module-change="$emit('module-change')"
     ref="baseModuleRef"
   >
-    <KanbanBoardBuilder
+    <YamlEditor
       :content="module.content"
-      @update:content="updateKanbanContent"
+      @update:content="updateYamlContent"
       @focus="setEditing(true)"
       @blur="setEditing(false)"
       :auto-focus="autoFocus"
@@ -25,8 +25,8 @@
 
 <script setup lang="ts">
 import { ref } from "vue";
-import BaseModule from "./BaseModule.vue";
-import KanbanBoardBuilder from "../KanbanBoardBuilder.vue";
+import BaseModule from "@/components/TemplateCreator/modules/core/BaseModule.vue";
+import YamlEditor from "@/components/TemplateCreator/YamlEditor.vue";
 import { TemplateModule } from "@/types/TemplateModule";
 
 const props = defineProps<{
@@ -59,7 +59,7 @@ const updateContent = (content: string[]) => {
   emit("update:content", content);
 };
 
-const updateKanbanContent = (content: string[]) => {
+const updateYamlContent = (content: string[]) => {
   emit("update:content", content);
 };
 </script>

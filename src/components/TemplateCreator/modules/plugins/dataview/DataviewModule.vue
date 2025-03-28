@@ -25,8 +25,8 @@
 
 <script setup lang="ts">
 import { ref } from "vue";
-import BaseModule from "./BaseModule.vue";
-import DataviewQueryBuilder from "../DataviewQueryBuilder.vue";
+import BaseModule from "@/components/TemplateCreator/modules/core/BaseModule.vue";
+import DataviewQueryBuilder from "@/components/TemplateCreator/DataviewQueryBuilder.vue";
 import { TemplateModule } from "@/types/TemplateModule";
 
 const props = defineProps<{

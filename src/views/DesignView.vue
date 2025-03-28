@@ -12,7 +12,11 @@
     </AppHeader>
     
     <div class="design-content">
-      <DesignSystemDemo />
+      <!-- DesignSystemDemo component was removed -->
+      <div class="placeholder-message">
+        <h2>Design System</h2>
+        <p>The design system demo was removed during reorganization.</p>
+      </div>
     </div>
   </div>
 </template>
@@ -21,7 +25,7 @@
 import { ref, onMounted, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import AppHeader from '@/components/Layout/AppHeader.vue';
-import DesignSystemDemo from '@/components/UI/DesignSystemDemo.vue';
+// Removed import for DesignSystemDemo since it was deleted
 
 const router = useRouter();
 const theme = ref('dark');

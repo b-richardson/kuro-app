@@ -95,14 +95,16 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, onMounted, watch, nextTick } from "vue";
-import { TemplateModule } from "@/types/TemplateModule";
+import { computed, ref, onMounted, watch, nextTick, onUnmounted } from "vue";
+import { ModuleType, TemplateModule, ToastType } from "./moduleTypes";
+import { createToastPlaceholder } from "./moduleUtils";
 import {
   getPluginDisplayName,
   getModuleIcon,
   validatePluginSyntax,
   getPluginIcon,
 } from "@/utils/pluginTemplatesUtils";
+import ToastPlaceholder from "./ToastPlaceholder.vue";
 
 // Define props
 const props = defineProps<{
@@ -132,7 +134,7 @@ const lastActiveElement = ref<HTMLElement | null>(null);
 // Toast feedback state
 const showToast = ref(false);
 const toastMessage = ref("");
-const toastType = ref<"success" | "error" | "info">("info");
+const toastType = ref<ToastType>("info");
 const toastTimeout = ref<ReturnType<typeof setTimeout> | null>(null);
 
 // Focus management
@@ -184,22 +186,24 @@ const setEditing = (editing: boolean) => {
   }
 };
 
-// Toast management
+// Toast management - simplified placeholder implementation
 const displayToast = (
   message: string,
-  type: "success" | "error" | "info" = "info"
+  type: ToastType = "info"
 ) => {
-  // Clear any existing toast timeout
+  // Use the placeholder function to log toast to console
+  createToastPlaceholder(message, type);
+  
+  // For backward compatibility, still update the component state
+  // but this will be removed in the future
   if (toastTimeout.value) {
     clearTimeout(toastTimeout.value);
   }
-
-  // Set toast properties
+  
   toastMessage.value = message;
   toastType.value = type;
   showToast.value = true;
-
-  // Auto-hide the toast after 3 seconds
+  
   toastTimeout.value = setTimeout(() => {
     showToast.value = false;
   }, 3000);

@@ -25,8 +25,8 @@
 
 <script setup lang="ts">
 import { ref } from "vue";
-import BaseModule from "./BaseModule.vue";
-import TemplaterFieldEditor from "../TemplaterFieldEditor.vue";
+import BaseModule from "@/components/TemplateCreator/modules/core/BaseModule.vue";
+import TemplaterFieldEditor from "@/components/TemplateCreator/TemplaterFieldEditor.vue";
 import { TemplateModule } from "@/types/TemplateModule";
 
 const props = defineProps<{

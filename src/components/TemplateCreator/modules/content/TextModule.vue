@@ -28,7 +28,11 @@
           @blur="setEditing(false)"
           placeholder="Enter text..."
           rows="4"
-          :ref="(el) => { if (index === 0 && autoFocus) setInputRef(el); }"
+          :ref="
+            (el) => {
+              if (index === 0 && autoFocus) setInputRef(el);
+            }
+          "
         ></textarea>
         <button
           v-if="module.content.length > 1"
@@ -45,9 +49,13 @@
 
 <script setup lang="ts">
 import { ref } from "vue";
-import BaseModule from "./BaseModule.vue";
-import { TemplateModule } from "@/types/TemplateModule";
-import { addNewContentLine, deleteContentLine, updateContentLine } from "./utils/moduleUtils";
+import BaseModule from "../core/BaseModule.vue";
+import { TemplateModule } from "../core/moduleTypes";
+import {
+  addNewContentLine,
+  deleteContentLine,
+  updateContentLine,
+} from "../core/moduleUtils";
 
 const props = defineProps<{
   module: TemplateModule;
@@ -93,75 +101,27 @@ const updateTextContent = (index: number, text: string) => {
 const addContentLine = () => {
   const newContent = addNewContentLine(props.module.content, "text");
   emit("update:content", newContent);
-  
+
   // Show success toast
   baseModuleRef.value?.displayToast("Paragraph added", "success");
 };
 
 const deleteContentLine = (index: number) => {
   if (props.module.content.length <= 1) {
-    baseModuleRef.value?.displayToast("Cannot delete the last paragraph", "error");
+    baseModuleRef.value?.displayToast(
+      "Cannot delete the last paragraph",
+      "error"
+    );
     return;
   }
-  
+
   const newContent = deleteContentLine(props.module.content, index);
   emit("update:content", newContent);
-  
-  // Show info toast
-  baseModuleRef.value?.displayToast("Paragraph deleted", "info");
 };
 </script>
 
 <style scoped>
-.template-module-editor-line {
-  margin-bottom: var(--spacing-md);
-}
+@import "../core/moduleStyles.css";
 
-.template-module-editor-input-group {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--spacing-sm);
-}
-
-.template-module-editor-textarea {
-  flex: 1;
-  padding: var(--spacing-sm);
-  border: 1px solid var(--color-surface);
-  border-radius: var(--radius-sm);
-  font-size: 0.875rem;
-  min-height: 100px;
-  resize: vertical;
-  width: 100%;
-  background-color: rgba(255, 255, 255, 0.05);
-  color: var(--color-text);
-  transition: all 0.2s;
-  line-height: 1.5;
-}
-
-.template-module-editor-textarea:focus {
-  outline: none;
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 2px rgba(255, 171, 88, 0.2);
-}
-
-.template-module-editor-line-action {
-  background: none;
-  border: none;
-  cursor: pointer;
-  width: 30px;
-  height: 30px;
-  border-radius: var(--radius-sm);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--color-text-muted);
-  transition: all 0.2s;
-  opacity: 0.7;
-}
-
-.template-module-editor-line-action:hover {
-  background-color: rgba(239, 68, 68, 0.1);
-  color: #ef4444;
-  opacity: 1;
-}
+/* Any TextModule specific styles can go here */
 </style>

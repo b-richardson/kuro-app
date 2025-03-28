@@ -20,24 +20,29 @@
       class="template-module-editor-line"
     >
       <div class="template-module-editor-input-group">
-        <div class="template-module-editor-checkbox">
-          <input
-            type="checkbox"
-            :checked="isCheckboxChecked(line)"
-            @change="toggleCheckbox(index)"
-            @focus="setEditing(true)"
-            @blur="setEditing(false)"
-          />
-        </div>
+        <select
+          class="template-module-editor-select"
+          :value="getHeaderLevel(line)"
+          @input="updateHeaderLevel(index, $event.target.value)"
+          @focus="setEditing(true)"
+          @blur="setEditing(false)"
+          :ref="(el) => { if (index === 0 && autoFocus) setInputRef(el); }"
+        >
+          <option value="1">H1</option>
+          <option value="2">H2</option>
+          <option value="3">H3</option>
+          <option value="4">H4</option>
+          <option value="5">H5</option>
+          <option value="6">H6</option>
+        </select>
         <input
           type="text"
           class="template-module-editor-input"
-          :value="getChecklistText(line)"
-          @input="updateChecklistText(index, $event.target.value)"
+          :value="getHeaderText(line)"
+          @input="updateHeaderText(index, $event.target.value)"
           @focus="setEditing(true)"
           @blur="setEditing(false)"
-          placeholder="Checklist item"
-          :ref="(el) => { if (index === 0 && autoFocus) setInputRef(el); }"
+          placeholder="Header text"
         />
         <button
           v-if="module.content.length > 1"
@@ -54,9 +59,9 @@
 
 <script setup lang="ts">
 import { ref } from "vue";
-import BaseModule from "./BaseModule.vue";
+import BaseModule from "@/components/TemplateCreator/modules/core/BaseModule.vue";
 import { TemplateModule } from "@/types/TemplateModule";
-import { addNewContentLine, deleteContentLine, updateContentLine } from "./utils/moduleUtils";
+import { addNewContentLine, deleteContentLine, updateContentLine } from "@/components/TemplateCreator/modules/core/moduleUtils";
 
 const props = defineProps<{
   module: TemplateModule;
@@ -92,43 +97,42 @@ const updateContent = (content: string[]) => {
   emit("update:content", content);
 };
 
-// Checklist-specific methods
-const isCheckboxChecked = (line: string): boolean => {
-  return line.includes("- [x]");
+// Header-specific methods
+const getHeaderLevel = (line: string): string => {
+  const match = line.match(/^(#+)\s/);
+  return match ? match[1].length.toString() : "1";
 };
 
-const getChecklistText = (line: string): string => {
-  return line.replace(/^- \[([ x])\]\s/, "");
+const getHeaderText = (line: string): string => {
+  return line.replace(/^#+\s/, "");
 };
 
-const toggleCheckbox = (index: number) => {
-  const text = getChecklistText(props.module.content[index]);
-  const isChecked = isCheckboxChecked(props.module.content[index]);
-  const newLine = isChecked ? `- [ ] ${text}` : `- [x] ${text}`;
-  const newContent = updateContentLine(props.module.content, index, newLine);
+const updateHeaderLevel = (index: number, level: string) => {
+  const headerText = getHeaderText(props.module.content[index]);
+  const newHeader = "#".repeat(parseInt(level)) + " " + headerText;
+  const newContent = updateContentLine(props.module.content, index, newHeader);
   emit("update:content", newContent);
 };
 
-const updateChecklistText = (index: number, text: string) => {
-  const isChecked = isCheckboxChecked(props.module.content[index]);
-  const prefix = isChecked ? "- [x] " : "- [ ] ";
-  const newLine = prefix + text;
-  const newContent = updateContentLine(props.module.content, index, newLine);
+const updateHeaderText = (index: number, text: string) => {
+  const level = getHeaderLevel(props.module.content[index]);
+  const newHeader = "#".repeat(parseInt(level)) + " " + text;
+  const newContent = updateContentLine(props.module.content, index, newHeader);
   emit("update:content", newContent);
 };
 
 // Content line management
 const addContentLine = () => {
-  const newContent = addNewContentLine(props.module.content, "checklist");
+  const newContent = addNewContentLine(props.module.content, "header");
   emit("update:content", newContent);
   
   // Show success toast
-  baseModuleRef.value?.displayToast("Item added", "success");
+  baseModuleRef.value?.displayToast("Line added", "success");
 };
 
 const deleteContentLine = (index: number) => {
   if (props.module.content.length <= 1) {
-    baseModuleRef.value?.displayToast("Cannot delete the last item", "error");
+    baseModuleRef.value?.displayToast("Cannot delete the last line", "error");
     return;
   }
   
@@ -136,7 +140,7 @@ const deleteContentLine = (index: number) => {
   emit("update:content", newContent);
   
   // Show info toast
-  baseModuleRef.value?.displayToast("Item deleted", "info");
+  baseModuleRef.value?.displayToast("Line deleted", "info");
 };
 </script>
 
@@ -151,17 +155,21 @@ const deleteContentLine = (index: number) => {
   gap: var(--spacing-sm);
 }
 
-.template-module-editor-checkbox {
-  display: flex;
-  align-items: center;
-  justify-content: center;
+.template-module-editor-select {
+  width: 80px;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border: 1px solid var(--color-surface);
+  border-radius: var(--radius-sm);
+  font-size: 0.875rem;
+  background-color: rgba(255, 255, 255, 0.05);
+  color: var(--color-text);
+  transition: all 0.2s;
 }
 
-.template-module-editor-checkbox input[type="checkbox"] {
-  width: 18px;
-  height: 18px;
-  cursor: pointer;
-  accent-color: var(--color-primary);
+.template-module-editor-select:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px rgba(255, 171, 88, 0.2);
 }
 
 .template-module-editor-input {

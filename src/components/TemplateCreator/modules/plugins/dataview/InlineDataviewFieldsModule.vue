@@ -146,7 +146,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, watch } from "vue";
-import BaseModule from "./BaseModule.vue";
+import BaseModule from "@/components/TemplateCreator/modules/core/BaseModule.vue";
 import { TemplateModule } from "@/types/TemplateModule";
 import {
   DataviewField,
