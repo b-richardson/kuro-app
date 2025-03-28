@@ -24,9 +24,14 @@ import HeaderModule from "@/components/TemplateCreator/modules/content/HeaderMod
 import ChecklistModule from "@/components/TemplateCreator/modules/content/ChecklistModule.vue";
 import TableModule from "@/components/TemplateCreator/modules/content/TableModule.vue";
 import TextModule from "@/components/TemplateCreator/modules/content/TextModule.vue";
+import DividerModule from "@/components/TemplateCreator/modules/content/DividerModule.vue";
 import YamlModule from "@/components/TemplateCreator/modules/plugins/yaml/YamlModule.vue";
 import TemplaterModule from "@/components/TemplateCreator/modules/plugins/templater/TemplaterModule.vue";
 import DataviewModule from "@/components/TemplateCreator/modules/plugins/dataview/DataviewModule.vue";
+import DataviewListQueryModule from "@/components/TemplateCreator/modules/plugins/dataview/DataviewListQueryModule.vue";
+import DataviewTableQueryModule from "@/components/TemplateCreator/modules/plugins/dataview/DataviewTableQueryModule.vue";
+import DataviewTaskQueryModule from "@/components/TemplateCreator/modules/plugins/dataview/DataviewTaskQueryModule.vue";
+import DataviewCalendarQueryModule from "@/components/TemplateCreator/modules/plugins/dataview/DataviewCalendarQueryModule.vue";
 import KanbanModule from "@/components/TemplateCreator/modules/plugins/kanban/KanbanModule.vue";
 import InlineDataviewFieldsModule from "@/components/TemplateCreator/modules/plugins/dataview/InlineDataviewFieldsModule.vue";
 
@@ -60,12 +65,22 @@ const moduleComponent = computed(() => {
       return TableModule;
     case "text":
       return TextModule;
+    case "divider":
+      return DividerModule;
     case "yaml":
       return YamlModule;
     case "templaterField":
       return TemplaterModule;
     case "dataviewQuery":
       return DataviewModule;
+    case "dataviewListQuery":
+      return DataviewListQueryModule;
+    case "dataviewTableQuery":
+      return DataviewTableQueryModule;
+    case "dataviewTaskQuery":
+      return DataviewTaskQueryModule;
+    case "dataviewCalendarQuery":
+      return DataviewCalendarQueryModule;
     case "dataviewFields":
       return InlineDataviewFieldsModule;
     case "kanban":

@@ -68,7 +68,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onBeforeUnmount } from "vue";
+import { ref, onMounted } from "vue";
 import ToastNotification from "@/components/UI/ToastNotification.vue";
 import { usePreferencesStore } from "@/stores/preferences";
 

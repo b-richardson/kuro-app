@@ -112,7 +112,11 @@ export function validatePluginSyntax(
       break;
     case "dataview":
       // Different validation for different dataview module types
-      if (moduleType === "dataviewQuery") {
+      if (moduleType === "dataviewQuery" || 
+          moduleType === "dataviewListQuery" ||
+          moduleType === "dataviewTableQuery" ||
+          moduleType === "dataviewTaskQuery" ||
+          moduleType === "dataviewCalendarQuery") {
         // Check for dataview code block
         const hasDataviewCodeBlock = content.some((line) =>
           line.includes("```dataview")
@@ -121,6 +125,35 @@ export function validatePluginSyntax(
           return {
             isValid: false,
             error: "Dataview query must be inside a dataview code block",
+          };
+        }
+        
+        // Check for specific query type based on module type
+        if (moduleType === "dataviewListQuery" && !content.some(line => line.trim() === "LIST")) {
+          return {
+            isValid: false,
+            error: "LIST query type required for List Query module",
+          };
+        }
+        
+        if (moduleType === "dataviewTableQuery" && !content.some(line => line.trim().startsWith("TABLE"))) {
+          return {
+            isValid: false,
+            error: "TABLE query type required for Table Query module",
+          };
+        }
+        
+        if (moduleType === "dataviewTaskQuery" && !content.some(line => line.trim() === "TASK")) {
+          return {
+            isValid: false,
+            error: "TASK query type required for Task Query module",
+          };
+        }
+        
+        if (moduleType === "dataviewCalendarQuery" && !content.some(line => line.trim().startsWith("CALENDAR"))) {
+          return {
+            isValid: false,
+            error: "CALENDAR query type required for Calendar Query module",
           };
         }
       } else if (moduleType === "dataviewFields") {
@@ -226,6 +259,38 @@ export function generateDefaultContent(
 
     case "dataviewQuery":
       return DATAVIEW.QUERIES.RECENT_NOTES.split("\n");
+      
+    case "dataviewListQuery":
+      return ["```dataview", "LIST", "FROM #tag", "```"];
+      
+    case "dataviewTableQuery":
+      return [
+        "```dataview", 
+        "TABLE file.ctime as Created, file.mtime as Modified", 
+        'FROM "folder"', 
+        "SORT file.mtime DESC", 
+        "```"
+      ];
+      
+    case "dataviewTaskQuery":
+      return [
+        "```dataview", 
+        "TASK", 
+        "FROM #project", 
+        "WHERE !completed", 
+        "```"
+      ];
+      
+    case "dataviewCalendarQuery":
+      return [
+        "```dataview", 
+        "CALENDAR file.ctime", 
+        'FROM "Daily Notes"', 
+        "```"
+      ];
+      
+    case "dataviewFields":
+      return ["Due:: 2023-12-31", "Status:: #in-progress", "Priority:: High"];
 
     case "kanban":
       return KANBAN.DEFAULT_BOARD.split("\n");
@@ -247,6 +312,9 @@ export function generateDefaultContent(
 
     case "text":
       return ["Enter your text here..."];
+      
+    case "divider":
+      return ["---"];
 
     default:
       return [""];
@@ -286,12 +354,22 @@ export function getModuleIcon(moduleType: ModuleType): string {
       return "fas fa-table";
     case "text":
       return "fas fa-align-left";
+    case "divider":
+      return "fas fa-minus";
     case "yaml":
       return "fas fa-code";
     case "templaterField":
       return "fas fa-calendar-alt";
     case "dataviewQuery":
       return "fas fa-database";
+    case "dataviewListQuery":
+      return "fas fa-list";
+    case "dataviewTableQuery":
+      return "fas fa-table";
+    case "dataviewTaskQuery":
+      return "fas fa-tasks";
+    case "dataviewCalendarQuery":
+      return "fas fa-calendar";
     case "dataviewFields":
       return "fas fa-list-alt";
     case "kanban":
@@ -335,9 +413,14 @@ export function isValidModuleType(type: any): type is ModuleType {
     "checklist",
     "table",
     "text",
+    "divider",
     "yaml",
     "templaterField",
     "dataviewQuery",
+    "dataviewListQuery",
+    "dataviewTableQuery",
+    "dataviewTaskQuery",
+    "dataviewCalendarQuery",
     "dataviewFields",
     "kanban",
   ].includes(type);

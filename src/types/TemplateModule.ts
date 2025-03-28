@@ -11,11 +11,17 @@ export type ModuleType =
   | "checklist"
   | "table"
   | "text"
+  | "divider"
   // Plugin-specific module types
   | "yaml"
   | "templaterField"
-  | "dataviewQuery"
-  | "dataviewFields"
+  // Dataview plugin modules
+  | "dataviewQuery"      // Generic/legacy dataview query
+  | "dataviewTableQuery" // Table query
+  | "dataviewListQuery"  // List query
+  | "dataviewTaskQuery"  // Task query
+  | "dataviewCalendarQuery" // Calendar query
+  | "dataviewFields"     // Inline dataview fields
   | "kanban";
 
 /**

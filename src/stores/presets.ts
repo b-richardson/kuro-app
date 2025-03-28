@@ -87,12 +87,13 @@ export const usePresetStore = defineStore("presets", () => {
   ]);
 
   const dataviewModules = ref<ModulePreset[]>([
+    // Original modules (keeping for backward compatibility)
     {
       id: "basic-list",
       moduleType: "dataviewQuery",
-      title: "Notes with Tag",
-      description: "List all notes with a specific tag",
-      priority: ModulePriority.HIGH,
+      title: "Generic Query",
+      description: "Create a custom Dataview query",
+      priority: ModulePriority.SECONDARY,
       content: ["```dataview", "LIST", "FROM #tag", "```"],
     },
     {
@@ -108,6 +109,64 @@ export const usePresetStore = defineStore("presets", () => {
         "SORT date DESC",
         "```",
       ],
+    },
+    // New specialized modules
+    {
+      id: "list-query",
+      moduleType: "dataviewListQuery",
+      title: "List Query",
+      description: "Create a list of notes with filtering",
+      priority: ModulePriority.HIGH,
+      content: ["```dataview", "LIST", "FROM #tag", "```"],
+    },
+    {
+      id: "table-query-module",
+      moduleType: "dataviewTableQuery",
+      title: "Table Query",
+      description: "Create a table with custom columns",
+      priority: ModulePriority.HIGH,
+      content: [
+        "```dataview",
+        "TABLE file.ctime as Created, file.mtime as Modified",
+        'FROM "folder"',
+        "SORT file.mtime DESC",
+        "```",
+      ],
+    },
+    {
+      id: "task-query",
+      moduleType: "dataviewTaskQuery",
+      title: "Task Query",
+      description: "Create a list of tasks from your notes",
+      priority: ModulePriority.HIGH,
+      content: [
+        "```dataview",
+        "TASK",
+        "FROM #project",
+        "WHERE !completed",
+        "```",
+      ],
+    },
+    {
+      id: "calendar-query",
+      moduleType: "dataviewCalendarQuery",
+      title: "Calendar View",
+      description: "Display notes on a calendar by date field",
+      priority: ModulePriority.HIGH,
+      content: [
+        "```dataview",
+        "CALENDAR file.ctime",
+        'FROM "Daily Notes"',
+        "```",
+      ],
+    },
+    {
+      id: "dataview-fields",
+      moduleType: "dataviewFields",
+      title: "Inline Fields",
+      description: "Add inline Dataview fields to your note",
+      priority: ModulePriority.HIGH,
+      content: ["Due:: 2023-12-31", "Status:: #in-progress", "Priority:: High"],
     },
   ]);
 

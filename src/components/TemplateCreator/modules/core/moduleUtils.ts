@@ -33,6 +33,11 @@ export function addNewContentLine(
   type: string,
   position: number = content.length
 ): string[] {
+  // Special case for divider - should always remain a single line
+  if (type === "divider") {
+    return content;
+  }
+  
   // Default content based on module type
   let newLine = "";
   
@@ -63,10 +68,16 @@ export function addNewContentLine(
  */
 export function deleteContentLine(
   content: string[],
-  index: number
+  index: number,
+  type?: string
 ): string[] {
   if (index < 0 || index >= content.length) {
     console.error("Invalid content index for deletion:", index);
+    return content;
+  }
+
+  // For divider, always keep at least one line
+  if (type === "divider") {
     return content;
   }
 

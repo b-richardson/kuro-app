@@ -12,134 +12,54 @@
     @select="$emit('select')"
     @duplicate="$emit('duplicate')"
     @module-change="$emit('module-change')"
-    @add-line="addField"
+    @add-line="handleAddField"
     ref="baseModuleRef"
   >
-    <div class="inline-dataview-fields-editor">
-      <!-- Layout controls -->
-      <div class="layout-row">
-        <label class="layout-label">Layout:</label>
-        <div class="button-group">
-          <button
-            class="button-group-item"
-            :class="{ active: layoutType === 'inline' }"
-            @click="changeLayout('inline')"
-            title="Inline layout (fields side by side)"
-          >
-            <i class="fas fa-grip-lines"></i> Inline
-          </button>
-          <button
-            class="button-group-item"
-            :class="{ active: layoutType === 'block' }"
-            @click="changeLayout('block')"
-            title="Block layout (one field per line)"
-          >
-            <i class="fas fa-grip-lines-vertical"></i> Block
-          </button>
+    <div class="inline-dataview-fields-container">
+      <h3 class="module-title">
+        <i class="fas fa-database"></i> Dataview Inline Fields
+      </h3>
+      
+      <!-- Visual Builder Mode -->
+      <div v-if="editorMode === 'visual'" class="visual-builder-mode">
+        <DataviewInlineFieldsBuilder
+          :content="module.content"
+          :layout="layoutType"
+          @update:content="updateFieldsContent"
+          @update:layout="updateLayout"
+        />
+      </div>
+      
+      <!-- Code Editor Mode -->
+      <div v-else class="code-editor-mode">
+        <textarea
+          v-model="rawContent"
+          class="code-textarea"
+          placeholder="Field:: Value"
+          rows="5"
+          @input="updateRawContent"
+          @focus="setEditing(true)"
+          @blur="setEditing(false)"
+          :ref="isSelected && autoFocus ? setInputRef : undefined"
+        ></textarea>
+        
+        <div v-if="validationError" class="validation-error">
+          <i class="fas fa-exclamation-triangle"></i>
+          {{ validationError }}
         </div>
       </div>
-
-      <!-- Field collection -->
-      <div
-        class="dataview-fields-collection"
-        :class="{
-          'inline-layout': layoutType === 'inline',
-          'block-layout': layoutType === 'block',
-        }"
-      >
-        <div v-if="fields.length === 0" class="empty-fields-message">
-          <i class="fas fa-info-circle"></i>
-          Add your first Dataview field using the + button
-        </div>
-
-        <div
-          v-for="(field, fieldIndex) in fields"
-          :key="field.id"
-          class="dataview-field-item"
+      
+      <!-- Bottom controls -->
+      <div class="module-controls">
+        <button 
+          class="toggle-mode-btn"
+          @click="toggleEditorMode"
+          title="Toggle between visual builder and code editor"
         >
-          <!-- Field controls -->
-          <div class="field-controls">
-            <button
-              class="field-move-button"
-              @click.stop="moveField(fieldIndex, 'up')"
-              :disabled="fieldIndex === 0"
-              title="Move field up"
-            >
-              <i class="fas fa-arrow-up"></i>
-            </button>
-            <button
-              class="field-move-button"
-              @click.stop="moveField(fieldIndex, 'down')"
-              :disabled="fieldIndex === fields.length - 1"
-              title="Move field down"
-            >
-              <i class="fas fa-arrow-down"></i>
-            </button>
-          </div>
-
-          <!-- Field name input -->
-          <div class="field-name-container">
-            <input
-              type="text"
-              class="field-name-input"
-              v-model="field.name"
-              placeholder="Field name"
-              @input="updateModuleContent"
-              @focus="setEditing(true)"
-              @blur="setEditing(false)"
-              :ref="
-                fieldIndex === 0 && isSelected ? setFirstInputRef : undefined
-              "
-              list="field-name-suggestions"
-            />
-            <span class="field-separator">::</span>
-          </div>
-
-          <!-- Field value input -->
-          <div class="field-value-container">
-            <input
-              type="text"
-              class="field-value-input"
-              v-model="field.value"
-              placeholder="Value"
-              @input="updateModuleContent"
-              @focus="setEditing(true)"
-              @blur="setEditing(false)"
-            />
-
-            <!-- Field type indicator -->
-            <div
-              class="field-type-indicator"
-              :class="getFieldTypeClass(field.value)"
-            >
-              <i :class="getFieldTypeIcon(field.value)"></i>
-            </div>
-          </div>
-
-          <!-- Delete button -->
-          <button
-            class="field-delete-button"
-            @click.stop="deleteField(fieldIndex)"
-            title="Delete field"
-          >
-            <i class="fas fa-times"></i>
-          </button>
-        </div>
+          <i :class="editorMode === 'visual' ? 'fas fa-code' : 'fas fa-sliders-h'"></i>
+          {{ editorMode === 'visual' ? 'Code Editor' : 'Visual Builder' }}
+        </button>
       </div>
-
-      <!-- Add field button -->
-      <button class="add-field-button" @click="addField">
-        <i class="fas fa-plus"></i> Add Field
-      </button>
-
-      <!-- Field name suggestions datalist -->
-      <datalist id="field-name-suggestions">
-        <option
-          v-for="suggestion in fieldNameSuggestions"
-          :key="suggestion"
-          :value="suggestion"
-        ></option>
-      </datalist>
     </div>
   </BaseModule>
 </template>
@@ -147,15 +67,12 @@
 <script setup lang="ts">
 import { ref, onMounted, watch } from "vue";
 import BaseModule from "@/components/TemplateCreator/modules/core/BaseModule.vue";
+import DataviewInlineFieldsBuilder from "./components/DataviewInlineFieldsBuilder.vue";
 import { TemplateModule } from "@/types/TemplateModule";
 import {
-  DataviewField,
   DataviewFieldLayout,
   parseFieldsFromContent,
   generateContentFromFields,
-  getFieldTypeIcon,
-  getFieldTypeClass,
-  getDefaultFieldSuggestions,
   createEmptyField,
 } from "@/utils/dataviewFieldsUtils";
 
@@ -180,14 +97,25 @@ const emit = defineEmits<{
 
 // Reference to the base module component
 const baseModuleRef = ref<InstanceType<typeof BaseModule> | null>(null);
+const inputRef = ref<HTMLTextAreaElement | null>(null);
 
-// Reference to the first input field for autofocus
-const firstInputRef = ref<HTMLInputElement | null>(null);
+// State
+const editorMode = ref<'visual' | 'code'>('visual');
+const rawContent = ref('');
+const validationError = ref('');
+
+// Get layout type from metadata or detect from content
+const layoutType = ref<DataviewFieldLayout>(
+  props.module.metadata?.layout ||
+    (props.module.content && props.module.content.length > 1
+      ? "block"
+      : "inline")
+);
 
 // Ensure the module has the correct type
 onMounted(() => {
   // Ensure module has correct type and plugin type
-  if (props.module.type !== "dataviewFields") {
+  if (props.module.type !== "dataviewFields" || props.module.pluginType !== "dataview") {
     const updatedModule = {
       ...props.module,
       type: "dataviewFields",
@@ -213,11 +141,16 @@ onMounted(() => {
     updatedModules[props.index] = updatedModule;
     emit("update", updatedModules);
   }
+  
+  // Initialize raw content
+  rawContent.value = props.module.content?.join('\n') || '';
+  
+  console.log('Inline Dataview Fields Module initialized', props.module.type);
 });
 
-// Set first input reference for autofocus
-const setFirstInputRef = (el: HTMLInputElement) => {
-  firstInputRef.value = el;
+// Set input reference for autofocus
+const setInputRef = (el: HTMLTextAreaElement) => {
+  inputRef.value = el;
   baseModuleRef.value?.setInputRef(el);
 };
 
@@ -226,73 +159,56 @@ const setEditing = (editing: boolean) => {
   baseModuleRef.value?.setEditing(editing);
 };
 
-// Get layout type from metadata or detect from content
-const layoutType = ref<DataviewFieldLayout>(
-  props.module.metadata?.layout ||
-    (props.module.content && props.module.content.length > 1
-      ? "block"
-      : "inline")
-);
-
-// Fields collection
-const fields = ref<DataviewField[]>(
-  parseFieldsFromContent(props.module.content || [""])
-);
-
-// Field name suggestions from local storage
-const fieldNameSuggestions = ref<string[]>([]);
-
-// Load field name suggestions from local storage
-onMounted(() => {
-  try {
-    const storedSuggestions = localStorage.getItem("dataview-field-names");
-    if (storedSuggestions) {
-      fieldNameSuggestions.value = JSON.parse(storedSuggestions);
-    }
-
-    // Add common Dataview field names if none exist
-    if (fieldNameSuggestions.value.length === 0) {
-      fieldNameSuggestions.value = getDefaultFieldSuggestions();
-    }
-
-    // Initialize with a default empty field if none exist
-    if (fields.value.length === 0) {
-      fields.value = [createEmptyField()];
-      updateModuleContent();
-    }
-  } catch (e) {
-    console.error("Error loading field name suggestions:", e);
-  }
-});
-
-// Update module content based on fields
-const updateModuleContent = () => {
-  // Add field name to suggestions if it doesn't exist
-  fields.value.forEach((field) => {
-    if (field.name && !fieldNameSuggestions.value.includes(field.name)) {
-      fieldNameSuggestions.value.push(field.name);
-      // Store suggestions in local storage
-      try {
-        localStorage.setItem(
-          "dataview-field-names",
-          JSON.stringify(fieldNameSuggestions.value)
-        );
-      } catch (e) {
-        console.error("Error saving field name suggestions:", e);
+// Toggle between visual and code editor modes
+function toggleEditorMode() {
+  if (editorMode.value === 'visual') {
+    // Switching to code mode
+    rawContent.value = props.module.content?.join('\n') || '';
+    editorMode.value = 'code';
+  } else {
+    // Switching to visual mode
+    try {
+      // Validate the raw content by attempting to parse it
+      const fields = parseFieldsFromContent(rawContent.value.split('\n'));
+      if (fields.length === 0) {
+        // If parsing fails, add an empty field
+        const emptyField = createEmptyField();
+        const content = generateContentFromFields([emptyField], layoutType.value);
+        emit("update:content", content);
       }
+      validationError.value = '';
+      editorMode.value = 'visual';
+    } catch (error) {
+      validationError.value = 'Could not parse fields. Please check your syntax.';
+      return;
     }
-  });
+  }
+}
 
-  // Generate content using the utility function
-  const content = generateContentFromFields(fields.value, layoutType.value);
+// Update content when props change
+const updateContent = (content: string[]) => {
+  if (editorMode.value === 'code') {
+    rawContent.value = content.join('\n');
+  }
+  emit("update:content", content);
+};
 
-  // Update metadata with layout type
-  if (props.module.metadata?.layout !== layoutType.value) {
+// Update content from visual builder
+const updateFieldsContent = (content: string[]) => {
+  emit("update:content", content);
+};
+
+// Update layout type
+const updateLayout = (layout: DataviewFieldLayout) => {
+  layoutType.value = layout;
+  
+  // Update module metadata
+  if (props.module.metadata?.layout !== layout) {
     const updatedModule = {
       ...props.module,
       metadata: {
         ...props.module.metadata,
-        layout: layoutType.value,
+        layout: layout,
       },
     };
 
@@ -300,80 +216,39 @@ const updateModuleContent = () => {
     updatedModules[props.index] = updatedModule;
     emit("update", updatedModules);
   }
+};
 
+// Update raw content from textarea
+const updateRawContent = () => {
+  validationError.value = '';
+  
+  // Split by newlines for content array
+  const content = rawContent.value.split('\n');
   emit("update:content", content);
 };
 
-// Update content when props change
-const updateContent = (content: string[]) => {
-  fields.value = parseFieldsFromContent(content || [""]);
-  if (fields.value.length === 0) {
-    fields.value = [createEmptyField()];
+// Handle add field from BaseModule
+const handleAddField = () => {
+  if (editorMode.value === 'visual') {
+    // Let the builder handle it
+    return;
+  } else {
+    // Add a new empty field line to the raw content
+    rawContent.value += '\nNewField:: ';
+    const content = rawContent.value.split('\n');
+    emit("update:content", content);
+    
+    // Show toast for user feedback
+    baseModuleRef.value?.displayToast("New field added", "success");
   }
-  emit("update:content", content);
-};
-
-// Add a new field
-const addField = () => {
-  fields.value.push(createEmptyField());
-  updateModuleContent();
-
-  // Show toast for user feedback
-  baseModuleRef.value?.displayToast("New field added", "success");
-
-  // Focus the new field after it's added
-  setTimeout(() => {
-    const inputs = document.querySelectorAll(".field-name-input");
-    if (inputs.length > 0) {
-      (inputs[inputs.length - 1] as HTMLInputElement).focus();
-    }
-  }, 10);
-};
-
-// Delete a field
-const deleteField = (index: number) => {
-  fields.value.splice(index, 1);
-
-  // Always keep at least one field
-  if (fields.value.length === 0) {
-    fields.value = [createEmptyField()];
-  }
-
-  updateModuleContent();
-
-  // Show toast for user feedback
-  baseModuleRef.value?.displayToast("Field deleted", "info");
-};
-
-// Move a field up or down
-const moveField = (index: number, direction: "up" | "down") => {
-  if (direction === "up" && index > 0) {
-    const temp = fields.value[index];
-    fields.value[index] = fields.value[index - 1];
-    fields.value[index - 1] = temp;
-  } else if (direction === "down" && index < fields.value.length - 1) {
-    const temp = fields.value[index];
-    fields.value[index] = fields.value[index + 1];
-    fields.value[index + 1] = temp;
-  }
-  updateModuleContent();
-};
-
-// Change layout type
-const changeLayout = (type: DataviewFieldLayout) => {
-  layoutType.value = type;
-  updateModuleContent();
 };
 
 // Watch for content changes from parent
 watch(
   () => props.module.content,
   (newContent) => {
-    if (newContent) {
-      fields.value = parseFieldsFromContent(newContent);
-      if (fields.value.length === 0) {
-        fields.value = [createEmptyField()];
-      }
+    if (editorMode.value === 'code' && newContent) {
+      rawContent.value = newContent.join('\n');
     }
   },
   { deep: true }
@@ -392,68 +267,83 @@ watch(
 </script>
 
 <style scoped>
-.inline-dataview-fields-editor {
+.inline-dataview-fields-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  width: 100%;
+  height: 100%;
+}
+
+.module-title {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin: 0 0 1rem 0;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--background-modifier-border);
+  color: var(--text-normal);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.module-title i {
+  color: var(--interactive-accent);
+}
+
+.visual-builder-mode,
+.code-editor-mode {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
-  padding: 0.5rem;
   width: 100%;
 }
 
-.layout-row {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  margin-bottom: 0.25rem;
-}
-
-.layout-label {
-  font-size: 0.9rem;
-  color: var(--text-normal);
-  margin-right: 0.5rem;
-}
-
-.button-group {
-  display: flex;
+.code-textarea {
+  width: 100%;
+  min-height: 150px;
+  padding: 0.75rem;
   border: 1px solid var(--background-modifier-border);
   border-radius: 4px;
-  overflow: hidden;
+  background: var(--background-primary);
+  color: var(--text-normal);
+  font-family: var(--font-monospace);
+  font-size: 0.9em;
+  resize: vertical;
 }
 
-.button-group-item {
-  padding: 0.3rem 0.7rem;
-  background: var(--background-secondary);
-  border: none;
-  cursor: pointer;
+.validation-error {
+  padding: 0.5rem;
+  border-radius: 4px;
+  background-color: rgba(255, 0, 0, 0.1);
+  color: #d32f2f;
+  font-size: 0.85rem;
   display: flex;
   align-items: center;
-  gap: 0.25rem;
-  font-size: 0.85rem;
-  color: var(--text-normal);
-}
-
-.button-group-item:hover {
-  background: var(--background-modifier-hover);
-}
-
-.button-group-item.active {
-  background: var(--interactive-accent);
-  color: var(--text-on-accent);
-}
-
-.dataview-fields-collection {
-  display: flex;
-  flex-direction: column;
   gap: 0.5rem;
-  margin-bottom: 0.5rem;
-  width: 100%;
 }
 
-.empty-fields-message {
-  padding: 1rem;
-  text-align: center;
-  color: var(--text-muted);
-  background: var(--background-secondary);
+.module-controls {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 0.5rem;
+}
+
+.toggle-mode-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.8rem;
   border-radius: 4px;
+  background: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border);
+  color: var(--text-normal);
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.toggle-mode-btn:hover {
+  background: var(--background-modifier-hover);
 }
 </style>

@@ -234,6 +234,7 @@ const moduleTypeLabel = computed(() => {
     checklist: "Checklist",
     table: "Table",
     text: "Text",
+    divider: "Divider",
     yaml: "YAML Frontmatter",
     templaterField: "Templater Field",
     dataviewQuery: "Dataview Query",
@@ -582,6 +583,15 @@ button[title]:hover::after {
 
 .template-module-editor--text {
   border-top: 3px solid var(--color-primary-light);
+}
+
+.template-module-editor--divider {
+  border-top: 3px solid #64748b;
+}
+
+/* Hide the add-line button for divider modules */
+.template-module-editor--divider .template-module-editor-action[title="Add line"] {
+  display: none;
 }
 
 .template-module-editor--yaml {

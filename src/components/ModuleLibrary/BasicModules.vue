@@ -61,6 +61,12 @@ const basicModules = [
     description: "Organize information in rows and columns",
     priority: "high",
   },
+  {
+    type: "divider",
+    title: "Divider",
+    description: "Add a horizontal line to separate content",
+    priority: "high",
+  },
 ];
 
 // Define emits

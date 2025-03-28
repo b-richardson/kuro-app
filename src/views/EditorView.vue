@@ -62,7 +62,7 @@
 
         <!-- Module Canvas Component -->
         <ModuleCanvas
-          :modules="templateStore.currentSections"
+          :modules="templateStore.currentModules"
           @update="updateSections"
           @delete="deleteModule"
           @module-change="markAsModified"
@@ -141,7 +141,7 @@
 
         <!-- Markdown Preview Component -->
         <MarkdownPreview
-          :sections="templateStore.currentSections"
+          :sections="templateStore.currentModules"
           :view-mode="currentViewMode"
           @update:view-mode="setViewMode"
           @generation-start="previewGenerating = true"
@@ -325,7 +325,7 @@ const togglePreviewFocus = () => {
 const addModuleToCanvas = (module: TemplateModule) => {
   console.log("Adding module to canvas:", module);
   templateStore.addSection(module);
-  console.log("Current modules after add:", templateStore.currentSections);
+  console.log("Current modules after add:", templateStore.currentModules);
   markAsModified();
 
   // Scroll to the new module after it's added
@@ -415,7 +415,7 @@ const duplicateModule = (moduleId: string) => {
   }
 
   try {
-    const moduleToDuplicate = templateStore.currentSections.find(
+    const moduleToDuplicate = templateStore.currentModules.find(
       (s) => s.id === moduleId
     );
     if (!moduleToDuplicate) {
@@ -505,7 +505,7 @@ const pushToVault = async () => {
     isLoading.value = true;
 
     // Generate markdown content - no export profile needed with ObsidianEditor
-    const markdown = generateMarkdown(templateStore.currentSections);
+    const markdown = generateMarkdown(templateStore.currentModules);
 
     // Create a safe filename from the template title
     const templateTitle =
@@ -825,6 +825,7 @@ onUnmounted(() => {
   transform: translateX(-20px);
   overflow: hidden;
   pointer-events: none;
+  transition: opacity 0.2s ease, transform 0.2s ease;
 }
 
 /* Expanded preview in focus mode */

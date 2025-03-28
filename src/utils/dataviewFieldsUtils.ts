@@ -1,9 +1,10 @@
-// src/utils/DataviewFieldsUtils.ts
-
-import { v4 as uuidv4 } from "uuid";
+/**
+ * Utility functions for working with Dataview fields in Obsidian templates
+ */
+import { v4 as uuidv4 } from 'uuid';
 
 /**
- * Interface for a Dataview field
+ * Represents a Dataview field with name and value
  */
 export interface DataviewField {
   id: string;
@@ -12,205 +13,207 @@ export interface DataviewField {
 }
 
 /**
- * Layout types for Dataview fields
+ * Represents the layout type for Dataview fields
  */
-export type DataviewFieldLayout = "inline" | "block";
+export type DataviewFieldLayout = 'inline' | 'block';
 
 /**
- * Parse Dataview fields from content array
- * @param content Array of content strings
- * @returns Array of DataviewField objects
+ * Represents the data type for Dataview field values
+ */
+export type DataviewFieldValueType = 'text' | 'number' | 'boolean' | 'date' | 'link' | 'list';
+
+/**
+ * Creates a new empty Dataview field with a unique ID
+ * @returns A new empty DataviewField object
+ */
+export function createEmptyField(): DataviewField {
+  return {
+    id: uuidv4(),
+    name: '',
+    value: ''
+  };
+}
+
+/**
+ * Parses Dataview fields from content string array
+ * @param content Array of strings containing field syntax
+ * @returns Array of parsed DataviewField objects
  */
 export function parseFieldsFromContent(content: string[]): DataviewField[] {
-  if (!content || content.length === 0 || content[0] === "") {
-    return [];
-  }
-
   const fields: DataviewField[] = [];
 
-  // Detect if we're using block format (each field on a new line)
-  const isBlockFormat =
-    content.length > 1 || (content.length === 1 && !content[0].includes("  "));
+  // Process each line to extract fields
+  content.forEach(line => {
+    if (!line.trim()) return;
 
-  if (isBlockFormat) {
-    // Process each line as a separate field
-    content.forEach((line) => {
-      const match = line.match(/^(.*?)::\s*(.*)$/);
-      if (match) {
-        fields.push({
-          id: uuidv4(),
-          name: match[1].trim(),
-          value: match[2].trim(),
-        });
-      }
-    });
-  } else {
-    // Process inline format (fields separated by double spaces)
-    const inlineFields = content[0].split(/\s{2,}/);
-    inlineFields.forEach((field) => {
-      const match = field.match(/^(.*?)::\s*(.*)$/);
-      if (match) {
-        fields.push({
-          id: uuidv4(),
-          name: match[1].trim(),
-          value: match[2].trim(),
-        });
-      }
-    });
-  }
+    // Look for key:: value pattern
+    const match = line.match(/^([^:]+)::(.*)$/);
+    if (match) {
+      fields.push({
+        id: uuidv4(),
+        name: match[1].trim(),
+        value: match[2].trim()
+      });
+    }
+  });
 
   return fields;
 }
 
 /**
- * Generate content array from Dataview fields
+ * Generates content string array from Dataview fields
  * @param fields Array of DataviewField objects
- * @param layout Layout format (inline or block)
- * @returns Array of content strings
+ * @param layout Layout type ('inline' or 'block')
+ * @returns Array of strings with field syntax
  */
-export function generateContentFromFields(
-  fields: DataviewField[],
-  layout: DataviewFieldLayout
-): string[] {
-  // Filter out completely empty fields
-  const nonEmptyFields = fields.filter((field) => field.name || field.value);
-
-  if (nonEmptyFields.length === 0) {
-    return [""];
+export function generateContentFromFields(fields: DataviewField[], layout: DataviewFieldLayout): string[] {
+  if (fields.length === 0) {
+    return [''];
   }
 
-  if (layout === "inline") {
-    // Inline format: Field1:: Value1  Field2:: Value2
-    const inlineContent = nonEmptyFields
-      .map((field) => `${field.name}:: ${field.value}`)
-      .join("  ");
-    return inlineContent ? [inlineContent] : [""];
+  if (layout === 'inline') {
+    // Create single line with fields separated by spaces
+    const fieldStrings = fields.map(field => `${field.name}:: ${field.value}`);
+    return [fieldStrings.join(' ')];
   } else {
-    // Block format: one field per line
-    return nonEmptyFields.map((field) => `${field.name}:: ${field.value}`);
+    // Create one line per field
+    return fields.map(field => `${field.name}:: ${field.value}`);
   }
 }
 
 /**
- * Determine field type based on value content
- * @param value Field value
- * @returns Field type as string
- */
-export function getFieldType(value: string): string {
-  if (!value) return "empty";
-
-  if (/^-?\d+(\.\d+)?$/.test(value)) return "number";
-  if (/^\d{4}-\d{2}-\d{2}/.test(value)) return "date";
-  if (/^[\p{Emoji}]/u.test(value)) return "emoji";
-  if (/^#\w+/.test(value)) return "tag";
-  if (/\[\[.*\]\]/.test(value)) return "link";
-
-  return "text";
-}
-
-/**
- * Get an icon class for a field type
- * @param value Field value
- * @returns FontAwesome icon class
+ * Get the appropriate icon for a field value type
+ * @param value The field value
+ * @returns CSS class string for the icon
  */
 export function getFieldTypeIcon(value: string): string {
-  const type = getFieldType(value);
-
+  const type = detectFieldValueType(value);
+  
   switch (type) {
-    case "number":
-      return "fas fa-hashtag";
-    case "date":
-      return "fas fa-calendar-alt";
-    case "emoji":
-      return "far fa-smile";
-    case "tag":
-      return "fas fa-tag";
-    case "link":
-      return "fas fa-link";
-    case "text":
-      return "fas fa-font";
-    case "empty":
-      return "fas fa-question";
+    case 'number':
+      return 'fas fa-hashtag';
+    case 'boolean':
+      return 'fas fa-toggle-on';
+    case 'date':
+      return 'fas fa-calendar-alt';
+    case 'link':
+      return 'fas fa-link';
+    case 'list':
+      return 'fas fa-list';
     default:
-      return "fas fa-question";
+      return 'fas fa-font';
   }
 }
 
 /**
- * Get a CSS class for styling based on field type
- * @param value Field value
- * @returns CSS class name
+ * Get the CSS class for a field value type
+ * @param value The field value
+ * @returns CSS class string
  */
 export function getFieldTypeClass(value: string): string {
-  const type = getFieldType(value);
+  const type = detectFieldValueType(value);
   return `type-${type}`;
 }
 
 /**
- * Validate Dataview field syntax
- * @param content Array of content strings
- * @returns Validation result
+ * Detects the type of a field value
+ * @param value The field value
+ * @returns The detected type
  */
-export function validateDataviewFields(content: string[]): {
-  isValid: boolean;
-  error?: string;
-} {
-  if (!content || content.length === 0) {
-    return { isValid: false, error: "Content cannot be empty" };
+function detectFieldValueType(value: string): DataviewFieldValueType {
+  // Empty field is considered text
+  if (!value.trim()) return 'text';
+
+  // Check for number
+  if (/^-?\d+(\.\d+)?$/.test(value.trim())) {
+    return 'number';
   }
 
-  // If content is just an empty string, it's technically valid (new field)
-  if (content.length === 1 && content[0] === "") {
-    return { isValid: true };
+  // Check for boolean
+  const lowerValue = value.trim().toLowerCase();
+  if (lowerValue === 'true' || lowerValue === 'false') {
+    return 'boolean';
   }
 
-  // Check that each non-empty line has proper field syntax
-  const invalidLines = content.filter((line) => {
-    return line.trim() !== "" && !line.includes("::");
-  });
-
-  if (invalidLines.length > 0) {
-    return {
-      isValid: false,
-      error: "Each dataview field must use Field:: Value syntax",
-    };
+  // Check for date (simple check)
+  if (/^\d{4}-\d{2}-\d{2}/.test(value.trim())) {
+    return 'date';
   }
 
-  return { isValid: true };
+  // Check for Obsidian link
+  if (value.includes('[[') && value.includes(']]')) {
+    return 'link';
+  }
+
+  // Check for list (comma separated values)
+  if (value.includes(',')) {
+    return 'list';
+  }
+
+  // Default to text
+  return 'text';
 }
 
 /**
- * Get default field suggestions
+ * Get default field name suggestions
  * @returns Array of common field names
  */
 export function getDefaultFieldSuggestions(): string[] {
   return [
-    "Mood",
-    "Energy",
-    "Sleep",
-    "Productivity",
-    "Exercise",
-    "Water",
-    "Meals",
-    "Notes",
-    "Weather",
-    "Location",
-    "Tags",
-    "Priority",
-    "Status",
-    "Due",
-    "Completed",
+    'type',
+    'status',
+    'date',
+    'due',
+    'priority',
+    'tags',
+    'category',
+    'author',
+    'project',
+    'created',
+    'updated',
+    'completed',
+    'assignee',
+    'duration',
+    'effort',
+    'rating',
+    'topic',
+    'source',
+    'link',
+    'area',
+    'mood'
   ];
 }
 
 /**
- * Create a new empty Dataview field
- * @returns DataviewField object
+ * Validates Dataview field syntax in content
+ * @param content Array of strings containing field syntax
+ * @returns An object with isValid flag and potential error message
  */
-export function createEmptyField(): DataviewField {
-  return {
-    id: uuidv4(),
-    name: "",
-    value: "",
-  };
+export function validateDataviewFields(content: string[]): { isValid: boolean; error?: string } {
+  if (!content || content.length === 0 || (content.length === 1 && content[0] === '')) {
+    return { isValid: false, error: 'Content cannot be empty' };
+  }
+
+  // Check if all non-empty lines follow the field syntax: key:: value
+  for (const line of content) {
+    if (line.trim() === '') continue; // Skip empty lines
+    
+    if (!line.includes('::')) {
+      return { 
+        isValid: false, 
+        error: `Invalid field format: "${line}". Fields should use the format "key:: value"` 
+      };
+    }
+    
+    // Check if the field name is present
+    const parts = line.split('::');
+    if (!parts[0].trim()) {
+      return { 
+        isValid: false, 
+        error: 'Field names cannot be empty' 
+      };
+    }
+  }
+
+  return { isValid: true };
 }

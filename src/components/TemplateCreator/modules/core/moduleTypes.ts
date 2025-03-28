@@ -7,9 +7,15 @@ export type ModuleType =
   | 'header' 
   | 'checklist' 
   | 'table' 
+  | 'divider'
   | 'yaml' 
   | 'templaterField' 
   | 'dataviewQuery'
+  | 'dataviewListQuery'
+  | 'dataviewTableQuery'
+  | 'dataviewTaskQuery'
+  | 'dataviewCalendarQuery'
+  | 'dataviewFields'
   | 'kanban';
 
 export type PluginType = 

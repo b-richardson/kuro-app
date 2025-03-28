@@ -91,6 +91,11 @@ function processSection(
   if (["header", "checklist", "table", "text"].includes(section.type)) {
     return section.content.join(section.type === "text" ? "\n\n" : "\n");
   }
+  
+  // Handle divider sections - should output "---"
+  if (section.type === "divider") {
+    return "---";
+  }
 
   // Special handling for YAML to ensure it has proper --- delimiters
   if (section.type === "yaml") {

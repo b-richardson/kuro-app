@@ -67,7 +67,7 @@ export const useTemplateStore = defineStore("template", () => {
   });
 
   // Computed property for current sections
-  const currentSections = computed((): TemplateModule[] => {
+  const currentModules = computed((): TemplateModule[] => {
     return currentTemplate.value?.sections || [];
   });
 
@@ -105,13 +105,22 @@ export const useTemplateStore = defineStore("template", () => {
    */
   const isValidModuleType = (type: any): type is ModuleType => {
     const validTypes: ModuleType[] = [
+      // Basic module types
       "header",
       "checklist",
       "table",
       "text",
+      "divider",
+      // Plugin-specific module types
       "yaml",
       "templaterField",
-      "dataviewQuery",
+      // Dataview plugin modules
+      "dataviewQuery",      // Generic/legacy dataview query
+      "dataviewTableQuery", // Table query
+      "dataviewListQuery",  // List query
+      "dataviewTaskQuery",  // Task query
+      "dataviewCalendarQuery", // Calendar query
+      "dataviewFields",     // Inline dataview fields
       "kanban",
     ];
     return validTypes.includes(type as ModuleType);
@@ -570,7 +579,7 @@ export const useTemplateStore = defineStore("template", () => {
     try {
       if (!currentTemplate.value) {
         // No template loaded, create a new one if there are sections
-        if (currentSections.value.length > 0) {
+        if (currentModules.value.length > 0) {
           const id = createTemplate();
           return id;
         }
@@ -605,7 +614,7 @@ export const useTemplateStore = defineStore("template", () => {
 
     // Getters
     templateById,
-    currentSections,
+    currentModules,
 
     // Actions
     loadTemplates,
