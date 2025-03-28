@@ -135,110 +135,14 @@
               </div>
             </div>
 
-            <!-- Export Profile Dropdown -->
-            <div class="dropdown">
-              <button
-                class="dropdown-trigger glass-button"
-                @click.stop="toggleProfileMenu"
-                title="Change export profile"
-              >
-                <i class="fas fa-puzzle-piece"></i>
-                <span>Plugins: </span>
-                <span
-                  class="profile-badge"
-                  :class="`profile-${getCurrentProfileId()}`"
-                >
-                  {{ getExportProfileName(getCurrentProfileId()) }}
-                </span>
-                <i class="fas fa-chevron-down"></i>
-              </button>
-              <div class="dropdown-menu" v-if="showProfileMenu">
-                <div
-                  v-for="profile in EXPORT_PROFILES"
-                  :key="profile.id"
-                  class="dropdown-item"
-                  :class="{ active: getCurrentProfileId() === profile.id }"
-                  @click="setExportProfile(profile.id)"
-                >
-                  <i :class="profile.icon"></i>
-                  {{ profile.name }}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div class="preview-controls-group">
-            <!-- Plugin Syntax Dropdown -->
-            <div class="dropdown">
-              <button
-                class="dropdown-trigger glass-button"
-                @click.stop="togglePluginMenu"
-                title="Toggle plugin syntax"
-              >
-                <i class="fas fa-sliders-h"></i>
-                <span>Plugin Options</span>
-                <i class="fas fa-chevron-down"></i>
-              </button>
-              <div class="dropdown-menu" v-if="showPluginMenu">
-                <div
-                  class="dropdown-item"
-                  :class="{ active: showTemplaterSyntax }"
-                  @click="toggleTemplaterSyntax"
-                >
-                  <i class="fas fa-bolt"></i>
-                  <span>Templater Syntax</span>
-                  <span class="toggle-indicator">{{
-                    showTemplaterSyntax ? "On" : "Off"
-                  }}</span>
-                </div>
-                <div
-                  class="dropdown-item"
-                  :class="{ active: showDataviewSyntax }"
-                  @click="toggleDataviewSyntax"
-                >
-                  <i class="fas fa-database"></i>
-                  <span>Dataview Syntax</span>
-                  <span class="toggle-indicator">{{
-                    showDataviewSyntax ? "On" : "Off"
-                  }}</span>
-                </div>
-                <div
-                  class="dropdown-item"
-                  :class="{ active: showKanbanSyntax }"
-                  @click="toggleKanbanSyntax"
-                >
-                  <i class="fas fa-columns"></i>
-                  <span>Kanban Syntax</span>
-                  <span class="toggle-indicator">{{
-                    showKanbanSyntax ? "On" : "Off"
-                  }}</span>
-                </div>
-              </div>
-            </div>
-
-            <!-- Export Button -->
-            <button
-              class="preview-action-button export-button"
-              @click="exportTemplate"
-              title="Export with current profile"
-            >
-              <i class="fas fa-file-export"></i>
-              <span class="export-profile-indicator">{{
-                getExportProfileShortName(getCurrentProfileId())
-              }}</span>
-            </button>
+            <!-- No export profile dropdown needed with the ObsidianEditor -->
           </div>
         </div>
 
         <!-- Markdown Preview Component -->
         <MarkdownPreview
           :sections="templateStore.currentSections"
-          :export-profile="getCurrentProfileId()"
           :view-mode="currentViewMode"
-          :templater-syntax="showTemplaterSyntax"
-          :dataview-syntax="showDataviewSyntax"
-          :kanban-syntax="showKanbanSyntax"
-          @update:export-profile="setExportProfile"
           @update:view-mode="setViewMode"
           @generation-start="previewGenerating = true"
           @generation-complete="previewGenerating = false"
@@ -324,12 +228,7 @@ import { useObsidianStore } from "@/stores/obsidian";
 import debounce from "lodash-es/debounce";
 import { v4 as uuidv4 } from "uuid";
 import { TemplateModule } from "@/types/TemplateModule";
-import {
-  ViewMode,
-  ExportProfile,
-  EXPORT_PROFILES,
-  getExportProfileName,
-} from "@/types/Editor";
+import { ViewMode } from "@/types/Editor";
 import { generateMarkdown } from "@/utils/markdownUtils";
 
 // Import components
@@ -357,17 +256,13 @@ const autoSaving = ref(false);
 const previewGenerating = ref(false);
 const mobileView = ref("editor"); // 'editor' or 'preview' for mobile view
 const showViewModeMenu = ref(false);
-const showProfileMenu = ref(false);
-const showPluginMenu = ref(false);
+// Plugin options are now handled by the ObsidianEditor component
 const currentViewMode = ref<ViewMode>("Rendered");
 const isPreviewFocused = ref(false);
 const isLoading = ref(false); // General loading state for operations
 const moduleCanvasRef = ref<InstanceType<typeof ModuleCanvas> | null>(null);
 
-// Plugin syntax toggle options
-const showTemplaterSyntax = ref(false);
-const showDataviewSyntax = ref(false);
-const showKanbanSyntax = ref(false);
+// Plugin syntax is now natively handled by ObsidianEditor
 
 // Theme
 const isDarkTheme = inject("theme", ref(true));
@@ -393,21 +288,7 @@ const templateDescription = computed({
   },
 });
 
-// Helper functions
-const getCurrentProfileId = (): ExportProfile => {
-  return preferencesStore.activeExportProfileId || "full";
-};
-
-// Computed property for the current export profile to use for generating markdown
-const exportProfile = computed((): ExportProfile => {
-  return getCurrentProfileId();
-});
-
-// Get short name for export profile indicator
-const getExportProfileShortName = (profileId: string) => {
-  const profile = EXPORT_PROFILES.find((p) => p.id === profileId);
-  return profile ? profile.name || profile.name.substring(0, 3) : "";
-};
+// Helper functions - export profile handling no longer needed
 
 // UI Interaction methods
 const toggleSidebar = () => {
@@ -419,43 +300,18 @@ const toggleViewModeMenu = () => {
   if (showViewModeMenu.value) showProfileMenu.value = false;
 };
 
-const toggleProfileMenu = () => {
-  showProfileMenu.value = !showProfileMenu.value;
-  if (showProfileMenu.value) {
-    showViewModeMenu.value = false;
-    showPluginMenu.value = false;
-  }
-};
+// Export profile menu no longer needed
 
-const togglePluginMenu = () => {
-  showPluginMenu.value = !showPluginMenu.value;
-  if (showPluginMenu.value) {
-    showViewModeMenu.value = false;
-    showProfileMenu.value = false;
-  }
-};
+// Plugin menu toggle is no longer needed with ObsidianEditor
 
 const setViewMode = (mode: ViewMode) => {
   currentViewMode.value = mode;
   showViewModeMenu.value = false;
 };
 
-const setExportProfile = (profileId: ExportProfile) => {
-  preferencesStore.setActiveExportProfile(profileId);
-  showProfileMenu.value = false;
-};
+// Export profile setter no longer needed
 
-const toggleTemplaterSyntax = () => {
-  showTemplaterSyntax.value = !showTemplaterSyntax.value;
-};
-
-const toggleDataviewSyntax = () => {
-  showDataviewSyntax.value = !showDataviewSyntax.value;
-};
-
-const toggleKanbanSyntax = () => {
-  showKanbanSyntax.value = !showKanbanSyntax.value;
-};
+// Plugin syntax toggles are no longer needed with ObsidianEditor
 
 const setMobileView = (view: string) => {
   mobileView.value = view;
@@ -648,13 +504,8 @@ const pushToVault = async () => {
     // Set up loading state
     isLoading.value = true;
 
-    // Start by generating the markdown content using the current settings
-    // The generateMarkdown already handles the export profile correctly
-    // plugin toggles are handled as display-only in MarkdownPreview
-    const markdown = generateMarkdown(
-      templateStore.currentSections,
-      exportProfile.value
-    );
+    // Generate markdown content - no export profile needed with ObsidianEditor
+    const markdown = generateMarkdown(templateStore.currentSections);
 
     // Create a safe filename from the template title
     const templateTitle =
@@ -780,8 +631,6 @@ const debouncedAutosave = debounce(
 const closeDropdowns = (event: MouseEvent) => {
   if (!event.target || !(event.target as Element).closest(".dropdown")) {
     showViewModeMenu.value = false;
-    showProfileMenu.value = false;
-    showPluginMenu.value = false;
   }
 };
 

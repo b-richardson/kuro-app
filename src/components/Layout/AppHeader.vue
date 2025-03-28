@@ -47,17 +47,6 @@
             >
               <i class="fas fa-save"></i> Save
             </button>
-
-            <!-- Enhanced Export Dropdown -->
-            <ExportDropdown
-              v-if="sections.length > 0"
-              ref="exportDropdownRef"
-              :sections="sections"
-              :initial-profile="exportProfile"
-              @profile-changed="handleProfileChanged"
-              @export-success="handleExportSuccess"
-              @export-error="handleExportError"
-            />
           </template>
         </slot>
 
@@ -80,10 +69,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onBeforeUnmount } from "vue";
-import { TemplateSection } from "@/types/TemplateSect";
-import ExportDropdown from "@/components/Export/ExportDropdown.vue";
 import ToastNotification from "@/components/UI/ToastNotification.vue";
-import { ExportProfileId } from "@/components/Export/ExportProfileSelector.vue";
 import { usePreferencesStore } from "@/stores/preferences";
 
 // Props
@@ -93,7 +79,6 @@ const props = defineProps({
     default: "",
   },
   sections: {
-    type: Array as () => TemplateSection[],
     default: () => [],
   },
   view: {
@@ -106,18 +91,11 @@ const props = defineProps({
   },
 });
 
-// References
-const exportDropdownRef = ref<InstanceType<typeof ExportDropdown> | null>(null);
-const toastRef = ref<InstanceType<typeof ToastNotification> | null>(null);
-
 // Stores
 const preferencesStore = usePreferencesStore();
 
 // Reactive state
 const isDarkTheme = ref(false);
-const exportProfile = ref<ExportProfileId>(
-  (preferencesStore.currentExportProfile?.id as ExportProfileId) || "full"
-);
 
 // Emits
 const emit = defineEmits<{
@@ -127,7 +105,6 @@ const emit = defineEmits<{
   (e: "export", format: string): void;
   (e: "new-template"): void;
   (e: "back"): void;
-  (e: "export-profile-changed", profile: ExportProfileId): void;
 }>();
 
 // Methods
@@ -143,67 +120,6 @@ const saveTemplate = () => {
   emit("save");
 };
 
-// Handle export profile changes
-const handleProfileChanged = (profile: ExportProfileId) => {
-  exportProfile.value = profile;
-  emit("export-profile-changed", profile);
-};
-
-// Handle export success
-const handleExportSuccess = (
-  method: "download" | "clipboard",
-  profile: ExportProfileId
-) => {
-  if (!toastRef.value) return;
-
-  const profileName = getProfileDisplayName(profile);
-
-  if (method === "download") {
-    toastRef.value.success(`Downloaded as ${profileName}`, {
-      description: "Your template has been downloaded as a Markdown file.",
-      duration: 4000,
-    });
-  } else {
-    toastRef.value.success(`Copied to clipboard as ${profileName}`, {
-      description: "The template content has been copied to your clipboard.",
-      duration: 4000,
-    });
-  }
-};
-
-// Handle export errors
-const handleExportError = (error: string) => {
-  if (toastRef.value) {
-    toastRef.value.error("Export failed", {
-      description: error,
-      duration: 5000,
-    });
-  }
-};
-
-// Get display name for profile
-const getProfileDisplayName = (profile: ExportProfileId): string => {
-  const foundProfile = preferencesStore.exportProfiles.find(
-    (p) => p.id === profile
-  );
-  if (foundProfile) {
-    return foundProfile.name;
-  }
-
-  switch (profile) {
-    case "plain":
-      return "Plain Markdown";
-    case "templater":
-      return "Templater Format";
-    case "dataview":
-      return "Dataview Format";
-    case "full":
-      return "Full Plugin Format";
-    default:
-      return "Markdown";
-  }
-};
-
 const toggleTheme = () => {
   isDarkTheme.value = !isDarkTheme.value;
   const themeName = isDarkTheme.value ? "dark" : "light";
@@ -214,29 +130,6 @@ const toggleTheme = () => {
 
   // Store preference
   preferencesStore.setEditorTheme(themeName);
-};
-
-// Keyboard shortcuts
-const handleKeyDown = (e: KeyboardEvent) => {
-  // Shortcut for export (Ctrl/Cmd+E)
-  if ((e.ctrlKey || e.metaKey) && e.key === "e" && props.view === "editor") {
-    e.preventDefault();
-    if (exportDropdownRef.value) {
-      exportDropdownRef.value.open();
-    }
-  }
-
-  // Shortcut for save (Ctrl/Cmd+S)
-  if ((e.ctrlKey || e.metaKey) && e.key === "s" && props.view === "editor") {
-    e.preventDefault();
-    saveTemplate();
-  }
-
-  // Shortcut for new template (Ctrl/Cmd+N)
-  if ((e.ctrlKey || e.metaKey) && e.key === "n" && props.view === "library") {
-    e.preventDefault();
-    createNewTemplate();
-  }
 };
 
 // Lifecycle hooks
@@ -254,38 +147,6 @@ onMounted(() => {
   // Apply theme
   document.documentElement.setAttribute("data-theme", savedTheme);
   document.body.classList.toggle("dark-theme", isDarkTheme.value);
-
-  // Add keyboard shortcut listener
-  document.addEventListener("keydown", handleKeyDown);
-});
-
-onBeforeUnmount(() => {
-  // Remove keyboard shortcut listener when component is unmounted
-  document.removeEventListener("keydown", handleKeyDown);
-});
-
-// Expose toast for other components to use
-defineExpose({
-  showToast: (
-    message: string,
-    type: "success" | "error" | "info" | "warning" = "info"
-  ) => {
-    if (toastRef.value) {
-      switch (type) {
-        case "success":
-          toastRef.value.success(message);
-          break;
-        case "error":
-          toastRef.value.error(message);
-          break;
-        case "warning":
-          toastRef.value.warning(message);
-          break;
-        default:
-          toastRef.value.info(message);
-      }
-    }
-  },
 });
 </script>
 
