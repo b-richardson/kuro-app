@@ -17,12 +17,13 @@
         <code v-else>{{ markdownText }}</code></pre>
       </div>
 
-      <!-- Rendered view -->
-      <div
-        v-else
-        class="markdown-preview__rendered"
-        v-html="renderedMarkdown"
-      ></div>
+      <!-- Rendered view with Obsidian Editor -->
+      <div v-else class="markdown-preview__rendered">
+        <ObsidianEditor
+          :content="markdownText"
+          :read-only="true"
+        />
+      </div>
     </div>
   </div>
 </template>
@@ -33,6 +34,7 @@ import MarkdownIt from "markdown-it";
 import { TemplateModule } from "@/types/TemplateModule";
 import { ExportProfile, ViewMode } from "@/types/Editor";
 import { generateMarkdown } from "@/utils/markdownUtils";
+import ObsidianEditor from "@/components/obsidian/ObsidianEditor.vue";
 
 // Define props
 const props = defineProps<{

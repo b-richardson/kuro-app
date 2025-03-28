@@ -12,11 +12,11 @@ import Link from "@tiptap/extension-link";
 import Placeholder from "@tiptap/extension-placeholder";
 import CodeBlockLowlight from "@tiptap/extension-code-block-lowlight";
 import { common, createLowlight } from "lowlight";
-import { ObsidianCallout } from "../custom-extensions/obsidianCallout";
-import { ObsidianLink } from "../custom-extensions/obsidianInternalLink";
-import { ObsidianDataview } from "../custom-extensions/obsidianDataview";
-import { ObsidianFrontmatter } from "../custom-extensions/obsidianFrontmatter";
-import { ObsidianTemplateVars } from "../custom-extensions/obsidianTemplateVars";
+import { ObsidianCallout } from "./custom-extensions/obsidianCallout";
+import { ObsidianLink } from "./custom-extensions/obsidianInternalLink";
+import { ObsidianDataview } from "./custom-extensions/obsidianDataview";
+import { ObsidianFrontmatter } from "./custom-extensions/obsidianFrontmatter";
+import { ObsidianTemplateVars } from "./custom-extensions/obsidianTemplateVars";
 import { Markdown } from "tiptap-markdown";
 
 // Initialize lowlight with common languages
