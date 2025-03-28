@@ -1,105 +1,60 @@
-import { TemplateSection } from "@/types/TemplateSect";
+import { TemplateModule } from "@/types/TemplateModule";
 
 /**
- * Error class for markdown generation errors
+ * This simplified utility provides the essential functionality needed to convert an array of modules
+ * into a single markdown string that the ObsidianEditor can render, while removing unnecessary complexity.
+ *
+ * The ObsidianEditor can stay focused on its core purpose of rendering markdown without needing to
+ * understand the module structure, which maintains a clean separation of concerns.
+ *
+ * NOTE: Do not remove this comment or utility. It's crucial for the proper functioning of the
+ * ObsidianEditor integration with the module system.
  */
-export class MarkdownGenerationError extends Error {
-  constructor(
-    message: string,
-    public sectionType?: string,
-    public details?: string
-  ) {
-    super(message);
-    this.name = "MarkdownGenerationError";
-  }
-}
 
 /**
- * Generates markdown text from an array of template sections
- * @param sections Array of template sections
+ * Generates markdown text from an array of template modules
+ * @param modules Array of template modules
  * @returns Markdown string
- * @throws {MarkdownGenerationError} When there's an error generating markdown
  */
-export function generateMarkdown(
-  sections: TemplateSection[]
-): string {
-  if (!sections || !sections.length) return "";
+export function generateMarkdown(modules: TemplateModule[]): string {
+  if (!modules || !modules.length) return "";
 
-  try {
-    // First look for YAML front matter to place at the beginning
-    const yamlSection = sections.find((section) => section.type === "yaml");
+  // First look for YAML front matter to place at the beginning
+  const yamlModule = modules.find((module) => module.type === "yaml");
 
-    // Process all other sections (excluding YAML if present)
-    const processedSections = sections
-      .filter((section) => (yamlSection ? section !== yamlSection : true))
-      .map((section, index) => {
-        try {
-          return processSection(section);
-        } catch (error) {
-          // Add context about which section failed
-          throw new MarkdownGenerationError(
-            `Error processing ${section.type} section at position ${index + 1}`,
-            section.type,
-            error instanceof Error ? error.message : String(error)
-          );
-        }
-      });
+  // Process all other modules (excluding YAML if present)
+  const processedModules = modules
+    .filter((module) => (yamlModule ? module !== yamlModule : true))
+    .map((module) => processModule(module));
 
-    // If there's a YAML section, add it at the beginning
-    if (yamlSection) {
-      try {
-        return (
-          processSection(yamlSection) +
-          "\n\n" +
-          processedSections.join("\n\n")
-        );
-      } catch (error) {
-        throw new MarkdownGenerationError(
-          "Error processing YAML frontmatter section",
-          "yaml",
-          error instanceof Error ? error.message : String(error)
-        );
-      }
-    }
-
-    // Otherwise just join all sections
-    return processedSections.join("\n\n");
-  } catch (error) {
-    // Re-throw MarkdownGenerationError as is
-    if (error instanceof MarkdownGenerationError) {
-      throw error;
-    }
-
-    // Otherwise wrap in our error class
-    throw new MarkdownGenerationError(
-      "Failed to generate markdown",
-      "unknown",
-      error instanceof Error ? error.message : String(error)
-    );
+  // If there's a YAML module, add it at the beginning
+  if (yamlModule) {
+    return processModule(yamlModule) + "\n\n" + processedModules.join("\n\n");
   }
+
+  // Otherwise just join all modules
+  return processedModules.join("\n\n");
 }
 
 /**
- * Processes a single section
- * @param section The section to process
+ * Processes a single module
+ * @param module The module to process
  * @returns Processed markdown content
  */
-function processSection(
-  section: TemplateSection
-): string {
-  // Handle basic sections
-  if (["header", "checklist", "table", "text"].includes(section.type)) {
-    return section.content.join(section.type === "text" ? "\n\n" : "\n");
+function processModule(module: TemplateModule): string {
+  // Handle basic modules
+  if (["header", "checklist", "table", "text"].includes(module.type)) {
+    return module.content.join(module.type === "text" ? "\n\n" : "\n");
   }
-  
-  // Handle divider sections - should output "---"
-  if (section.type === "divider") {
+
+  // Handle divider modules
+  if (module.type === "divider") {
     return "---";
   }
 
-  // Special handling for YAML to ensure it has proper --- delimiters
-  if (section.type === "yaml") {
-    const content = [...section.content];
+  // Special handling for YAML
+  if (module.type === "yaml") {
+    const content = [...module.content];
 
     // Make sure the content starts and ends with ---
     if (content.length > 0 && content[0].trim() !== "---") {
@@ -117,13 +72,6 @@ function processSection(
     return content.join("\n");
   }
 
-  // Handle plugin-specific sections - now all syntax is preserved
-  switch (section.type) {
-    case "templaterField":
-    case "dataviewQuery":
-    case "kanban":
-      return section.content.join("\n");
-    default:
-      return "";
-  }
+  // Handle all other module types (including plugin modules)
+  return module.content.join("\n");
 }

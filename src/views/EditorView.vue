@@ -63,7 +63,7 @@
         <!-- Module Canvas Component -->
         <ModuleCanvas
           :modules="templateStore.currentModules"
-          @update="updateSections"
+          @update="updateModules"
           @delete="deleteModule"
           @module-change="markAsModified"
           ref="moduleCanvasRef"
@@ -141,7 +141,7 @@
 
         <!-- Markdown Preview Component -->
         <MarkdownPreview
-          :sections="templateStore.currentModules"
+          :modules="templateStore.currentModules"
           :view-mode="currentViewMode"
           @update:view-mode="setViewMode"
           @generation-start="previewGenerating = true"
@@ -324,7 +324,7 @@ const togglePreviewFocus = () => {
 // Module management methods
 const addModuleToCanvas = (module: TemplateModule) => {
   console.log("Adding module to canvas:", module);
-  templateStore.addSection(module);
+  templateStore.addModule(module);
   console.log("Current modules after add:", templateStore.currentModules);
   markAsModified();
 
@@ -344,19 +344,16 @@ const addModuleToCanvas = (module: TemplateModule) => {
  * Update modules in the template store
  * Called by ModuleCanvas when modules are reordered via drag and drop
  */
-const updateSections = (sections: TemplateModule[]) => {
+const updateModules = (modules: TemplateModule[]) => {
   // Guard against invalid parameters or unmounted component
   if (!isMounted.value) {
     return;
   }
 
   try {
-    // Validate sections parameter
-    if (!sections || !Array.isArray(sections)) {
-      console.error(
-        "Invalid modules array provided to updateSections",
-        sections
-      );
+    // Validate modules parameter
+    if (!modules || !Array.isArray(modules)) {
+      console.error("Invalid modules array provided to updateModules", modules);
       return;
     }
 
@@ -365,7 +362,7 @@ const updateSections = (sections: TemplateModule[]) => {
       if (isMounted.value) {
         // Create a proper reactive copy of the modules before updating the store
         // This ensures reactivity is maintained throughout the whole chain
-        const reactiveModules = sections.map((module) => ({
+        const reactiveModules = modules.map((module) => ({
           ...module,
           // Ensure content array is properly copied for reactivity
           content: Array.isArray(module.content)
@@ -376,7 +373,7 @@ const updateSections = (sections: TemplateModule[]) => {
         }));
 
         // Update the modules in the store
-        templateStore.updateSections(reactiveModules);
+        templateStore.updateModules(reactiveModules);
 
         // Mark template as modified
         markAsModified();
@@ -399,7 +396,7 @@ const deleteModule = (moduleId: string) => {
     // Wrap in nextTick to avoid DOM update conflicts
     nextTick(() => {
       if (isMounted.value) {
-        templateStore.deleteSection(moduleId);
+        templateStore.deleteModule(moduleId);
         markAsModified();
       }
     });
@@ -432,7 +429,7 @@ const duplicateModule = (moduleId: string) => {
     // Use nextTick to avoid Vue patching conflicts
     nextTick(() => {
       if (isMounted.value) {
-        templateStore.addSection(newModule);
+        templateStore.addModule(newModule);
         markAsModified();
       }
     });
@@ -825,7 +822,6 @@ onUnmounted(() => {
   transform: translateX(-20px);
   overflow: hidden;
   pointer-events: none;
-  transition: opacity 0.2s ease, transform 0.2s ease;
 }
 
 /* Expanded preview in focus mode */

@@ -13,191 +13,122 @@
     @module-change="$emit('module-change')"
     ref="baseModuleRef"
   >
-    <div class="dataview-list-module">
-      <!-- Module Title -->
-      <div class="dataview-module-title">
-        <i class="fas fa-list"></i> Dataview List Query
+    <!-- Visual Builder Mode -->
+    <div v-if="editorMode === 'visual'">
+      <!-- Quick templates dropdown -->
+      <div class="template-module-editor-line">
+        <div class="template-module-editor-input-group">
+          <label class="template-module-editor-label">Quick templates:</label>
+          <select
+            class="template-module-editor-input"
+            v-model="selectedPreset"
+            @change="applyPreset"
+          >
+            <option value="">Choose a template...</option>
+            <option value="recent">Recent notes</option>
+            <option value="tagged">Notes with tag</option>
+            <option value="folder">Notes in folder</option>
+            <option value="created">Notes created this week</option>
+            <option value="modified">Recently modified notes</option>
+            <option value="custom">Custom query</option>
+          </select>
+        </div>
       </div>
-      
-      <!-- Visual Builder Mode -->
-      <div v-if="editorMode === 'visual'" class="dataview-visual-builder">
-        <!-- Source Section -->
-        <div class="dataview-section">
-          <h3 class="dataview-section-title">
-            <i class="fas fa-filter"></i> Source
-          </h3>
-          <div class="dataview-source-container">
-            <div class="dataview-source-select">
-              <select 
-                v-model="selectedSourceType"
-                class="dataview-select"
-                @change="handleSourceTypeChange"
+
+      <!-- Find notes from -->
+      <div class="template-module-editor-line">
+        <div class="template-module-editor-input-group">
+          <label class="template-module-editor-label">Find notes from:</label>
+          <div class="template-module-editor-inputs-row">
+            <select
+              class="template-module-editor-input source-type-select"
+              v-model="selectedSourceType"
+              @change="handleSourceTypeChange"
+            >
+              <option
+                v-for="source in commonSources"
+                :key="source.id"
+                :value="source.id"
               >
-                <option 
-                  v-for="source in commonSources" 
-                  :key="source.id" 
-                  :value="source.id"
-                >
-                  {{ source.label }}
-                </option>
-              </select>
-            </div>
-            
-            <div class="dataview-source-value">
-              <input 
-                type="text" 
-                v-model="queryConfig.source"
-                :placeholder="getSourcePlaceholder()"
-                class="dataview-input"
-                @input="updateQuery"
-                @focus="setEditing(true)"
-                @blur="setEditing(false)"
-                :ref="isSelected && autoFocus ? setInputRef : undefined"
-              />
-            </div>
+                {{ source.label }}
+              </option>
+            </select>
+            <input
+              type="text"
+              class="template-module-editor-input"
+              v-model="queryConfig.source"
+              :placeholder="getSourcePlaceholder()"
+              @input="updateQuery"
+              @focus="setEditing(true)"
+              @blur="setEditing(false)"
+              :ref="isSelected && autoFocus ? setInputRef : undefined"
+            />
           </div>
         </div>
-        
-        <!-- Filters Section -->
-        <div class="dataview-section">
-          <h3 class="dataview-section-title">
-            <i class="fas fa-filter"></i> Filters
-          </h3>
-          <div class="dataview-filters-container">
-            <div 
-              v-for="(filter, index) in queryConfig.filters" 
-              :key="filter.id"
-              class="dataview-filter-row"
+      </div>
+
+      <!-- Order by -->
+      <div class="template-module-editor-line">
+        <div class="template-module-editor-input-group">
+          <label class="template-module-editor-label">Order by:</label>
+          <div class="template-module-editor-inputs-row">
+            <select
+              class="template-module-editor-input"
+              v-model="sortField"
+              @change="updateSorting"
             >
-              <div class="dataview-filter-field">
-                <input 
-                  type="text" 
-                  v-model="filter.field"
-                  placeholder="Field name"
-                  class="dataview-input"
-                  @input="updateQuery"
-                  @focus="setEditing(true)"
-                  @blur="setEditing(false)"
-                />
-              </div>
-              
-              <div class="dataview-filter-operator">
-                <select 
-                  v-model="filter.operator"
-                  class="dataview-select"
-                  @change="updateQuery"
-                >
-                  <option 
-                    v-for="op in filterOperators"
-                    :key="op"
-                    :value="op"
-                  >
-                    {{ op }}
-                  </option>
-                </select>
-              </div>
-              
-              <div 
-                v-if="filter.operator !== 'is empty' && filter.operator !== 'is not empty'" 
-                class="dataview-filter-value"
-              >
-                <input 
-                  type="text" 
-                  v-model="filter.value"
-                  placeholder="Value"
-                  class="dataview-input"
-                  @input="updateQuery"
-                  @focus="setEditing(true)"
-                  @blur="setEditing(false)"
-                />
-              </div>
-              
-              <div class="dataview-filter-controls">
-                <button 
-                  class="dataview-btn-icon dataview-btn-remove"
-                  @click="removeFilter(index)"
-                  title="Remove filter"
-                >
-                  <i class="fas fa-times"></i>
-                </button>
-              </div>
-            </div>
-            
-            <button 
-              class="dataview-btn-add"
-              @click="addFilter()"
+              <option value="">Default order</option>
+              <option value="file.ctime">Creation date</option>
+              <option value="file.mtime">Modified date</option>
+              <option value="file.name">File name</option>
+              <option value="custom">Custom field</option>
+            </select>
+            <select
+              v-if="sortField"
+              class="template-module-editor-input"
+              v-model="sortDirection"
+              @change="updateSorting"
             >
-              <i class="fas fa-plus"></i> Add Filter
-            </button>
+              <option value="desc">Newest first</option>
+              <option value="asc">Oldest first</option>
+            </select>
+            <input
+              v-if="sortField === 'custom'"
+              type="text"
+              class="template-module-editor-input"
+              v-model="customSortField"
+              placeholder="Field name to sort by"
+              @input="updateCustomSorting"
+              @focus="setEditing(true)"
+              @blur="setEditing(false)"
+            />
           </div>
         </div>
-        
-        <!-- Sorting Section -->
-        <div class="dataview-section">
-          <h3 class="dataview-section-title">
-            <i class="fas fa-sort"></i> Sorting
-          </h3>
-          <div class="dataview-sorts-container">
-            <div 
-              v-for="(sort, index) in queryConfig.sorts" 
-              :key="index"
-              class="dataview-sort-row"
+      </div>
+
+      <!-- Show at most -->
+      <div class="template-module-editor-line">
+        <div class="template-module-editor-input-group">
+          <label class="template-module-editor-label">Show at most:</label>
+          <div class="template-module-editor-inputs-row">
+            <select
+              class="template-module-editor-input"
+              v-model="selectedLimit"
+              @change="updateLimit"
             >
-              <div class="dataview-sort-field">
-                <input 
-                  type="text" 
-                  v-model="sort.field"
-                  placeholder="Field name to sort by"
-                  class="dataview-input"
-                  @input="updateQuery"
-                  @focus="setEditing(true)"
-                  @blur="setEditing(false)"
-                />
-              </div>
-              
-              <div class="dataview-sort-direction">
-                <select 
-                  v-model="sort.direction"
-                  class="dataview-select"
-                  @change="updateQuery"
-                >
-                  <option value="asc">Ascending</option>
-                  <option value="desc">Descending</option>
-                </select>
-              </div>
-              
-              <div class="dataview-sort-controls">
-                <button 
-                  class="dataview-btn-icon dataview-btn-remove"
-                  @click="removeSort(index)"
-                  title="Remove sort"
-                >
-                  <i class="fas fa-times"></i>
-                </button>
-              </div>
-            </div>
-            
-            <button 
-              class="dataview-btn-add"
-              @click="addSort()"
-            >
-              <i class="fas fa-plus"></i> Add Sort
-            </button>
-          </div>
-        </div>
-        
-        <!-- Limit Section -->
-        <div class="dataview-section">
-          <h3 class="dataview-section-title">
-            <i class="fas fa-sort-numeric-down"></i> Limit 
-            <span class="dataview-optional">(Optional)</span>
-          </h3>
-          <div class="dataview-limit-container">
-            <input 
-              type="number" 
+              <option value="0">All notes</option>
+              <option value="5">5 notes</option>
+              <option value="10">10 notes</option>
+              <option value="20">20 notes</option>
+              <option value="50">50 notes</option>
+              <option value="custom">Custom limit</option>
+            </select>
+            <input
+              v-if="selectedLimit === 'custom'"
+              type="number"
+              class="template-module-editor-input"
               v-model.number="queryConfig.limit"
-              placeholder="Number of results (leave empty for no limit)"
-              class="dataview-input"
+              placeholder="Number of results"
               @input="updateQuery"
               @focus="setEditing(true)"
               @blur="setEditing(false)"
@@ -205,70 +136,160 @@
             />
           </div>
         </div>
-        
-        <!-- Options Section -->
-        <div class="dataview-section">
-          <h3 class="dataview-section-title">
-            <i class="fas fa-cog"></i> Options
-          </h3>
-          <div class="dataview-options-container">
-            <label class="dataview-checkbox">
-              <input 
-                type="checkbox" 
-                v-model="queryConfig.inline"
-                @change="updateQuery"
-              />
-              <span class="dataview-checkbox-label">
-                Inline Query
-                <span class="dataview-tooltip" title="When checked, the query will be an inline query using `${dv.list(...)}` syntax rather than a code block">
-                  <i class="fas fa-info-circle"></i>
-                </span>
+      </div>
+
+      <!-- Advanced Options Toggle -->
+      <div class="template-module-editor-line">
+        <button
+          class="advanced-toggle-button"
+          @click="showAdvanced = !showAdvanced"
+        >
+          <i
+            :class="
+              showAdvanced ? 'fas fa-chevron-down' : 'fas fa-chevron-right'
+            "
+          ></i>
+          Advanced Options
+        </button>
+      </div>
+
+      <!-- Advanced Options (collapsed by default) -->
+      <div v-if="showAdvanced">
+        <!-- Filters Section -->
+        <div class="template-module-editor-section">
+          <div class="template-module-editor-section-header">
+            <i class="fas fa-filter"></i> Show only notes that match:
+          </div>
+
+          <div
+            v-for="(filter, index) in queryConfig.filters"
+            :key="filter.id"
+            class="template-module-editor-line"
+          >
+            <div class="template-module-editor-input-group">
+              <div class="template-module-editor-inputs-row">
+                <input
+                  type="text"
+                  class="template-module-editor-input"
+                  v-model="filter.field"
+                  placeholder="Property"
+                  @input="updateQuery"
+                  @focus="setEditing(true)"
+                  @blur="setEditing(false)"
+                />
+                <select
+                  class="template-module-editor-input"
+                  v-model="filter.operator"
+                  @change="updateQuery"
+                >
+                  <option value="=">equals</option>
+                  <option value="!=">doesn't equal</option>
+                  <option value="contains">contains</option>
+                  <option value="does not contain">doesn't contain</option>
+                  <option value=">">is greater than</option>
+                  <option value="<">is less than</option>
+                  <option value="is empty">is empty</option>
+                  <option value="is not empty">is not empty</option>
+                </select>
+                <input
+                  v-if="
+                    filter.operator !== 'is empty' &&
+                    filter.operator !== 'is not empty'
+                  "
+                  type="text"
+                  class="template-module-editor-input"
+                  v-model="filter.value"
+                  placeholder="Value"
+                  @input="updateQuery"
+                  @focus="setEditing(true)"
+                  @blur="setEditing(false)"
+                />
+                <button
+                  class="template-module-editor-line-action"
+                  @click.stop="removeFilter(index)"
+                  title="Remove filter"
+                >
+                  <i class="fas fa-times"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div class="template-module-editor-line">
+            <button class="add-filter-button" @click="addFilter()">
+              <i class="fas fa-plus"></i> Add Filter
+            </button>
+          </div>
+        </div>
+
+        <!-- Inline query option -->
+        <div class="template-module-editor-line">
+          <div class="template-module-editor-checkbox-group">
+            <input
+              type="checkbox"
+              id="inline-query-toggle"
+              v-model="queryConfig.inline"
+              @change="updateQuery"
+            />
+            <label
+              for="inline-query-toggle"
+              class="template-module-editor-checkbox-label"
+            >
+              Use as inline query
+              <span
+                class="tooltip-icon"
+                title="When checked, the query will be an inline query using `${dv.list(...)}` syntax rather than a code block"
+              >
+                <i class="fas fa-info-circle"></i>
               </span>
             </label>
           </div>
         </div>
       </div>
-      
-      <!-- Code Editor Mode -->
-      <div v-else class="dataview-code-editor">
-        <textarea
-          v-model="rawQuery"
-          class="dataview-code-textarea"
-          placeholder="Enter Dataview LIST query..."
-          rows="10"
-          @input="validateRawQuery"
-          @focus="setEditing(true)"
-          @blur="setEditing(false)"
-          :ref="isSelected && autoFocus ? setInputRef : undefined"
-        ></textarea>
-        
-        <div v-if="validationError" class="dataview-validation-error">
-          <i class="fas fa-exclamation-triangle"></i>
-          {{ validationError }}
+    </div>
+
+    <!-- Code Editor Mode (for advanced users) -->
+    <div v-else>
+      <div class="template-module-editor-line">
+        <div class="template-module-editor-code-editor">
+          <textarea
+            class="template-module-editor-code-textarea"
+            v-model="rawQuery"
+            placeholder="Enter Dataview LIST query..."
+            rows="8"
+            @input="validateRawQuery"
+            @focus="setEditing(true)"
+            @blur="setEditing(false)"
+            :ref="isSelected && autoFocus ? setInputRef : undefined"
+          ></textarea>
+
+          <div
+            v-if="validationError"
+            class="template-module-editor-validation-error"
+          >
+            <i class="fas fa-exclamation-triangle"></i>
+            {{ validationError }}
+          </div>
         </div>
       </div>
-      
-      <!-- Preview Section -->
-      <div class="dataview-section">
-        <h3 class="dataview-section-title">
-          <i class="fas fa-eye"></i> Preview
-        </h3>
-        <div class="dataview-preview-container">
-          <pre class="dataview-query-preview"><code>{{ generatedQuery }}</code></pre>
-        </div>
-      </div>
-      
-      <!-- Bottom controls -->
-      <div class="dataview-module-controls">
-        <button 
-          class="dataview-toggle-mode-btn"
-          @click="toggleEditorMode"
-          title="Toggle between visual builder and code editor"
-        >
-          <i :class="editorMode === 'visual' ? 'fas fa-code' : 'fas fa-sliders-h'"></i>
-          {{ editorMode === 'visual' ? 'Code Editor' : 'Visual Builder' }}
-        </button>
-      </div>
+    </div>
+
+    <!-- Toggle Editor Mode Button -->
+    <div class="template-module-editor-actions">
+      <button
+        class="template-module-editor-toggle-mode"
+        @click="toggleEditorMode"
+        title="Toggle between visual builder and code editor"
+      >
+        <i
+          :class="editorMode === 'visual' ? 'fas fa-code' : 'fas fa-sliders-h'"
+        ></i>
+        {{
+          editorMode === "visual"
+            ? "Switch to Code Editor"
+            : "Switch to Visual Builder"
+        }}
+      </button>
     </div>
   </BaseModule>
 </template>
@@ -278,7 +299,7 @@ import { ref, computed, watch, onMounted } from "vue";
 import { v4 as uuidv4 } from "uuid";
 import BaseModule from "@/components/TemplateCreator/modules/core/BaseModule.vue";
 import { TemplateModule } from "@/types/TemplateModule";
-import { 
+import {
   DataviewQueryType,
   DataviewQueryConfig,
   DataviewFilterOperator,
@@ -288,7 +309,7 @@ import {
   COMMON_SOURCES,
   generateDataviewQuery,
   validateDataviewQuery,
-  parseDataviewQuery
+  parseDataviewQuery,
 } from "@/utils/dataviewUtils";
 
 const props = defineProps<{
@@ -313,10 +334,16 @@ const baseModuleRef = ref<InstanceType<typeof BaseModule> | null>(null);
 const inputRef = ref<HTMLInputElement | null>(null);
 
 // State variables
-const editorMode = ref<'visual' | 'code'>('visual');
-const rawQuery = ref('');
-const validationError = ref('');
-const selectedSourceType = ref('current-folder');
+const editorMode = ref<"visual" | "code">("visual");
+const rawQuery = ref("");
+const validationError = ref("");
+const selectedSourceType = ref("current-folder");
+const showAdvanced = ref(false);
+const selectedLimit = ref("0");
+const sortField = ref("");
+const sortDirection = ref("desc");
+const customSortField = ref("");
+const selectedPreset = ref("");
 
 // Default query configuration for LIST queries
 const queryConfig = ref<DataviewQueryConfig>({
@@ -326,19 +353,18 @@ const queryConfig = ref<DataviewQueryConfig>({
   filters: [],
   sorts: [],
   inline: false,
-  limit: undefined
+  limit: undefined,
 });
 
 // Computed properties
 const commonSources = computed(() => COMMON_SOURCES);
-const filterOperators = Object.values(DataviewFilterOperator);
 
 // Generated query based on current configuration
 const generatedQuery = computed(() => {
   try {
     return generateDataviewQuery(queryConfig.value);
   } catch (error) {
-    return '# Error generating query';
+    return "# Error generating query";
   }
 });
 
@@ -355,7 +381,10 @@ const setInputRef = (el: HTMLInputElement) => {
 // Initialize from props
 onMounted(() => {
   // Ensure module has correct type and plugin type
-  if (props.module.type !== "dataviewListQuery" || props.module.pluginType !== "dataview") {
+  if (
+    props.module.type !== "dataviewListQuery" ||
+    props.module.pluginType !== "dataview"
+  ) {
     const updatedModule = {
       ...props.module,
       type: "dataviewListQuery",
@@ -366,21 +395,23 @@ onMounted(() => {
     updatedModules[props.index] = updatedModule;
     emit("update", updatedModules);
   }
-  
+
   initializeFromContent();
-  
-  console.log('Dataview List Query Module initialized', props.module.type);
 });
 
 // Watch for content changes from parent
-watch(() => props.module.content, () => {
-  initializeFromContent();
-}, { deep: true });
+watch(
+  () => props.module.content,
+  () => {
+    initializeFromContent();
+  },
+  { deep: true }
+);
 
 // Initialize component from content
 function initializeFromContent() {
-  const content = props.module.content?.join('\n') || '';
-  
+  const content = props.module.content?.join("\n") || "";
+
   // If it's empty, use the default configuration
   if (!content.trim()) {
     const defaultConfig: DataviewQueryConfig = {
@@ -389,41 +420,49 @@ function initializeFromContent() {
       source: '"."',
       filters: [],
       sorts: [],
-      inline: false
+      inline: false,
     };
-    
+
     queryConfig.value = defaultConfig;
     rawQuery.value = generateDataviewQuery(defaultConfig);
     return;
   }
-  
+
   // Set the raw query content
   rawQuery.value = content;
-  
+
   // Try to parse the content as a Dataview query
   const parsedConfig = parseDataviewQuery(content);
-  
+
   if (parsedConfig) {
     // Ensure the type is LIST
     parsedConfig.type = DataviewQueryType.LIST;
     queryConfig.value = parsedConfig;
-    
+
     // Set the source type based on the source
     setSourceTypeFromSource(parsedConfig.source);
-    validationError.value = '';
+
+    // Set the limit dropdown
+    setLimitFromConfig();
+
+    // Set the sort field
+    setSortFromConfig();
+
+    validationError.value = "";
   } else {
     // If parsing fails, keep the raw query but show a validation error
-    validationError.value = 'Could not parse the query. You can still edit it in code mode.';
-    editorMode.value = 'code';
+    validationError.value =
+      "Could not parse the query. You can still edit it in code mode.";
+    editorMode.value = "code";
   }
 }
 
 // Toggle between visual and code editor modes
 function toggleEditorMode() {
-  if (editorMode.value === 'visual') {
+  if (editorMode.value === "visual") {
     // Switching to code mode
     rawQuery.value = generateDataviewQuery(queryConfig.value);
-    editorMode.value = 'code';
+    editorMode.value = "code";
   } else {
     // Switching to visual mode
     try {
@@ -432,41 +471,80 @@ function toggleEditorMode() {
         // Ensure the type is LIST
         parsedConfig.type = DataviewQueryType.LIST;
         queryConfig.value = parsedConfig;
-        validationError.value = '';
-        editorMode.value = 'visual';
-        
+
         // Set the source type based on the source
         setSourceTypeFromSource(parsedConfig.source);
+
+        // Set the limit dropdown
+        setLimitFromConfig();
+
+        // Set the sort field
+        setSortFromConfig();
+
+        validationError.value = "";
+        editorMode.value = "visual";
       } else {
         // Parsing failed
-        validationError.value = 'Could not parse the query. Please check the syntax.';
+        validationError.value =
+          "Could not parse the query. Please check the syntax.";
       }
     } catch (error) {
-      validationError.value = 'Error parsing query.';
+      validationError.value = "Error parsing query.";
     }
+  }
+}
+
+// Set limit dropdown from config value
+function setLimitFromConfig() {
+  const limit = queryConfig.value.limit;
+  if (!limit) {
+    selectedLimit.value = "0";
+  } else if ([5, 10, 20, 50].includes(limit)) {
+    selectedLimit.value = limit.toString();
+  } else {
+    selectedLimit.value = "custom";
+  }
+}
+
+// Set sort field from config value
+function setSortFromConfig() {
+  if (queryConfig.value.sorts && queryConfig.value.sorts.length > 0) {
+    const firstSort = queryConfig.value.sorts[0];
+    sortDirection.value = firstSort.direction;
+
+    if (["file.ctime", "file.mtime", "file.name"].includes(firstSort.field)) {
+      sortField.value = firstSort.field;
+    } else {
+      sortField.value = "custom";
+      customSortField.value = firstSort.field;
+    }
+  } else {
+    sortField.value = "";
+    sortDirection.value = "desc";
+    customSortField.value = "";
   }
 }
 
 // Validate raw query input
 function validateRawQuery() {
-  validationError.value = '';
-  
+  validationError.value = "";
+
   // Skip validation if empty
   if (!rawQuery.value.trim()) return;
-  
+
   // Validate Dataview query
   const validation = validateDataviewQuery(rawQuery.value);
   if (!validation.isValid) {
-    validationError.value = validation.error || 'Invalid Dataview query';
+    validationError.value = validation.error || "Invalid Dataview query";
     return;
   }
-  
+
   // Check if it's a LIST query
-  if (!rawQuery.value.includes('LIST') && !rawQuery.value.includes('dv.list')) {
-    validationError.value = 'This should be a LIST query';
+  if (!rawQuery.value.includes("LIST") && !rawQuery.value.includes("dv.list")) {
+    validationError.value = "This should be a LIST query";
     return;
   }
-  
+
   // If valid, update the content
   emit("update:content", [rawQuery.value]);
 }
@@ -480,12 +558,12 @@ const updateContent = (content: string[]) => {
 function addFilter() {
   const newFilter: DataviewFilterCondition = {
     id: uuidv4(),
-    field: '',
+    field: "",
     operator: DataviewFilterOperator.EQUALS,
-    value: '',
-    isMetadata: true
+    value: "",
+    isMetadata: true,
   };
-  
+
   queryConfig.value.filters.push(newFilter);
   updateQuery();
 }
@@ -496,34 +574,61 @@ function removeFilter(index: number) {
   updateQuery();
 }
 
-// Add a sort
-function addSort() {
-  const newSort: DataviewSort = {
-    field: '',
-    direction: DataviewSortDirection.ASC,
-    isMetadata: true
-  };
-  
-  queryConfig.value.sorts.push(newSort);
+// Update sorting based on selected fields
+function updateSorting() {
+  // Clear any existing sorts
+  queryConfig.value.sorts = [];
+
+  // If a sort field is selected, add it
+  if (sortField.value) {
+    const actualField =
+      sortField.value === "custom" ? customSortField.value : sortField.value;
+    if (actualField) {
+      queryConfig.value.sorts.push({
+        field: actualField,
+        direction: sortDirection.value as DataviewSortDirection,
+        isMetadata: true,
+      });
+    }
+  }
+
   updateQuery();
 }
 
-// Remove a sort
-function removeSort(index: number) {
-  queryConfig.value.sorts.splice(index, 1);
+// Update custom sort field
+function updateCustomSorting() {
+  if (sortField.value === "custom" && customSortField.value) {
+    updateSorting();
+  }
+}
+
+// Update limit based on dropdown selection
+function updateLimit() {
+  if (selectedLimit.value === "0") {
+    queryConfig.value.limit = undefined;
+  } else if (selectedLimit.value === "custom") {
+    // Let the user input their own limit
+  } else {
+    queryConfig.value.limit = parseInt(selectedLimit.value);
+  }
+
   updateQuery();
 }
 
 // Get placeholder text based on selected source type
 function getSourcePlaceholder(): string {
-  const selectedSource = commonSources.value.find(s => s.id === selectedSourceType.value);
-  return selectedSource?.placeholder || 'Enter source';
+  const selectedSource = commonSources.value.find(
+    (s) => s.id === selectedSourceType.value
+  );
+  return selectedSource?.placeholder || "Enter source";
 }
 
 // Handle source type change
 function handleSourceTypeChange() {
-  const selectedSource = commonSources.value.find(s => s.id === selectedSourceType.value);
-  
+  const selectedSource = commonSources.value.find(
+    (s) => s.id === selectedSourceType.value
+  );
+
   if (selectedSource) {
     queryConfig.value.source = selectedSource.value;
     updateQuery();
@@ -533,28 +638,109 @@ function handleSourceTypeChange() {
 // Set source type based on source value
 function setSourceTypeFromSource(source: string) {
   // Try to match the source with one of the common sources
-  const matchedSource = commonSources.value.find(s => s.value === source);
-  
+  const matchedSource = commonSources.value.find((s) => s.value === source);
+
   if (matchedSource) {
     selectedSourceType.value = matchedSource.id;
   } else {
     // If no match, set to custom
-    selectedSourceType.value = 'custom';
+    selectedSourceType.value = "custom";
   }
+}
+
+// Apply preset query configuration
+function applyPreset() {
+  if (!selectedPreset.value) return;
+
+  // Clear filters and sorts
+  queryConfig.value.filters = [];
+  queryConfig.value.sorts = [];
+
+  switch (selectedPreset.value) {
+    case "recent":
+      // Recent notes, sorted by creation date
+      selectedSourceType.value = "current-folder";
+      queryConfig.value.source = '"."';
+      sortField.value = "file.ctime";
+      sortDirection.value = "desc";
+      selectedLimit.value = "10";
+      queryConfig.value.limit = 10;
+      break;
+
+    case "tagged":
+      // Notes with a specific tag
+      selectedSourceType.value = "tag";
+      queryConfig.value.source = '"tag"';
+      sortField.value = "file.mtime";
+      sortDirection.value = "desc";
+      selectedLimit.value = "0";
+      queryConfig.value.limit = undefined;
+      break;
+
+    case "folder":
+      // Notes in a specific folder
+      selectedSourceType.value = "folder";
+      queryConfig.value.source = '"folder"';
+      sortField.value = "file.name";
+      sortDirection.value = "asc";
+      selectedLimit.value = "0";
+      queryConfig.value.limit = undefined;
+      break;
+
+    case "created":
+      // Notes created this week
+      selectedSourceType.value = "current-folder";
+      queryConfig.value.source = '"."';
+      // Add filter for created this week
+      queryConfig.value.filters.push({
+        id: uuidv4(),
+        field: "file.ctime",
+        operator: ">",
+        value: "date(today) - dur(1 week)",
+        isMetadata: true,
+      });
+      sortField.value = "file.ctime";
+      sortDirection.value = "desc";
+      selectedLimit.value = "0";
+      queryConfig.value.limit = undefined;
+      break;
+
+    case "modified":
+      // Recently modified notes
+      selectedSourceType.value = "current-folder";
+      queryConfig.value.source = '"."';
+      sortField.value = "file.mtime";
+      sortDirection.value = "desc";
+      selectedLimit.value = "5";
+      queryConfig.value.limit = 5;
+      break;
+
+    case "custom":
+      // Reset to default but keep as custom
+      selectedSourceType.value = "current-folder";
+      queryConfig.value.source = '"."';
+      sortField.value = "";
+      selectedLimit.value = "0";
+      queryConfig.value.limit = undefined;
+      break;
+  }
+
+  updateSorting();
+  updateQuery();
 }
 
 // Generate query from config and update content
 function updateQuery() {
-  if (editorMode.value === 'visual') {
+  if (editorMode.value === "visual") {
     // Ensure type is LIST
     queryConfig.value.type = DataviewQueryType.LIST;
-    
+
     // Generate the updated query
     const query = generateDataviewQuery(queryConfig.value);
-    
+
     // Update the raw query (useful when switching to code mode)
     rawQuery.value = query;
-    
+
     // Emit the updated content
     emit("update:content", [query]);
   }
@@ -562,266 +748,212 @@ function updateQuery() {
 </script>
 
 <style scoped>
-.dataview-list-module {
+/* Use the application's existing styles for consistency */
+.template-module-editor-line {
+  margin-bottom: var(--spacing-md);
+}
+
+.template-module-editor-input-group {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
-  width: 100%;
-  height: 100%;
+  gap: var(--spacing-xs);
 }
 
-.dataview-module-title {
-  font-size: 1.1rem;
-  font-weight: 600;
-  color: var(--text-normal);
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  margin-bottom: 0.75rem;
-  padding-bottom: 0.75rem;
-  border-bottom: 1px solid var(--background-modifier-border);
-}
-
-.dataview-module-title i {
-  color: var(--interactive-accent);
-}
-
-.dataview-visual-builder {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-  width: 100%;
-}
-
-.dataview-section {
-  background-color: var(--background-primary);
-  border: 1px solid var(--background-modifier-border);
-  border-radius: 6px;
-  padding: 1rem;
-}
-
-.dataview-section-title {
-  font-size: 1rem;
-  font-weight: 600;
-  margin: 0 0 0.75rem 0;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  color: var(--text-normal);
-}
-
-.dataview-section-title i {
-  color: var(--interactive-accent);
-}
-
-.dataview-optional {
-  font-size: 0.8rem;
-  font-weight: normal;
-  color: var(--text-muted);
-  margin-left: 0.25rem;
-}
-
-.dataview-source-container {
-  display: flex;
-  gap: 0.75rem;
-}
-
-.dataview-source-select {
-  width: 150px;
-}
-
-.dataview-source-value {
-  flex: 1;
-}
-
-.dataview-filters-container,
-.dataview-sorts-container,
-.dataview-limit-container,
-.dataview-options-container {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-}
-
-.dataview-filter-row,
-.dataview-sort-row {
-  display: flex;
-  gap: 0.5rem;
-  align-items: center;
-}
-
-.dataview-filter-field,
-.dataview-sort-field {
-  flex: 1;
-}
-
-.dataview-filter-operator,
-.dataview-sort-direction {
-  width: 150px;
-}
-
-.dataview-filter-value {
-  flex: 1;
-}
-
-.dataview-select,
-.dataview-input {
-  width: 100%;
-  padding: 0.5rem;
-  border-radius: 4px;
-  border: 1px solid var(--background-modifier-border);
-  background: var(--background-secondary);
-  color: var(--text-normal);
+.template-module-editor-label {
+  font-weight: 500;
+  color: var(--color-text);
   font-size: 0.9rem;
 }
 
-.dataview-select:focus,
-.dataview-input:focus {
-  border-color: var(--interactive-accent);
-  outline: none;
+.template-module-editor-inputs-row {
+  display: flex;
+  gap: var(--spacing-sm);
+  align-items: center;
 }
 
-.dataview-btn-icon {
+.template-module-editor-input {
+  flex: 1;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border: 1px solid var(--color-surface);
+  border-radius: var(--radius-sm);
+  font-size: 0.875rem;
+  background-color: rgba(255, 255, 255, 0.05);
+  color: var(--color-text);
+  transition: all 0.2s;
+}
+
+.template-module-editor-input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px rgba(255, 171, 88, 0.2);
+}
+
+.source-type-select {
+  flex: 0 0 auto;
+  min-width: 140px;
+  max-width: 140px;
+}
+
+.template-module-editor-section {
+  margin-bottom: var(--spacing-md);
+  padding: var(--spacing-sm);
+  border: 1px solid var(--color-surface);
+  border-radius: var(--radius-sm);
+  background-color: rgba(255, 255, 255, 0.02);
+}
+
+.template-module-editor-section-header {
+  font-weight: 600;
+  color: var(--color-text);
+  margin-bottom: var(--spacing-sm);
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+}
+
+.template-module-editor-section-header i {
+  color: var(--color-primary);
+}
+
+.template-module-editor-line-action {
+  background: none;
+  border: none;
+  cursor: pointer;
+  width: 30px;
+  height: 30px;
+  border-radius: var(--radius-sm);
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 30px;
-  height: 30px;
-  border-radius: 4px;
-  background: var(--background-secondary);
-  border: 1px solid var(--background-modifier-border);
-  color: var(--text-muted);
-  cursor: pointer;
-  transition: all 0.2s ease;
+  color: var(--color-text-muted);
+  transition: all 0.2s;
+  opacity: 0.7;
 }
 
-.dataview-btn-icon:hover {
-  background: var(--background-modifier-hover);
-  color: var(--text-normal);
+.template-module-editor-line-action:hover {
+  background-color: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+  opacity: 1;
 }
 
-.dataview-btn-remove:hover {
-  background-color: rgba(255, 0, 0, 0.1);
-  color: #d32f2f;
-  border-color: rgba(255, 0, 0, 0.2);
-}
-
-.dataview-btn-add {
+.add-filter-button {
   display: flex;
   align-items: center;
-  gap: 0.375rem;
-  padding: 0.5rem 0.75rem;
-  border-radius: 4px;
-  background: var(--background-secondary);
-  border: 1px dashed var(--background-modifier-border);
-  color: var(--text-muted);
+  gap: var(--spacing-xs);
+  padding: var(--spacing-xs) var(--spacing-md);
+  background: none;
+  border: 1px dashed var(--color-surface);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.add-filter-button:hover {
+  color: var(--color-text);
+  border-color: var(--color-primary);
+  background-color: rgba(255, 171, 88, 0.05);
+}
+
+.advanced-toggle-button {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  background: none;
+  border: none;
+  color: var(--color-text-muted);
   font-size: 0.9rem;
   cursor: pointer;
-  transition: all 0.2s ease;
-  align-self: flex-start;
+  padding: var(--spacing-xs) 0;
+  transition: all 0.2s;
 }
 
-.dataview-btn-add:hover {
-  background: var(--background-modifier-hover);
-  color: var(--text-normal);
-  border-color: var(--background-modifier-border-hover);
+.advanced-toggle-button:hover {
+  color: var(--color-text);
 }
 
-.dataview-checkbox {
+.advanced-toggle-button i {
+  width: 16px;
+  text-align: center;
+}
+
+.template-module-editor-checkbox-group {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  cursor: pointer;
-  user-select: none;
+  gap: var(--spacing-sm);
 }
 
-.dataview-checkbox input {
-  width: 1rem;
-  height: 1rem;
-  cursor: pointer;
-}
-
-.dataview-checkbox-label {
+.template-module-editor-checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  color: var(--color-text);
   font-size: 0.9rem;
-  color: var(--text-normal);
-  display: flex;
-  align-items: center;
-  gap: 0.375rem;
+  cursor: pointer;
 }
 
-.dataview-tooltip {
-  color: var(--text-muted);
+.tooltip-icon {
+  color: var(--color-text-muted);
   cursor: help;
 }
 
-.dataview-code-editor {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
+.template-module-editor-code-editor {
   width: 100%;
 }
 
-.dataview-code-textarea {
+.template-module-editor-code-textarea {
   width: 100%;
-  min-height: 200px;
-  padding: 0.75rem;
-  border: 1px solid var(--background-modifier-border);
-  border-radius: 4px;
-  background: var(--background-primary);
-  color: var(--text-normal);
-  font-family: var(--font-monospace);
-  font-size: 0.9em;
+  min-height: 180px;
+  padding: var(--spacing-sm);
+  border: 1px solid var(--color-surface);
+  border-radius: var(--radius-sm);
+  background-color: rgba(255, 255, 255, 0.05);
+  color: var(--color-text);
+  font-family: var(--font-monospace, monospace);
+  font-size: 0.9rem;
   resize: vertical;
 }
 
-.dataview-validation-error {
-  padding: 0.5rem;
-  border-radius: 4px;
-  background-color: rgba(255, 0, 0, 0.1);
-  color: #d32f2f;
+.template-module-editor-code-textarea:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px rgba(255, 171, 88, 0.2);
+}
+
+.template-module-editor-validation-error {
+  margin-top: var(--spacing-sm);
+  padding: var(--spacing-sm);
+  border-radius: var(--radius-sm);
+  background-color: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
   font-size: 0.85rem;
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: var(--spacing-sm);
 }
 
-.dataview-preview-container {
-  background-color: var(--background-secondary);
-  border-radius: 4px;
-  overflow: hidden;
-}
-
-.dataview-query-preview {
-  margin: 0;
-  padding: 0.75rem;
-  font-family: var(--font-monospace);
-  font-size: 0.9em;
-  white-space: pre-wrap;
-  overflow-x: auto;
-  color: var(--text-normal);
-}
-
-.dataview-module-controls {
+.template-module-editor-actions {
   display: flex;
-  justify-content: space-between;
-  margin-top: 0.5rem;
+  justify-content: flex-end;
+  margin-top: var(--spacing-md);
 }
 
-.dataview-toggle-mode-btn {
+.template-module-editor-toggle-mode {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.4rem 0.8rem;
-  border-radius: 4px;
-  background: var(--background-secondary);
-  border: 1px solid var(--background-modifier-border);
-  color: var(--text-normal);
+  gap: var(--spacing-xs);
+  padding: var(--spacing-xs) var(--spacing-md);
+  background-color: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--color-surface);
+  border-radius: var(--radius-sm);
+  color: var(--color-text);
   font-size: 0.85rem;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.2s;
 }
 
-.dataview-toggle-mode-btn:hover {
-  background: var(--background-modifier-hover);
+.template-module-editor-toggle-mode:hover {
+  background-color: rgba(255, 255, 255, 0.1);
 }
 </style>

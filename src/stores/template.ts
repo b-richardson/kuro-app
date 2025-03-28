@@ -25,8 +25,8 @@ export interface Template {
   /** Description of the template */
   description: string;
 
-  /** Sections that make up the template */
-  sections: TemplateModule[];
+  /** Modules that make up the template */
+  modules: TemplateModule[];
 
   /** Tags for categorizing the template */
   tags: string[];
@@ -66,42 +66,40 @@ export const useTemplateStore = defineStore("template", () => {
     return (id: string) => templates.value.find((t) => t.id === id) || null;
   });
 
-  // Computed property for current sections
+  // Computed property for current modules
   const currentModules = computed((): TemplateModule[] => {
-    return currentTemplate.value?.sections || [];
+    return currentTemplate.value?.modules || [];
   });
 
   /**
-   * Ensures a section conforms to the TemplateModule interface
+   * Ensures a module conforms to the TemplateModule interface
    */
-  const normalizeSection = (
-    section: Partial<TemplateModule>
-  ): TemplateModule => {
+  const normalizemodule = (module: Partial<TemplateModule>): TemplateModule => {
     // Ensure content is always a string array
-    const content = Array.isArray(section.content)
-      ? section.content
-      : section.content
-      ? [section.content as unknown as string]
+    const content = Array.isArray(module.content)
+      ? module.content
+      : module.content
+      ? [module.content as unknown as string]
       : [""];
 
     return {
-      id: section.id || uuidv4(),
+      id: module.id || uuidv4(),
       // Default to 'text' if no type is provided or type is invalid
       type:
-        section.type && isValidModuleType(section.type) ? section.type : "text",
+        module.type && isValidModuleType(module.type) ? module.type : "text",
       content,
       // Default to null if no plugin type is provided or type is invalid
       pluginType:
-        section.pluginType && isValidPluginType(section.pluginType)
-          ? section.pluginType
+        module.pluginType && isValidPluginType(module.pluginType)
+          ? module.pluginType
           : null,
       // Include metadata if provided
-      ...(section.metadata ? { metadata: section.metadata } : {}),
+      ...(module.metadata ? { metadata: module.metadata } : {}),
     };
   };
 
   /**
-   * Validates if a section type is one of the allowed ModuleType values
+   * Validates if a module type is one of the allowed ModuleType values
    */
   const isValidModuleType = (type: any): type is ModuleType => {
     const validTypes: ModuleType[] = [
@@ -115,12 +113,12 @@ export const useTemplateStore = defineStore("template", () => {
       "yaml",
       "templaterField",
       // Dataview plugin modules
-      "dataviewQuery",      // Generic/legacy dataview query
+      "dataviewQuery", // Generic/legacy dataview query
       "dataviewTableQuery", // Table query
-      "dataviewListQuery",  // List query
-      "dataviewTaskQuery",  // Task query
+      "dataviewListQuery", // List query
+      "dataviewTaskQuery", // Task query
       "dataviewCalendarQuery", // Calendar query
-      "dataviewFields",     // Inline dataview fields
+      "dataviewFields", // Inline dataview fields
       "kanban",
     ];
     return validTypes.includes(type as ModuleType);
@@ -147,11 +145,11 @@ export const useTemplateStore = defineStore("template", () => {
       if (savedTemplates) {
         const parsed = JSON.parse(savedTemplates);
 
-        // Normalize all templates and sections to ensure type consistency
+        // Normalize all templates and modules to ensure type consistency
         templates.value = parsed.map((template: any) => ({
           ...template,
-          sections: Array.isArray(template.sections)
-            ? template.sections.map(normalizeSection)
+          modules: Array.isArray(template.modules)
+            ? template.modules.map(normalizemodule)
             : [],
         }));
       }
@@ -183,12 +181,12 @@ export const useTemplateStore = defineStore("template", () => {
       currentTemplate.value = {
         ...template,
         // Create fresh copies of arrays and objects to maintain reactivity
-        sections: template.sections.map((section) => ({
-          ...section,
+        modules: template.modules.map((module) => ({
+          ...module,
           // Create a fresh copy of the content array
-          content: [...section.content],
+          content: [...module.content],
           // Create a fresh copy of metadata if it exists
-          metadata: section.metadata ? { ...section.metadata } : undefined,
+          metadata: module.metadata ? { ...module.metadata } : undefined,
         })),
         tags: [...template.tags],
       };
@@ -208,7 +206,7 @@ export const useTemplateStore = defineStore("template", () => {
       id: uuidv4(),
       name: "Untitled Template",
       description: "",
-      sections: [
+      modules: [
         {
           id: uuidv4(),
           type: "header",
@@ -253,7 +251,7 @@ export const useTemplateStore = defineStore("template", () => {
       id,
       name,
       description,
-      sections: [],
+      modules: [],
       tags: [],
       lastModified: now,
       createdAt: now,
@@ -279,15 +277,15 @@ export const useTemplateStore = defineStore("template", () => {
       // Update timestamp
       template.lastModified = Date.now();
 
-      // Normalize sections to ensure type consistency but do it in a reactive way
-      const normalizedSections = template.sections.map((section) =>
-        normalizeSection(section)
+      // Normalize modules to ensure type consistency but do it in a reactive way
+      const normalizedmodules = template.modules.map((module) =>
+        normalizemodule(module)
       );
 
       // Update the template in the templates array
       templates.value[index] = {
         ...template,
-        sections: normalizedSections,
+        modules: normalizedmodules,
       };
 
       // Update current template if it's the same one
@@ -295,18 +293,14 @@ export const useTemplateStore = defineStore("template", () => {
         // Update properties individually to maintain proper reactivity
         // Instead of using Object.assign which can break reactivity with nested objects
         Object.keys(template).forEach((key) => {
-          if (key === "sections") {
+          if (key === "modules") {
             if (!currentTemplate.value) return;
-            // Create a deep reactive copy of sections
-            currentTemplate.value.sections = normalizedSections.map(
-              (section) => ({
-                ...section,
-                content: [...section.content],
-                metadata: section.metadata
-                  ? { ...section.metadata }
-                  : undefined,
-              })
-            );
+            // Create a deep reactive copy of modules
+            currentTemplate.value.modules = normalizedmodules.map((module) => ({
+              ...module,
+              content: [...module.content],
+              metadata: module.metadata ? { ...module.metadata } : undefined,
+            }));
           } else if (key === "tags") {
             if (!currentTemplate.value) return;
             // Create a fresh copy of the tags array
@@ -412,14 +406,14 @@ export const useTemplateStore = defineStore("template", () => {
         createdAt: Date.now(),
       };
 
-      // Create a deep copy of sections while maintaining reactivity
-      newTemplate.sections = template.sections.map((section) => ({
-        ...section, // Copy all properties of the section
+      // Create a deep copy of modules while maintaining reactivity
+      newTemplate.modules = template.modules.map((module) => ({
+        ...module, // Copy all properties of the module
         id: uuidv4(), // Assign new ID
         // Create a fresh copy of the content array to maintain reactivity
-        content: section.content ? [...section.content] : [],
+        content: module.content ? [...module.content] : [],
         // Create a fresh copy of metadata if it exists
-        metadata: section.metadata ? { ...section.metadata } : undefined,
+        metadata: module.metadata ? { ...module.metadata } : undefined,
       }));
 
       templates.value.push(newTemplate);
@@ -463,51 +457,51 @@ export const useTemplateStore = defineStore("template", () => {
   };
 
   /**
-   * Adds a section to the current template
+   * Adds a module to the current template
    */
-  const addSection = (section: Partial<TemplateModule>) => {
+  const addModule = (module: Partial<TemplateModule>) => {
     // If no current template, create one
     if (!currentTemplate.value && currentTemplateId.value === "") {
       createTemplate();
     }
 
     if (currentTemplate.value) {
-      // Normalize section to ensure type consistency
-      const normalizedSection = normalizeSection(section);
+      // Normalize module to ensure type consistency
+      const normalizedmodule = normalizemodule(module);
 
-      // Add section to the template
-      currentTemplate.value.sections.push(normalizedSection);
+      // Add module to the template
+      currentTemplate.value.modules.push(normalizedmodule);
       currentTemplate.value.lastModified = Date.now();
       updateTemplate(currentTemplate.value);
     }
   };
 
   /**
-   * Updates a section in the current template
+   * Updates a module in the current template
    */
-  const updateSection = (
-    sectionId: string,
-    updatedSection: Partial<TemplateModule>
+  const updateModule = (
+    moduleId: string,
+    updatedmodule: Partial<TemplateModule>
   ) => {
     if (currentTemplate.value) {
-      const index = currentTemplate.value.sections.findIndex(
-        (s) => s.id === sectionId
+      const index = currentTemplate.value.modules.findIndex(
+        (s) => s.id === moduleId
       );
       if (index !== -1) {
-        // Merge the existing section with the updates
-        const mergedSection = {
-          ...currentTemplate.value.sections[index],
-          ...updatedSection,
+        // Merge the existing module with the updates
+        const mergedmodule = {
+          ...currentTemplate.value.modules[index],
+          ...updatedmodule,
           // Special handling for content to ensure it's always an array
-          content: updatedSection.content
-            ? Array.isArray(updatedSection.content)
-              ? updatedSection.content
-              : [updatedSection.content as unknown as string]
-            : currentTemplate.value.sections[index].content,
+          content: updatedmodule.content
+            ? Array.isArray(updatedmodule.content)
+              ? updatedmodule.content
+              : [updatedmodule.content as unknown as string]
+            : currentTemplate.value.modules[index].content,
         };
 
         // Normalize to ensure type consistency
-        currentTemplate.value.sections[index] = normalizeSection(mergedSection);
+        currentTemplate.value.modules[index] = normalizemodule(mergedmodule);
         currentTemplate.value.lastModified = Date.now();
         updateTemplate(currentTemplate.value);
       }
@@ -515,15 +509,15 @@ export const useTemplateStore = defineStore("template", () => {
   };
 
   /**
-   * Deletes a section from the current template
+   * Deletes a module from the current template
    */
-  const deleteSection = (sectionId: string) => {
+  const deleteModule = (moduleId: string) => {
     if (currentTemplate.value) {
-      const index = currentTemplate.value.sections.findIndex(
-        (s) => s.id === sectionId
+      const index = currentTemplate.value.modules.findIndex(
+        (s) => s.id === moduleId
       );
       if (index !== -1) {
-        currentTemplate.value.sections.splice(index, 1);
+        currentTemplate.value.modules.splice(index, 1);
         currentTemplate.value.lastModified = Date.now();
         updateTemplate(currentTemplate.value);
       }
@@ -531,13 +525,13 @@ export const useTemplateStore = defineStore("template", () => {
   };
 
   /**
-   * Updates all sections in the current template
+   * Updates all modules in the current template
    */
-  const updateSections = (newSections: Partial<TemplateModule>[]) => {
+  const updateModules = (newmodules: Partial<TemplateModule>[]) => {
     if (currentTemplate.value) {
-      // Create normalized sections with proper reactivity
-      const normalizedSections = newSections.map((section) => {
-        const normalized = normalizeSection(section);
+      // Create normalized modules with proper reactivity
+      const normalizedmodules = newmodules.map((module) => {
+        const normalized = normalizemodule(module);
         // Ensure content array is properly copied for reactivity
         return {
           ...normalized,
@@ -548,8 +542,8 @@ export const useTemplateStore = defineStore("template", () => {
         };
       });
 
-      // Update the sections array with the normalized sections
-      currentTemplate.value.sections = normalizedSections;
+      // Update the modules array with the normalized modules
+      currentTemplate.value.modules = normalizedmodules;
       currentTemplate.value.lastModified = Date.now();
 
       // Update the template in the templates array
@@ -560,11 +554,11 @@ export const useTemplateStore = defineStore("template", () => {
         // Create a reactive copy of the current template
         templates.value[index] = {
           ...currentTemplate.value,
-          // Ensure sections array is properly copied
-          sections: normalizedSections.map((section) => ({
-            ...section,
-            content: [...section.content],
-            metadata: section.metadata ? { ...section.metadata } : undefined,
+          // Ensure modules array is properly copied
+          modules: normalizedmodules.map((module) => ({
+            ...module,
+            content: [...module.content],
+            metadata: module.metadata ? { ...module.metadata } : undefined,
           })),
         };
         saveTemplates();
@@ -578,7 +572,7 @@ export const useTemplateStore = defineStore("template", () => {
   const saveCurrentTemplate = async () => {
     try {
       if (!currentTemplate.value) {
-        // No template loaded, create a new one if there are sections
+        // No template loaded, create a new one if there are modules
         if (currentModules.value.length > 0) {
           const id = createTemplate();
           return id;
@@ -629,11 +623,11 @@ export const useTemplateStore = defineStore("template", () => {
     saveTemplates,
     clearAllTemplates,
 
-    // Section manipulation
-    addSection,
-    updateSection,
-    deleteSection,
-    updateSections,
+    // Module manipulation
+    addModule,
+    updateModule,
+    deleteModule,
+    updateModules,
     saveCurrentTemplate,
   };
 });

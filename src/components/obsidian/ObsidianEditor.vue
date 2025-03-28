@@ -1,11 +1,11 @@
 <template>
   <div class="obsidian-editor" :class="{ 'read-only': readOnly }">
-    <editor-content :editor="editor" />
+    <editor-content v-if="editor" :editor="editor" />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onBeforeUnmount, watch } from "vue";
+import { shallowRef, onMounted, onBeforeUnmount, watch } from "vue";
 import { Editor, EditorContent } from "@tiptap/vue-3";
 import StarterKit from "@tiptap/starter-kit";
 import Link from "@tiptap/extension-link";
@@ -37,53 +37,81 @@ const props = defineProps({
 // Emits
 const emit = defineEmits(["update:content"]);
 
-// Editor instance
-const editor = ref<Editor | null>(null);
+// Use shallowRef for complex objects like Editor
+const editor = shallowRef<Editor | undefined>(undefined);
 
-// Initialize editor
-const initEditor = () => {
+// Helper function to preprocess dataview blocks in a safer way
+const preprocessContent = (content: string): string => {
+  // This helps TipTap recognize dataview blocks better
+  return content.replace(/```dataview\s+([\s\S]*?)```/g, (match, query) => {
+    // Replace with explicit HTML structure
+    return `<div class="dataview-block-container"><pre data-language="dataview"><code>${query.trim()}</code></pre></div>`;
+  });
+};
+
+// Initialize editor on component mount
+onMounted(() => {
   editor.value = new Editor({
     extensions: [
+      // Add ObsidianDataview first to give it priority
+      ObsidianDataview,
+
+      // Configure StarterKit without code block
       StarterKit.configure({
         codeBlock: false,
       }),
+
       Link.configure({
         openOnClick: false,
         HTMLAttributes: {
           class: "obsidian-link",
         },
       }),
+
       Placeholder.configure({
         placeholder: "Start writing...",
       }),
+
+      // Add CodeBlockLowlight after our custom dataview handler
       CodeBlockLowlight.configure({
         lowlight,
       }),
+
       ObsidianCallout,
       ObsidianLink,
-      ObsidianDataview,
       ObsidianFrontmatter,
       ObsidianTemplateVars,
-      Markdown,
+
+      Markdown.configure({
+        html: true,
+        tightLists: true,
+        bulletListMarker: "-",
+        linkify: true,
+        transformPastedText: true,
+        transformCopiedText: true,
+      }),
     ],
-    content: props.content,
+    content: preprocessContent(props.content),
     editable: !props.readOnly,
     onUpdate: ({ editor }) => {
       // Use markdown output if needed
       emit("update:content", editor.storage.markdown.getMarkdown());
-    }, // Added missing closing bracket here
+    },
+    parseOptions: {
+      preserveWhitespace: "full",
+    },
   });
-};
-
-// Initialize on mount
-initEditor();
+});
 
 // Clean up on unmount
 onBeforeUnmount(() => {
-  editor.value?.destroy();
+  if (editor.value) {
+    editor.value.destroy();
+    editor.value = undefined;
+  }
 });
 
-// Only watch for read-only status changes
+// Watch for read-only status changes
 watch(
   () => props.readOnly,
   (isReadOnly) => {
@@ -93,19 +121,62 @@ watch(
   }
 );
 
-// Only set content initially and when explicitly changed from outside
-// NOT on every keystroke
+// Watch for content changes
 watch(
   () => props.content,
-  (newContent, oldContent) => {
-    // Only set content on initialization or when changed from outside
+  (newContent) => {
+    // Only set content if editor exists
     if (!editor.value || editor.value.isDestroyed) return;
 
     // If editor doesn't have focus, we can safely update
     if (!editor.value.isFocused) {
-      editor.value.commands.setContent(newContent, false);
+      // Pre-process the content
+      let processedContent = preprocessContent(newContent);
+      editor.value.commands.setContent(processedContent, false);
     }
   },
-  { immediate: true, deep: true }
+  { deep: true }
 );
 </script>
+
+<style scoped>
+.obsidian-editor {
+  height: 100%;
+  overflow: auto;
+}
+
+.obsidian-editor :deep(.ProseMirror) {
+  height: 100%;
+  outline: none;
+  padding: 1rem;
+}
+
+.obsidian-editor.read-only :deep(.ProseMirror) {
+  cursor: default;
+}
+
+/* Make dataview blocks visually distinct */
+.obsidian-editor :deep(.dataview-block-container) {
+  margin: 1rem 0;
+}
+
+.obsidian-editor :deep(.dataview-preview) {
+  background-color: #e6f7ff;
+  border: 2px solid #1890ff;
+  border-radius: 5px;
+  padding: 1rem;
+  margin: 0;
+}
+
+/* Hide the actual code block content when rendered as dataview */
+.obsidian-editor :deep(.dataview-wrapper pre),
+.obsidian-editor :deep(.dataview-wrapper code) {
+  display: none;
+}
+
+/* Support for dark theme */
+:global(.dark-theme) .obsidian-editor :deep(.dataview-preview) {
+  background-color: #111d2c;
+  border-color: #177ddc;
+}
+</style>

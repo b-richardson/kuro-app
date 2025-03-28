@@ -1,59 +1,74 @@
-import { Extension } from "@tiptap/core";
-import { Plugin, PluginKey } from "prosemirror-state";
-import { Decoration, DecorationSet } from "prosemirror-view";
+import { Node, mergeAttributes } from "@tiptap/core";
+import { VueNodeViewRenderer } from "@tiptap/vue-3";
+import RenderDataviewBlock from "./RenderDataviewBlock.vue";
 
-// Regex to match Dataview code blocks
-const DATAVIEW_REGEX = /```dataview\s*([\s\S]*?)```/g;
-
-export const ObsidianDataview = Extension.create({
+export const ObsidianDataview = Node.create({
   name: "obsidianDataview",
 
-  addProseMirrorPlugins() {
+  group: "block",
+  content: "text*",
+  marks: "",
+  code: true,
+  defining: true,
+
+  addOptions() {
+    return {
+      HTMLAttributes: {},
+    };
+  },
+
+  addAttributes() {
+    return {
+      language: {
+        default: "dataview",
+      },
+    };
+  },
+
+  parseHTML() {
     return [
-      new Plugin({
-        key: new PluginKey("obsidianDataview"),
-        props: {
-          decorations: (state) => {
-            const { doc } = state;
-            const decorations: Decoration[] = [];
-
-            doc.descendants((node, pos) => {
-              if (!node.isText) return;
-
-              const text = node.text || "";
-              let match;
-
-              // Find all dataview blocks in the text
-              while ((match = DATAVIEW_REGEX.exec(text)) !== null) {
-                const start = pos + match.index;
-                const end = start + match[0].length;
-                const queryContent = match[1];
-
-                // Add decoration for the dataview block
-                decorations.push(
-                  Decoration.inline(start, end, {
-                    class: "obsidian-dataview-block",
-                    style: `
-                      display: block;
-                      background-color: #2d2d2d;
-                      color: #7aa2f7;
-                      font-family: 'JetBrains Mono', monospace;
-                      padding: 1em;
-                      margin: 1em 0;
-                      border-radius: 4px;
-                      white-space: pre-wrap;
-                      overflow-x: auto;
-                    `,
-                    "data-dataview-query": queryContent,
-                  })
-                );
-              }
-            });
-
-            return DecorationSet.create(doc, decorations);
-          },
+      {
+        tag: "pre",
+        preserveWhitespace: "full",
+        getAttrs: (node) => {
+          if (
+            typeof node === "object" &&
+            node !== null &&
+            (node as HTMLElement).getAttribute("data-language") === "dataview"
+          ) {
+            return { language: "dataview" };
+          }
+          return false;
         },
-      }),
+      },
+      {
+        tag: "div.dataview-block-container",
+      },
     ];
+  },
+
+  renderHTML({ HTMLAttributes }) {
+    return [
+      "div",
+      { class: "dataview-block-container" },
+      ["pre", { "data-language": "dataview" }, ["code", {}, 0]],
+    ];
+  },
+
+  addNodeView() {
+    return VueNodeViewRenderer(RenderDataviewBlock);
+  },
+
+  // Custom markdown serialization
+  addStorage() {
+    return {
+      markdown: {
+        serialize: (state: any, node: any) => {
+          state.write("```dataview\n");
+          state.text(node.textContent);
+          state.write("\n```");
+        },
+      },
+    };
   },
 });
