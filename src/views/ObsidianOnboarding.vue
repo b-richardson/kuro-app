@@ -170,9 +170,8 @@
           <div class="security-notice">
             <i class="fas fa-shield-alt"></i>
             <p>
-              Your API key and port are stored securely and privately on your
-              device and will never be shared externally. We do not store your
-              note data permanently without your explicit consent.
+              Your API key and port are encrypted and then stored securely in
+              our database.
             </p>
           </div>
 
@@ -248,8 +247,10 @@
 import { ref, computed } from "vue";
 import { useRouter } from "vue-router";
 import { useObsidianStore } from "@/stores/obsidian";
+import { useAuthStore } from "@/stores/auth";
 import { openCertificateAcceptPage } from "@/utils/certificateHelper";
 import ScrollContainer from "@/components/UI/ScrollContainer.vue";
+import { saveObsidianIntegration } from "@/services/supabase";
 
 const router = useRouter();
 const obsidianStore = useObsidianStore();
@@ -331,39 +332,73 @@ const skipIntegration = () => {
 
 // API connection test
 const testConnection = async () => {
-  let testApiKey = apiKey.value;
-  let testApiPort = apiPort.value;
-  // Validate both fields before proceeding
+  const authStore = useAuthStore();
+
+  // Validate the API key and port inputs
   if (!validateApiPort() || !validateApiKey()) return;
 
   isConnecting.value = true;
 
   try {
-    // Attempt to connect using both the API key and the port
-    await obsidianStore.connectToVault(testApiKey, testApiPort);
-
-    // Get basic vault information
+    // Step 1: Test the Obsidian connection
+    await obsidianStore.connectToVault(apiKey.value, apiPort.value);
     vaultInfo.value = await obsidianStore.getVaultInfo();
     vaultStats.value = await obsidianStore.getVaultStats();
 
-    // Move to success step
+    console.log("Auth state:", {
+      isAuthenticated: authStore.isAuthenticated,
+      user: authStore.user,
+      userId: authStore.user?.id,
+    });
+
+    // Step 2: Ensure the user is authenticated
+    if (!authStore.isAuthenticated) {
+      throw new Error("You must log in to save your Obsidian integration.");
+    }
+
+    const userId = authStore.user?.id;
+    if (!userId) throw new Error("Failed to retrieve authenticated user ID");
+
+    console.log("Attempting to save Obsidian integration to Supabase...");
+    console.log("User ID:", userId);
+    console.log("API Key length:", apiKey.value.length);
+    console.log("Port:", apiPort.value);
+
+    // Step 3: Save integration settings to Supabase
+    const saveResult = await saveObsidianIntegration(
+      userId,
+      apiKey.value,
+      apiPort.value
+    );
+
+    console.log("Save result:", saveResult);
+
+    if (saveResult.error) {
+      console.error(
+        "Failed to save integration in Supabase:",
+        saveResult.error
+      );
+      throw new Error("Unable to save your Obsidian integration securely.");
+    }
+    // Step 4: Move to the next onboarding step
     nextStep();
-  } catch (error: any) {
-    // Handle error similarly, just like your existing code
-    if (error.code === "CERT_ERROR") {
+  } catch (error) {
+    console.error("Connection test failed:", error);
+
+    const errorMessage = (error as { message?: string })?.message;
+
+    if (errorMessage?.includes("CERT_ERROR")) {
       apiKeyError.value =
         "Certificate error. Please accept the self-signed certificate in your browser.";
-      // ...
-    } else if (error.code === "CONNECTION_ERROR") {
+    } else if (errorMessage?.includes("CONNECTION_ERROR")) {
       apiKeyError.value =
-        "Could not connect to Obsidian. Is the plugin enabled?";
-    } else if (error.code === "AUTH_ERROR") {
-      apiKeyError.value = "Invalid API key. Please check and try again.";
+        "Could not connect to Obsidian. Ensure the Local REST API Plugin is enabled.";
+    } else if (errorMessage?.includes("AUTH_ERROR")) {
+      apiKeyError.value = "Authentication failed. Double-check your API key.";
     } else {
       apiKeyError.value =
-        "Connection failed. Please ensure Obsidian is running with the plugin enabled.";
+        "Connection failed. Ensure Obsidian is running with the Local REST API plugin enabled.";
     }
-    console.error("Obsidian connection error:", error);
   } finally {
     isConnecting.value = false;
   }

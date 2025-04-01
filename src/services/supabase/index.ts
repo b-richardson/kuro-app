@@ -1,8 +1,13 @@
 import { createClient } from "@supabase/supabase-js";
+import {
+  saveObsidianIntegration,
+  getObsidianIntegration,
+  deleteObsidianIntegration,
+} from "./database";
 
 /**
  * Supabase Client Configuration
- * 
+ *
  * This file configures and exports the Supabase client for use throughout the application.
  * It's set up with optimal settings for authentication and session handling.
  */
@@ -12,9 +17,10 @@ const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
 // In development, use service key if available (for admin operations)
-const SUPABASE_KEY = import.meta.env.DEV && import.meta.env.VITE_SUPABASE_SERVICE_KEY
-  ? import.meta.env.VITE_SUPABASE_SERVICE_KEY
-  : SUPABASE_ANON_KEY;
+const SUPABASE_KEY =
+  import.meta.env.DEV && import.meta.env.VITE_SUPABASE_SERVICE_KEY
+    ? import.meta.env.VITE_SUPABASE_SERVICE_KEY
+    : SUPABASE_ANON_KEY;
 
 // Log runtime mode for debugging
 console.log(
@@ -24,11 +30,11 @@ console.log(
 );
 
 // Storage key for consistent session management
-const STORAGE_KEY = 'obsidian-template-creator-auth';
+const STORAGE_KEY = "obsidian-template-creator-auth";
 
 /**
  * Supabase client with optimal auth configuration
- * 
+ *
  * Key configuration points:
  * - autoRefreshToken: Automatically refreshes the token before it expires
  * - persistSession: Maintains the session across page reloads
@@ -43,28 +49,28 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
     detectSessionInUrl: true,
     storage: localStorage,
     storageKey: STORAGE_KEY,
-    flowType: 'pkce',
+    flowType: "pkce",
     debug: import.meta.env.DEV, // Enable debug logs in development
     asyncStorage: false, // Use synchronous storage for reliability
   },
   // Global database schema
   db: {
-    schema: 'public',
+    schema: "public",
   },
   // Robust global fetch timeout configuration
   global: {
     headers: {
-      'X-Client-Info': 'obsidian-template-creator'
+      "X-Client-Info": "obsidian-template-creator",
     },
     fetch: (url, options) => {
       // Add a more reasonable timeout for auth requests
-      const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Request timeout')), 30000)
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("Request timeout")), 30000)
       );
-      
+
       return Promise.race([fetch(url, options), timeoutPromise]);
-    }
-  }
+    },
+  },
 });
 
 // For debugging: Detect any stuck pending auth state in localStorage
@@ -72,13 +78,23 @@ try {
   const data = localStorage.getItem(STORAGE_KEY);
   if (data) {
     const parsed = JSON.parse(data);
-    const hasPendingAuthState = parsed?.pendingAuthState?.status === 'in-progress';
-    
+    const hasPendingAuthState =
+      parsed?.pendingAuthState?.status === "in-progress";
+
     if (hasPendingAuthState) {
-      console.warn('Detected pending auth state that might be stuck. This could cause auth issues.', parsed.pendingAuthState);
+      console.warn(
+        "Detected pending auth state that might be stuck. This could cause auth issues.",
+        parsed.pendingAuthState
+      );
       // We don't auto-clear this as it could be legitimate, but this log helps with debugging
     }
   }
 } catch (e) {
-  console.error('Error checking for pending auth state:', e);
+  console.error("Error checking for pending auth state:", e);
 }
+
+export {
+  saveObsidianIntegration,
+  getObsidianIntegration,
+  deleteObsidianIntegration,
+};

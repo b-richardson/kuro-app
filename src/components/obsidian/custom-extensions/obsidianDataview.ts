@@ -1,6 +1,6 @@
 import { Node, mergeAttributes } from "@tiptap/core";
 import { VueNodeViewRenderer } from "@tiptap/vue-3";
-import RenderDataviewBlock from "./RenderDataviewBlock.vue";
+import RenderDataviewBlock from "./RenderDataviewList.vue";
 
 export const ObsidianDataview = Node.create({
   name: "obsidianDataview",

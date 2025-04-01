@@ -46,7 +46,7 @@
               @change="handleSourceTypeChange"
             >
               <option
-                v-for="source in commonSources"
+                v-for="source in availableSources"
                 :key="source.id"
                 :value="source.id"
               >
@@ -54,6 +54,7 @@
               </option>
             </select>
             <input
+              v-if="selectedSourceType === 'custom'"
               type="text"
               class="template-module-editor-input"
               v-model="queryConfig.source"
@@ -81,7 +82,6 @@
               <option value="file.ctime">Creation date</option>
               <option value="file.mtime">Modified date</option>
               <option value="file.name">File name</option>
-              <option value="custom">Custom field</option>
             </select>
             <select
               v-if="sortField"
@@ -92,16 +92,6 @@
               <option value="desc">Newest first</option>
               <option value="asc">Oldest first</option>
             </select>
-            <input
-              v-if="sortField === 'custom'"
-              type="text"
-              class="template-module-editor-input"
-              v-model="customSortField"
-              placeholder="Field name to sort by"
-              @input="updateCustomSorting"
-              @focus="setEditing(true)"
-              @blur="setEditing(false)"
-            />
           </div>
         </div>
       </div>
@@ -238,7 +228,9 @@
               Use as inline query
               <span
                 class="tooltip-icon"
-                title="When checked, the query will be an inline query using `${dv.list(...)}` syntax rather than a code block"
+                v-tooltip="
+                  'When checked, the query will be an inline query using `${dv.list(...)}` syntax rather than a code block'
+                "
               >
                 <i class="fas fa-info-circle"></i>
               </span>
@@ -299,6 +291,7 @@ import { ref, computed, watch, onMounted } from "vue";
 import { v4 as uuidv4 } from "uuid";
 import BaseModule from "@/components/TemplateCreator/modules/core/BaseModule.vue";
 import { TemplateModule } from "@/types/TemplateModule";
+import { obsidianApiService } from "@/services/obsidian";
 import {
   DataviewQueryType,
   DataviewQueryConfig,
@@ -342,8 +335,7 @@ const showAdvanced = ref(false);
 const selectedLimit = ref("0");
 const sortField = ref("");
 const sortDirection = ref("desc");
-const customSortField = ref("");
-const selectedPreset = ref("");
+const obsidianFolders = ref<string[]>([]);
 
 // Default query configuration for LIST queries
 const queryConfig = ref<DataviewQueryConfig>({
@@ -356,8 +348,59 @@ const queryConfig = ref<DataviewQueryConfig>({
   limit: undefined,
 });
 
-// Computed properties
-const commonSources = computed(() => COMMON_SOURCES);
+// Fetch folders from Obsidian if possible
+onMounted(async () => {
+  try {
+    if (obsidianApiService.isInitialized()) {
+      // Try to get vault info to get available folders
+      const vaultInfo = await obsidianApiService.getVaultInfo();
+      if (vaultInfo.folders) {
+        obsidianFolders.value = vaultInfo.folders;
+      }
+    }
+  } catch (error) {
+    console.warn("Could not fetch Obsidian folders:", error);
+  }
+});
+
+// Combined sources - standard ones plus folders from Obsidian
+const availableSources = computed(() => {
+  // Start with the common sources
+  const sources = [...COMMON_SOURCES];
+
+  // Add folders from Obsidian if available
+  if (obsidianFolders.value.length > 0) {
+    // Filter out folders already in common sources
+    const existingFolderPaths = sources
+      .filter((s) => s.type === "folder")
+      .map((s) => s.value.replace(/["']/g, ""));
+
+    // Add each folder as a new source option
+    obsidianFolders.value.forEach((folder) => {
+      // Skip if this folder is already in the common sources
+      if (!existingFolderPaths.includes(folder)) {
+        sources.push({
+          id: `folder-${folder}`,
+          label: `Folder: ${folder}`,
+          type: "folder",
+          value: `"${folder}"`,
+          placeholder: "Enter folder path",
+        });
+      }
+    });
+  }
+
+  // Always add a custom option at the end
+  sources.push({
+    id: "custom",
+    label: "Custom source",
+    type: "custom",
+    value: "",
+    placeholder: "Enter custom source",
+  });
+
+  return sources;
+});
 
 // Generated query based on current configuration
 const generatedQuery = computed(() => {
@@ -512,16 +555,16 @@ function setSortFromConfig() {
     const firstSort = queryConfig.value.sorts[0];
     sortDirection.value = firstSort.direction;
 
+    // Check if it's a standard field
     if (["file.ctime", "file.mtime", "file.name"].includes(firstSort.field)) {
       sortField.value = firstSort.field;
     } else {
-      sortField.value = "custom";
-      customSortField.value = firstSort.field;
+      // For custom fields, default to "file.name"
+      sortField.value = "file.name";
     }
   } else {
     sortField.value = "";
     sortDirection.value = "desc";
-    customSortField.value = "";
   }
 }
 
@@ -581,25 +624,14 @@ function updateSorting() {
 
   // If a sort field is selected, add it
   if (sortField.value) {
-    const actualField =
-      sortField.value === "custom" ? customSortField.value : sortField.value;
-    if (actualField) {
-      queryConfig.value.sorts.push({
-        field: actualField,
-        direction: sortDirection.value as DataviewSortDirection,
-        isMetadata: true,
-      });
-    }
+    queryConfig.value.sorts.push({
+      field: sortField.value,
+      direction: sortDirection.value as DataviewSortDirection,
+      isMetadata: true,
+    });
   }
 
   updateQuery();
-}
-
-// Update custom sort field
-function updateCustomSorting() {
-  if (sortField.value === "custom" && customSortField.value) {
-    updateSorting();
-  }
 }
 
 // Update limit based on dropdown selection
@@ -617,7 +649,7 @@ function updateLimit() {
 
 // Get placeholder text based on selected source type
 function getSourcePlaceholder(): string {
-  const selectedSource = commonSources.value.find(
+  const selectedSource = availableSources.value.find(
     (s) => s.id === selectedSourceType.value
   );
   return selectedSource?.placeholder || "Enter source";
@@ -625,7 +657,7 @@ function getSourcePlaceholder(): string {
 
 // Handle source type change
 function handleSourceTypeChange() {
-  const selectedSource = commonSources.value.find(
+  const selectedSource = availableSources.value.find(
     (s) => s.id === selectedSourceType.value
   );
 
@@ -638,13 +670,23 @@ function handleSourceTypeChange() {
 // Set source type based on source value
 function setSourceTypeFromSource(source: string) {
   // Try to match the source with one of the common sources
-  const matchedSource = commonSources.value.find((s) => s.value === source);
+  const matchedSource = availableSources.value.find((s) => s.value === source);
 
   if (matchedSource) {
     selectedSourceType.value = matchedSource.id;
   } else {
     // If no match, set to custom
     selectedSourceType.value = "custom";
+
+    // If it's a custom source, store the value
+    if (source) {
+      const customSource = availableSources.value.find(
+        (s) => s.id === "custom"
+      );
+      if (customSource) {
+        customSource.value = source;
+      }
+    }
   }
 }
 
@@ -743,6 +785,14 @@ function updateQuery() {
 
     // Emit the updated content
     emit("update:content", [query]);
+
+    const updatedModules = [...props.modules];
+    updatedModules[props.index] = {
+      ...props.module,
+      content: [query],
+    };
+
+    emit("update", updatedModules);
   }
 }
 </script>

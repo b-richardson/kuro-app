@@ -1,21 +1,21 @@
 import { defineStore } from "pinia";
-import { format } from 'date-fns';
-import { obsidianApiService } from '@/services/obsidian/obsidianApiService';
-import { 
-  ConnectionError, 
-  FileInfo, 
-  FileStructureNode, 
-  FolderContents, 
-  FolderInfo, 
-  FolderStructureNode, 
-  NoteMetadata, 
-  ObsidianCommand, 
-  PatchNoteParams, 
-  PeriodicNoteType, 
-  SimpleSearchResult, 
+import { format } from "date-fns";
+import { obsidianApiService } from "@/services/obsidian";
+import {
+  ConnectionError,
+  FileInfo,
+  FileStructureNode,
+  FolderContents,
+  FolderInfo,
+  FolderStructureNode,
+  NoteMetadata,
+  ObsidianCommand,
+  PatchNoteParams,
+  PeriodicNoteType,
+  SimpleSearchResult,
   VaultInfo,
-  VaultStats
-} from '@/types/obsidian';
+  VaultStats,
+} from "@/types/obsidian";
 
 /**
  * Obsidian store using Pinia
@@ -30,15 +30,15 @@ export const useObsidianStore = defineStore("obsidian", {
     baseUrl: "https://127.0.0.1:27124",
     connectionError: null as ConnectionError | null,
     integrationSkipped: false,
-    
+
     // Vault information
     vaultName: "",
     vaultPath: "",
-    
+
     // Raw data lists
     fileList: [] as string[],
     folderList: [] as string[],
-    
+
     // Enhanced content storage
     files: [] as FileInfo[],
     folders: [] as FolderInfo[],
@@ -46,7 +46,7 @@ export const useObsidianStore = defineStore("obsidian", {
     noteContents: {} as Record<string, string>,
     noteMetadata: {} as Record<string, NoteMetadata>,
     commands: [] as ObsidianCommand[],
-    
+
     // Cache control
     lastRefreshed: null as Date | null,
     cacheTimeout: 5 * 60 * 1000, // 5 minutes in milliseconds
@@ -57,86 +57,89 @@ export const useObsidianStore = defineStore("obsidian", {
      * Check if connected to Obsidian
      */
     isConnected: (state) => state.connected,
-    
+
     /**
      * Check if there is a connection error
      */
     hasConnectionError: (state) => !!state.connectionError,
-    
+
     /**
      * Check if should prompt for connection
      */
     shouldPromptForConnection: (state) =>
       !state.connected && !state.integrationSkipped,
-    
+
     /**
      * Get markdown files only
      */
-    markdownFiles: (state) => 
-      state.files.filter(file => file.extension === 'md'),
-    
+    markdownFiles: (state) =>
+      state.files.filter((file) => file.extension === "md"),
+
     /**
      * Get file information by path
      */
-    getFileInfo: (state) => (path: string) => 
-      state.files.find(file => file.path === path),
-    
+    getFileInfo: (state) => (path: string) =>
+      state.files.find((file) => file.path === path),
+
     /**
      * Check if a file exists
      */
-    fileExists: (state) => (path: string) => 
-      state.files.some(file => file.path === path),
-    
+    fileExists: (state) => (path: string) =>
+      state.files.some((file) => file.path === path),
+
     /**
      * Check if a path (file or folder) exists
      */
-    pathExists: (state) => (path: string) => 
-      state.files.some(file => file.path === path) || 
-      state.folders.some(folder => folder.path === path),
-    
+    pathExists: (state) => (path: string) =>
+      state.files.some((file) => file.path === path) ||
+      state.folders.some((folder) => folder.path === path),
+
     /**
      * Check if note content is loaded
      */
-    hasNoteContent: (state) => (path: string) => 
-      !!state.noteContents[path],
-    
+    hasNoteContent: (state) => (path: string) => !!state.noteContents[path],
+
     /**
      * Get note content
      */
-    getNoteContent: (state) => (path: string) => 
-      state.noteContents[path] || '',
-    
+    getNoteContent: (state) => (path: string) => state.noteContents[path] || "",
+
     /**
      * Get note metadata
      */
-    getNoteMetadata: (state) => (path: string) => 
+    getNoteMetadata: (state) => (path: string) =>
       state.noteMetadata[path] || { tags: [], frontmatter: {} },
-    
+
     /**
      * Get folder contents
      */
-    getFolderContents: (state) => (folderPath: string): FolderContents => {
-      const normalizedPath = folderPath.endsWith('/') ? folderPath : `${folderPath}/`;
-      
-      const files = state.files.filter(file => 
-        file.folder === folderPath || file.folder === normalizedPath
-      );
-      
-      const folders = state.folders.filter(folder => 
-        folder.parent === folderPath || folder.parent === normalizedPath
-      );
-      
-      return { files, folders };
-    },
-    
+    getFolderContents:
+      (state) =>
+      (folderPath: string): FolderContents => {
+        const normalizedPath = folderPath.endsWith("/")
+          ? folderPath
+          : `${folderPath}/`;
+
+        const files = state.files.filter(
+          (file) => file.folder === folderPath || file.folder === normalizedPath
+        );
+
+        const folders = state.folders.filter(
+          (folder) =>
+            folder.parent === folderPath || folder.parent === normalizedPath
+        );
+
+        return { files, folders };
+      },
+
     /**
      * Get last refresh time formatted
      */
     lastRefreshedFormatted: (state) => {
-      if (!state.lastRefreshed) return 'Never';
-      return format(state.lastRefreshed, 'MMM d, yyyy HH:mm:ss');
+      if (!state.lastRefreshed) return "Never";
+      return format(state.lastRefreshed, "MMM d, yyyy HH:mm:ss");
     },
-    
+
     /**
      * Check if cache is stale
      */
@@ -144,7 +147,7 @@ export const useObsidianStore = defineStore("obsidian", {
       if (!state.lastRefreshed) return true;
       const now = new Date();
       return now.getTime() - state.lastRefreshed.getTime() > state.cacheTimeout;
-    }
+    },
   },
 
   actions: {
@@ -172,24 +175,22 @@ export const useObsidianStore = defineStore("obsidian", {
         // Initialize the API service with the provided credentials
         obsidianApiService.initialize({
           baseUrl: this.baseUrl,
-          apiKey: this.apiKey
+          apiKey: this.apiKey,
         });
 
         // Test connection
         await obsidianApiService.checkConnection();
-        
+
         // If successful, mark as connected
         this.connected = true;
         this.connectionError = null;
 
-        // Cache the API credentials
-        localStorage.setItem("obsidian_api_key", this.apiKey);
-        localStorage.setItem("obsidian_api_port", port);
+        // No longer storing in localStorage - we're using Supabase instead
 
         return true;
       } catch (error: any) {
         this.connected = false;
-        
+
         // Store the formatted error from the service
         if (error.code) {
           this.connectionError = error as ConnectionError;
@@ -214,7 +215,7 @@ export const useObsidianStore = defineStore("obsidian", {
 
       try {
         const vaultInfo = await obsidianApiService.getVaultInfo();
-        
+
         this.vaultName = vaultInfo.name || "Unknown Vault";
         this.vaultPath = vaultInfo.path || "";
 
@@ -243,7 +244,9 @@ export const useObsidianStore = defineStore("obsidian", {
         }
 
         // Count markdown files only
-        const markdownFiles = this.files.filter(file => file.extension === 'md');
+        const markdownFiles = this.files.filter(
+          (file) => file.extension === "md"
+        );
 
         return {
           files: markdownFiles.length,
@@ -266,14 +269,16 @@ export const useObsidianStore = defineStore("obsidian", {
 
       try {
         // Get content as string
-        const content = await obsidianApiService.getFileContent(filePath) as string;
-        
+        const content = (await obsidianApiService.getFileContent(
+          filePath
+        )) as string;
+
         // Store the content
         this.noteContents[filePath] = content;
-        
+
         // Parse metadata
         this.parseNoteMetadata(filePath, content);
-        
+
         return content;
       } catch (error) {
         console.error(`Failed to fetch file content for ${filePath}:`, error);
@@ -285,12 +290,12 @@ export const useObsidianStore = defineStore("obsidian", {
      * Used for reconnecting on app startup
      */
     async restoreConnection(): Promise<boolean> {
-      const savedApiKey = localStorage.getItem("obsidian_api_key");
-      const savedPort = localStorage.getItem("obsidian_api_port");
-
-      if (savedApiKey) {
+      // We no longer use localStorage for storing credentials
+      // Instead, we'll check if we have credentials in the store already
+      if (this.apiKey && this.apiPort) {
         try {
-          await this.connectToVault(savedApiKey, savedPort || "27124");
+          // If we have credentials in memory, try to connect
+          await this.connectToVault(this.apiKey, this.apiPort);
           return true;
         } catch (error) {
           console.warn("Failed to restore Obsidian connection:", error);
@@ -298,6 +303,7 @@ export const useObsidianStore = defineStore("obsidian", {
         }
       }
 
+      // If no credentials in memory, we'll need to retrieve from Supabase elsewhere
       return false;
     },
 
@@ -308,9 +314,10 @@ export const useObsidianStore = defineStore("obsidian", {
       // Clear connection state
       this.connected = false;
       this.apiKey = null;
+      this.apiPort = null;
       this.vaultName = "";
       this.vaultPath = "";
-      
+
       // Clear cached data
       this.fileList = [];
       this.folderList = [];
@@ -324,12 +331,8 @@ export const useObsidianStore = defineStore("obsidian", {
 
       // Clear API service
       obsidianApiService.clearApiKey();
-
-      // Clear stored API key
-      localStorage.removeItem("obsidian_api_key");
-      localStorage.removeItem("obsidian_api_port");
     },
-    
+
     /**
      * Fetch the vault structure including files and folders
      */
@@ -337,76 +340,76 @@ export const useObsidianStore = defineStore("obsidian", {
       if (!this.connected) {
         throw new Error("Not connected to Obsidian");
       }
-      
+
       try {
         // Get vault structure from API
         const vaultInfo = await obsidianApiService.getVaultInfo();
-        
+
         // Store raw file and folder lists
         this.fileList = vaultInfo.files || [];
         this.folderList = vaultInfo.folders || [];
-        
+
         // Process files and folders into structured objects
         const folderContents = obsidianApiService.processFolderContents(
           this.fileList,
           this.folderList
         );
-        
+
         this.files = folderContents.files;
         this.folders = folderContents.folders;
-        
+
         // Build folder structure
         this.buildFolderStructure();
-        
+
         // Update last refreshed timestamp
         this.lastRefreshed = new Date();
-        
+
         return {
           files: this.files,
-          folders: this.folders
+          folders: this.folders,
         };
       } catch (error) {
         console.error("Failed to fetch vault structure:", error);
         throw error;
       }
     },
-    
+
     /**
      * Build a hierarchical folder structure for the vault
      */
     buildFolderStructure() {
       // Start with root node
       const root: FolderStructureNode = {
-        name: 'Root',
-        path: '/',
-        type: 'folder',
-        children: []
+        name: "Root",
+        path: "/",
+        type: "folder",
+        children: [],
       };
-      
+
       // Create a map for quick folder lookup
       const folderMap = new Map<string, FolderStructureNode>();
-      folderMap.set('/', root);
-      
+      folderMap.set("/", root);
+
       // First, add all folders to the structure
-      this.folders.forEach(folder => {
+      this.folders.forEach((folder) => {
         const node: FolderStructureNode = {
           name: folder.name,
           path: folder.path,
-          type: 'folder',
-          children: []
+          type: "folder",
+          children: [],
         };
-        
+
         folderMap.set(folder.path, node);
       });
-      
+
       // Connect folders to their parents
-      this.folders.forEach(folder => {
+      this.folders.forEach((folder) => {
         const node = folderMap.get(folder.path);
         if (!node) return;
-        
-        const parentPath = folder.parent || '/';
+
+        const parentPath = folder.parent || "/";
         const parent = folderMap.get(parentPath);
-        
+
         if (parent) {
           parent.children.push(node);
         } else {
@@ -414,18 +417,18 @@ export const useObsidianStore = defineStore("obsidian", {
           root.children.push(node);
         }
       });
-      
+
       // Add files to their parent folders
-      this.files.forEach(file => {
+      this.files.forEach((file) => {
         const fileNode: FileStructureNode = {
           name: file.name,
           path: file.path,
-          type: 'file'
+          type: "file",
         };
-        
-        const parentPath = file.folder || '/';
+
+        const parentPath = file.folder || "/";
         const parent = folderMap.get(parentPath);
-        
+
         if (parent) {
           parent.children.push(fileNode);
         } else {
@@ -433,29 +436,29 @@ export const useObsidianStore = defineStore("obsidian", {
           root.children.push(fileNode);
         }
       });
-      
+
       // Sort children alphabetically, folders first
       const sortChildren = (node: FolderStructureNode) => {
         // Sort folders first, then files, both alphabetically
         node.children.sort((a, b) => {
-          if (a.type === 'folder' && b.type === 'file') return -1;
-          if (a.type === 'file' && b.type === 'folder') return 1;
+          if (a.type === "folder" && b.type === "file") return -1;
+          if (a.type === "file" && b.type === "folder") return 1;
           return a.name.localeCompare(b.name);
         });
-        
+
         // Recursively sort children of folders
-        node.children.forEach(child => {
-          if (child.type === 'folder') {
+        node.children.forEach((child) => {
+          if (child.type === "folder") {
             sortChildren(child as FolderStructureNode);
           }
         });
       };
-      
+
       sortChildren(root);
-      
+
       this.folderStructure = root;
     },
-    
+
     /**
      * Fetch note content and parse metadata
      */
@@ -463,24 +466,26 @@ export const useObsidianStore = defineStore("obsidian", {
       if (!this.connected) {
         throw new Error("Not connected to Obsidian");
       }
-      
+
       try {
         // Get content as string
-        const content = await obsidianApiService.getFileContent(filePath) as string;
-        
+        const content = (await obsidianApiService.getFileContent(
+          filePath
+        )) as string;
+
         // Store the content
         this.noteContents[filePath] = content;
-        
+
         // Parse metadata
         this.parseNoteMetadata(filePath, content);
-        
+
         return content;
       } catch (error) {
         console.error(`Failed to fetch note content for ${filePath}:`, error);
         throw error;
       }
     },
-    
+
     /**
      * Parse note metadata (frontmatter and tags)
      */
@@ -497,34 +502,40 @@ export const useObsidianStore = defineStore("obsidian", {
       if (!this.connected) {
         throw new Error("Not connected to Obsidian");
       }
-      
+
       try {
         // Get content with metadata
-        const noteJson = await obsidianApiService.getFileContent(filePath, true);
-        
-        if (typeof noteJson === 'string') {
+        const noteJson = await obsidianApiService.getFileContent(
+          filePath,
+          true
+        );
+
+        if (typeof noteJson === "string") {
           // This shouldn't happen when parseMetadata is true, but handle it
           this.noteContents[filePath] = noteJson;
           this.parseNoteMetadata(filePath, noteJson);
           return {
             content: noteJson,
-            metadata: this.noteMetadata[filePath]
+            metadata: this.noteMetadata[filePath],
           };
         } else {
           // Store content and metadata
           this.noteContents[filePath] = noteJson.content;
           this.noteMetadata[filePath] = {
             tags: noteJson.tags || [],
-            frontmatter: noteJson.frontmatter || {}
+            frontmatter: noteJson.frontmatter || {},
           };
-          
+
           return {
             content: noteJson.content,
-            metadata: this.noteMetadata[filePath]
+            metadata: this.noteMetadata[filePath],
           };
         }
       } catch (error) {
-        console.error(`Failed to fetch note with metadata for ${filePath}:`, error);
+        console.error(
+          `Failed to fetch note with metadata for ${filePath}:`,
+          error
+        );
         throw error;
       }
     },
@@ -534,25 +545,31 @@ export const useObsidianStore = defineStore("obsidian", {
      * @param filePath File path
      * @param content File content
      */
-    async createOrUpdateFile(filePath: string, content: string): Promise<boolean> {
+    async createOrUpdateFile(
+      filePath: string,
+      content: string
+    ): Promise<boolean> {
       if (!this.connected) {
         throw new Error("Not connected to Obsidian");
       }
-      
+
       try {
-        const result = await obsidianApiService.createOrUpdateFile(filePath, content);
-        
+        const result = await obsidianApiService.createOrUpdateFile(
+          filePath,
+          content
+        );
+
         if (result) {
           // Update cached content and metadata
           this.noteContents[filePath] = content;
           this.parseNoteMetadata(filePath, content);
-          
+
           // If this is a new file, refresh the vault structure
           if (!this.fileExists(filePath)) {
             await this.fetchVaultStructure();
           }
         }
-        
+
         return result;
       } catch (error) {
         console.error(`Failed to create or update file ${filePath}:`, error);
@@ -569,17 +586,17 @@ export const useObsidianStore = defineStore("obsidian", {
       if (!this.connected) {
         throw new Error("Not connected to Obsidian");
       }
-      
+
       try {
         const result = await obsidianApiService.appendToFile(filePath, content);
-        
+
         if (result && this.hasNoteContent(filePath)) {
           // Update cached content
           const newContent = this.noteContents[filePath] + content;
           this.noteContents[filePath] = newContent;
           this.parseNoteMetadata(filePath, newContent);
         }
-        
+
         return result;
       } catch (error) {
         console.error(`Failed to append to file ${filePath}:`, error);
@@ -595,19 +612,19 @@ export const useObsidianStore = defineStore("obsidian", {
       if (!this.connected) {
         throw new Error("Not connected to Obsidian");
       }
-      
+
       try {
         const result = await obsidianApiService.deleteFile(filePath);
-        
+
         if (result) {
           // Remove from cache
           delete this.noteContents[filePath];
           delete this.noteMetadata[filePath];
-          
+
           // Refresh vault structure
           await this.fetchVaultStructure();
         }
-        
+
         return result;
       } catch (error) {
         console.error(`Failed to delete file ${filePath}:`, error);
@@ -620,19 +637,22 @@ export const useObsidianStore = defineStore("obsidian", {
      * @param filePath File path
      * @param params Patch parameters
      */
-    async patchNote(filePath: string, params: PatchNoteParams): Promise<boolean> {
+    async patchNote(
+      filePath: string,
+      params: PatchNoteParams
+    ): Promise<boolean> {
       if (!this.connected) {
         throw new Error("Not connected to Obsidian");
       }
-      
+
       try {
         const result = await obsidianApiService.patchNote(filePath, params);
-        
+
         if (result) {
           // Since we modified the file, fetch the new content
           await this.fetchNoteContent(filePath);
         }
-        
+
         return result;
       } catch (error) {
         console.error(`Failed to patch note ${filePath}:`, error);
@@ -648,11 +668,11 @@ export const useObsidianStore = defineStore("obsidian", {
       if (!this.connected) {
         throw new Error("Not connected to Obsidian");
       }
-      
+
       try {
         const result = await obsidianApiService.getActiveFile(parseMetadata);
-        
-        if (typeof result === 'string') {
+
+        if (typeof result === "string") {
           return { content: result };
         } else {
           return {
@@ -660,12 +680,12 @@ export const useObsidianStore = defineStore("obsidian", {
             path: result.path,
             metadata: {
               tags: result.tags,
-              frontmatter: result.frontmatter
-            }
+              frontmatter: result.frontmatter,
+            },
           };
         }
       } catch (error) {
-        console.error('Failed to get active file:', error);
+        console.error("Failed to get active file:", error);
         throw error;
       }
     },
@@ -678,11 +698,11 @@ export const useObsidianStore = defineStore("obsidian", {
       if (!this.connected) {
         throw new Error("Not connected to Obsidian");
       }
-      
+
       try {
         return await obsidianApiService.updateActiveFile(content);
       } catch (error) {
-        console.error('Failed to update active file:', error);
+        console.error("Failed to update active file:", error);
         throw error;
       }
     },
@@ -695,11 +715,11 @@ export const useObsidianStore = defineStore("obsidian", {
       if (!this.connected) {
         throw new Error("Not connected to Obsidian");
       }
-      
+
       try {
         return await obsidianApiService.appendToActiveFile(content);
       } catch (error) {
-        console.error('Failed to append to active file:', error);
+        console.error("Failed to append to active file:", error);
         throw error;
       }
     },
@@ -711,13 +731,13 @@ export const useObsidianStore = defineStore("obsidian", {
       if (!this.connected) {
         throw new Error("Not connected to Obsidian");
       }
-      
+
       try {
         const commands = await obsidianApiService.getCommands();
         this.commands = commands;
         return commands;
       } catch (error) {
-        console.error('Failed to get commands:', error);
+        console.error("Failed to get commands:", error);
         throw error;
       }
     },
@@ -730,7 +750,7 @@ export const useObsidianStore = defineStore("obsidian", {
       if (!this.connected) {
         throw new Error("Not connected to Obsidian");
       }
-      
+
       try {
         return await obsidianApiService.executeCommand(commandId);
       } catch (error) {
@@ -744,11 +764,14 @@ export const useObsidianStore = defineStore("obsidian", {
      * @param filePath File path
      * @param newLeaf Whether to open in a new leaf
      */
-    async openFile(filePath: string, newLeaf: boolean = false): Promise<boolean> {
+    async openFile(
+      filePath: string,
+      newLeaf: boolean = false
+    ): Promise<boolean> {
       if (!this.connected) {
         throw new Error("Not connected to Obsidian");
       }
-      
+
       try {
         return await obsidianApiService.openFile(filePath, newLeaf);
       } catch (error) {
@@ -762,15 +785,21 @@ export const useObsidianStore = defineStore("obsidian", {
      * @param period Period type
      * @param parseMetadata Whether to parse metadata
      */
-    async getPeriodicNote(period: PeriodicNoteType, parseMetadata: boolean = false) {
+    async getPeriodicNote(
+      period: PeriodicNoteType,
+      parseMetadata: boolean = false
+    ) {
       if (!this.connected) {
         throw new Error("Not connected to Obsidian");
       }
-      
+
       try {
-        const result = await obsidianApiService.getPeriodicNote(period, parseMetadata);
-        
-        if (typeof result === 'string') {
+        const result = await obsidianApiService.getPeriodicNote(
+          period,
+          parseMetadata
+        );
+
+        if (typeof result === "string") {
           return { content: result };
         } else {
           return {
@@ -778,8 +807,8 @@ export const useObsidianStore = defineStore("obsidian", {
             path: result.path,
             metadata: {
               tags: result.tags,
-              frontmatter: result.frontmatter
-            }
+              frontmatter: result.frontmatter,
+            },
           };
         }
       } catch (error) {
@@ -793,15 +822,18 @@ export const useObsidianStore = defineStore("obsidian", {
      * @param query Search query
      * @param contextLength Context length
      */
-    async simpleSearch(query: string, contextLength: number = 100): Promise<SimpleSearchResult[]> {
+    async simpleSearch(
+      query: string,
+      contextLength: number = 100
+    ): Promise<SimpleSearchResult[]> {
       if (!this.connected) {
         throw new Error("Not connected to Obsidian");
       }
-      
+
       try {
         return await obsidianApiService.simpleSearch(query, contextLength);
       } catch (error) {
-        console.error('Failed to perform search:', error);
+        console.error("Failed to perform search:", error);
         throw error;
       }
     },
@@ -814,11 +846,11 @@ export const useObsidianStore = defineStore("obsidian", {
       if (!this.connected) {
         throw new Error("Not connected to Obsidian");
       }
-      
+
       try {
         return await obsidianApiService.searchWithJsonLogic(query);
       } catch (error) {
-        console.error('Failed to perform JSON Logic search:', error);
+        console.error("Failed to perform JSON Logic search:", error);
         throw error;
       }
     },
@@ -831,13 +863,13 @@ export const useObsidianStore = defineStore("obsidian", {
       if (!this.connected) {
         throw new Error("Not connected to Obsidian");
       }
-      
+
       try {
         return await obsidianApiService.searchWithDataview(query);
       } catch (error) {
-        console.error('Failed to perform Dataview search:', error);
+        console.error("Failed to perform Dataview search:", error);
         throw error;
       }
-    }
+    },
   },
 });

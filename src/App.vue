@@ -54,6 +54,8 @@ import { useUIStore } from "./stores/ui";
 import { usePreferencesStore } from "./stores/preferences";
 import { useAuthStore } from "./stores/auth";
 import { useObsidianStore } from "./stores/obsidian";
+import { initializeAuth } from "./utils/authInitializer";
+import { restoreObsidianConnection } from "./utils/obsidianUtils";
 
 import GradientBackground from "./components/UI/GradientBackground.vue";
 import GlobalSidebar from "./components/Layout/GlobalSidebar.vue";
@@ -144,7 +146,7 @@ onMounted(async () => {
   console.log("App.vue mounting...");
 
   try {
-    await authStore.initialize();
+    await initializeAuth();
     preferencesStore.loadPreferences();
 
     const savedTheme =
@@ -159,7 +161,7 @@ onMounted(async () => {
     if (authStore.isAuthenticated) {
       await Promise.allSettled([
         templateStore.loadTemplates(),
-        obsidianStore.restoreConnection(),
+        restoreObsidianConnection(),
       ]);
     }
 
