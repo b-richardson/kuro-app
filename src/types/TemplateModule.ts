@@ -14,14 +14,21 @@ export type ModuleType =
   | "divider"
   // Plugin-specific module types
   | "yaml"
+  // Templater plugin modules
   | "templaterField"
+  | "templaterDateAndTime"
+  | "templaterFileProperty"
+  | "templaterUserInput"
+  | "templaterConditionalContent"
+  | "templaterValueTransformation"
+  | "templaterTemplateVariables"
   // Dataview plugin modules
-  | "dataviewQuery"      // Generic/legacy dataview query
+  | "dataviewQuery" // Generic/legacy dataview query
   | "dataviewTableQuery" // Table query
-  | "dataviewListQuery"  // List query
-  | "dataviewTaskQuery"  // Task query
+  | "dataviewListQuery" // List query
+  | "dataviewTaskQuery" // Task query
   | "dataviewCalendarQuery" // Calendar query
-  | "dataviewFields"     // Inline dataview fields
+  | "dataviewFields" // Inline dataview fields
   | "kanban";
 
 /**

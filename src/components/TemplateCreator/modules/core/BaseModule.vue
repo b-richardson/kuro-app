@@ -104,7 +104,6 @@ import {
   validatePluginSyntax,
   getPluginIcon,
 } from "@/utils/pluginTemplatesUtils";
-import ToastPlaceholder from "./ToastPlaceholder.vue";
 
 // Define props
 const props = defineProps<{
@@ -187,23 +186,20 @@ const setEditing = (editing: boolean) => {
 };
 
 // Toast management - simplified placeholder implementation
-const displayToast = (
-  message: string,
-  type: ToastType = "info"
-) => {
+const displayToast = (message: string, type: ToastType = "info") => {
   // Use the placeholder function to log toast to console
   createToastPlaceholder(message, type);
-  
+
   // For backward compatibility, still update the component state
   // but this will be removed in the future
   if (toastTimeout.value) {
     clearTimeout(toastTimeout.value);
   }
-  
+
   toastMessage.value = message;
   toastType.value = type;
   showToast.value = true;
-  
+
   toastTimeout.value = setTimeout(() => {
     showToast.value = false;
   }, 3000);
@@ -590,7 +586,8 @@ button[title]:hover::after {
 }
 
 /* Hide the add-line button for divider modules */
-.template-module-editor--divider .template-module-editor-action[title="Add line"] {
+.template-module-editor--divider
+  .template-module-editor-action[title="Add line"] {
   display: none;
 }
 

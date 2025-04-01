@@ -69,6 +69,69 @@ export const usePresetStore = defineStore("presets", () => {
 
   const templaterModules = ref<ModulePreset[]>([
     {
+      id: "date-and-time",
+      moduleType: "templaterDateAndTime",
+      title: "Date and Time",
+      description: "Insert a dynamic date or time",
+      priority: ModulePriority.HIGH,
+      content: ['<% tp.date.now("YYYY-MM-DD") %>'],
+    },
+    {
+      id: "file-property",
+      moduleType: "templaterFileProperty",
+      title: "File Property",
+      description: "Insert a file property",
+      priority: ModulePriority.HIGH,
+      content: ["<% tp.file.title %>", "<% tp.file.path %>"],
+    },
+    {
+      id: "user-input",
+      moduleType: "templaterUserInput",
+      title: "User Input",
+      description: "Insert a user input field",
+      priority: ModulePriority.HIGH,
+      content: [
+        'Enter your name: <% tp.userInput("Name") %>',
+        'Enter your age: <% tp.userInput("Age") %>',
+        'Enter your email: <% tp.userInput("Email") %>',
+      ],
+    },
+    {
+      id: "value-transformation",
+      moduleType: "templaterValueTransformation",
+      title: "Value Transformation",
+      description: "Transform a value using a function",
+      priority: ModulePriority.HIGH,
+      content: [
+        'Transform value: <% tp.userInput("Value").toUpperCase() %>',
+        'Square a number: <% tp.userInput("Number") * tp.userInput("Number") %>',
+        'Format date: <% tp.date.now("YYYY-MM-DD") %>',
+      ],
+    },
+    {
+      id: "conditional-content",
+      moduleType: "templaterConditionalContent",
+      title: "Conditional Content",
+      description: "Insert content based on conditions",
+      priority: ModulePriority.HIGH,
+      content: [
+        'If condition is true: <% if (tp.userInput("Condition")) { %> This is true <% } %>',
+        'If condition is false: <% if (!tp.userInput("Condition")) { %> This is false <% } %>',
+      ],
+    },
+    {
+      id: "template-variables",
+      moduleType: "templaterTemplateVariables",
+      title: "Template Variables",
+      description: "Insert template variables",
+      priority: ModulePriority.HIGH,
+      content: [
+        'Current date: <% tp.date.now("YYYY-MM-DD") %>',
+        'Current time: <% tp.date.now("HH:mm:ss") %>',
+        "Current file path: <% tp.file.path %>",
+      ],
+    },
+    {
       id: "date-field",
       moduleType: "templaterField",
       title: "Date Field",

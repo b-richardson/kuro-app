@@ -26,7 +26,15 @@ import TableModule from "@/components/TemplateCreator/modules/content/TableModul
 import TextModule from "@/components/TemplateCreator/modules/content/TextModule.vue";
 import DividerModule from "@/components/TemplateCreator/modules/content/DividerModule.vue";
 import YamlModule from "@/components/TemplateCreator/modules/plugins/yaml/YamlModule.vue";
+// Templater modules
 import TemplaterModule from "@/components/TemplateCreator/modules/plugins/templater/TemplaterModule.vue";
+import TemplaterDateAndTimeModule from "@/components/TemplateCreator/modules/plugins/templater/TemplaterDateAndTimeModule.vue";
+import TemplaterFilePropertyModule from "@/components/TemplateCreator/modules/plugins/templater/TemplaterFilePropertyModule.vue";
+import TemplaterUserInputModule from "@/components/TemplateCreator/modules/plugins/templater/TemplaterUserInputModule.vue";
+import TemplaterConditionalContentModule from "@/components/TemplateCreator/modules/plugins/templater/TemplaterConditionalContentModule.vue";
+import TemplaterValueTransformationModule from "@/components/TemplateCreator/modules/plugins/templater/TemplaterValueTransformationModule.vue";
+import TemplaterTemplateVariablesModule from "@/components/TemplateCreator/modules/plugins/templater/TemplaterTemplateVariablesModule.vue";
+// Dataview modules
 import DataviewListQueryModule from "@/components/TemplateCreator/modules/plugins/dataview/DataviewListQueryModule.vue";
 import DataviewTableQueryModule from "@/components/TemplateCreator/modules/plugins/dataview/DataviewTableQueryModule.vue";
 import DataviewTaskQueryModule from "@/components/TemplateCreator/modules/plugins/dataview/DataviewTaskQueryModule.vue";
@@ -68,8 +76,22 @@ const moduleComponent = computed(() => {
       return DividerModule;
     case "yaml":
       return YamlModule;
+    // Templater modules
     case "templaterField":
       return TemplaterModule;
+    case "templaterDateAndTime":
+      return TemplaterDateAndTimeModule;
+    case "templaterFileProperty":
+      return TemplaterFilePropertyModule;
+    case "templaterUserInput":
+      return TemplaterUserInputModule;
+    case "templaterConditionalContent":
+      return TemplaterConditionalContentModule;
+    case "templaterValueTransformation":
+      return TemplaterValueTransformationModule;
+    case "templaterTemplateVariables":
+      return TemplaterTemplateVariablesModule;
+    // Dataview modules
     case "dataviewListQuery":
       return DataviewListQueryModule;
     case "dataviewTableQuery":

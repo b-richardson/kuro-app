@@ -111,7 +111,14 @@ export const useTemplateStore = defineStore("template", () => {
       "divider",
       // Plugin-specific module types
       "yaml",
+      // Templater plugin modules
       "templaterField",
+      "templaterDateAndTime",
+      "templaterFileProperty",
+      "templaterUserInput",
+      "templaterConditionalContent",
+      "templaterValueTransformation",
+      "templaterTemplateVariables",
       // Dataview plugin modules
       "dataviewQuery", // Generic/legacy dataview query
       "dataviewTableQuery", // Table query

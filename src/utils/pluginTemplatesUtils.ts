@@ -112,11 +112,13 @@ export function validatePluginSyntax(
       break;
     case "dataview":
       // Different validation for different dataview module types
-      if (moduleType === "dataviewQuery" || 
-          moduleType === "dataviewListQuery" ||
-          moduleType === "dataviewTableQuery" ||
-          moduleType === "dataviewTaskQuery" ||
-          moduleType === "dataviewCalendarQuery") {
+      if (
+        moduleType === "dataviewQuery" ||
+        moduleType === "dataviewListQuery" ||
+        moduleType === "dataviewTableQuery" ||
+        moduleType === "dataviewTaskQuery" ||
+        moduleType === "dataviewCalendarQuery"
+      ) {
         // Check for dataview code block
         const hasDataviewCodeBlock = content.some((line) =>
           line.includes("```dataview")
@@ -127,30 +129,42 @@ export function validatePluginSyntax(
             error: "Dataview query must be inside a dataview code block",
           };
         }
-        
+
         // Check for specific query type based on module type
-        if (moduleType === "dataviewListQuery" && !content.some(line => line.trim() === "LIST")) {
+        if (
+          moduleType === "dataviewListQuery" &&
+          !content.some((line) => line.trim() === "LIST")
+        ) {
           return {
             isValid: false,
             error: "LIST query type required for List Query module",
           };
         }
-        
-        if (moduleType === "dataviewTableQuery" && !content.some(line => line.trim().startsWith("TABLE"))) {
+
+        if (
+          moduleType === "dataviewTableQuery" &&
+          !content.some((line) => line.trim().startsWith("TABLE"))
+        ) {
           return {
             isValid: false,
             error: "TABLE query type required for Table Query module",
           };
         }
-        
-        if (moduleType === "dataviewTaskQuery" && !content.some(line => line.trim() === "TASK")) {
+
+        if (
+          moduleType === "dataviewTaskQuery" &&
+          !content.some((line) => line.trim() === "TASK")
+        ) {
           return {
             isValid: false,
             error: "TASK query type required for Task Query module",
           };
         }
-        
-        if (moduleType === "dataviewCalendarQuery" && !content.some(line => line.trim().startsWith("CALENDAR"))) {
+
+        if (
+          moduleType === "dataviewCalendarQuery" &&
+          !content.some((line) => line.trim().startsWith("CALENDAR"))
+        ) {
           return {
             isValid: false,
             error: "CALENDAR query type required for Calendar Query module",
@@ -254,41 +268,121 @@ export function generateDefaultContent(
         "---",
       ];
 
+    // Templater plugin modules
     case "templaterField":
       return [TEMPLATER.VARIABLES.CURRENT_DATE_FORMATTED];
 
+    case "templaterDateAndTime":
+      return [
+        TEMPLATER.VARIABLES.CURRENT_DATE,
+        TEMPLATER.VARIABLES.YESTERDAY,
+        TEMPLATER.VARIABLES.TOMORROW,
+        TEMPLATER.VARIABLES.CREATED_DATE,
+        TEMPLATER.VARIABLES.TITLE,
+        TEMPLATER.VARIABLES.CURSOR_POSITION,
+        TEMPLATER.DATE_FORMATS.STANDARD,
+        TEMPLATER.DATE_FORMATS.US,
+        TEMPLATER.DATE_FORMATS.EUROPE,
+        TEMPLATER.DATE_FORMATS.FULL,
+        TEMPLATER.DATE_FORMATS.ISO,
+        TEMPLATER.SNIPPETS.RANDOM_QUOTE,
+        TEMPLATER.SNIPPETS.WEATHER,
+      ];
+
+    case "templaterFileProperty":
+      return [
+        "<% tp.file.creation_date() %>",
+        "<% tp.file.last_modified_date() %>",
+        "<% tp.file.title() %>",
+        "<% tp.file.cursor() %>",
+        "<% tp.file.link() %>",
+        "<% tp.file.path() %>",
+        '<% tp.file.move("New File Name") %>',
+        '<% tp.file.rename("New File Name") %>',
+        "<% tp.file.delete() %>",
+        '<% tp.file.append("Content to append") %>',
+        '<% tp.file.prepend("Content to prepend") %>',
+        '<% tp.file.create_new("New File Name") %>',
+        '<% tp.file.create_new("New File Name", "Folder/Subfolder") %>',
+        '<% tp.file.create_new("New File Name", "Folder/Subfolder", true) %>',
+        '<% tp.file.create_new("New File Name", "Folder/Subfolder", false) %>',
+      ];
+
+    case "templaterUserInput":
+      return [
+        'Enter your name: <% tp.userInput("Name") %>',
+        'Enter your age: <% tp.userInput("Age") %>',
+        'Enter your email: <% tp.userInput("Email") %>',
+      ];
+
+    case "templaterConditionalContent":
+      return [
+        'If condition is true: <% if (tp.userInput("Condition")) { %> This is true <% } %>',
+        'If condition is false: <% if (!tp.userInput("Condition")) { %> This is false <% } %>',
+      ];
+
+    case "templaterValueTransformation":
+      return [
+        'Transform a value: <% tp.userInput("Value").toUpperCase() %>',
+        'Transform a value: <% tp.userInput("Value").toLowerCase() %>',
+        'Transform a value: <% tp.userInput("Value").replace("old", "new") %>',
+        'Transform a value: <% tp.userInput("Value").split(",") %>',
+        'Transform a value: <% tp.userInput("Value").join(",") %>',
+        'Transform a value: <% tp.userInput("Value").slice(0, 5) %>',
+        'Transform a value: <% tp.userInput("Value").substring(0, 5) %>',
+        'Transform a value: <% tp.userInput("Value").substr(0, 5) %>',
+        'Transform a value: <% tp.userInput("Value").trim() %>',
+        'Transform a value: <% tp.userInput("Value").charAt(0) %>',
+        'Transform a value: <% tp.userInput("Value").charCodeAt(0) %>',
+        'Transform a value: <% tp.userInput("Value").indexOf("search") %>',
+        'Transform a value: <% tp.userInput("Value").lastIndexOf("search") %>',
+        'Transform a value: <% tp.userInput("Value").includes("search") %>',
+      ];
+
+    case "templaterTemplateVariables":
+      return [
+        'Template variable: <% tp.template("templateName") %>',
+        'Template variable: <% tp.template("templateName", "arg1", "arg2") %>',
+        'Template variable: <% tp.template("templateName", { key: "value" }) %>',
+        'Template variable: <% tp.template("templateName", { key1: "value1", key2: "value2" }) %>',
+        'Template variable: <% tp.template("templateName", { key1: "value1", key2: "value2" }, "arg3") %>',
+        'Template variable: <% tp.template("templateName", { key1: "value1", key2: "value2" }, "arg3", "arg4") %>',
+        'Template variable: <% tp.template("templateName", { key1: "value1", key2: "value2" }, "arg3", "arg4", "arg5") %>',
+      ];
+
+    // Dataview plugin modules
     case "dataviewQuery":
       return DATAVIEW.QUERIES.RECENT_NOTES.split("\n");
-      
+
     case "dataviewListQuery":
       return ["```dataview", "LIST", "FROM #tag", "```"];
-      
+
     case "dataviewTableQuery":
       return [
-        "```dataview", 
-        "TABLE file.ctime as Created, file.mtime as Modified", 
-        'FROM "folder"', 
-        "SORT file.mtime DESC", 
-        "```"
+        "```dataview",
+        "TABLE file.ctime as Created, file.mtime as Modified",
+        'FROM "folder"',
+        "SORT file.mtime DESC",
+        "```",
       ];
-      
+
     case "dataviewTaskQuery":
       return [
-        "```dataview", 
-        "TASK", 
-        "FROM #project", 
-        "WHERE !completed", 
-        "```"
+        "```dataview",
+        "TASK",
+        "FROM #project",
+        "WHERE !completed",
+        "```",
       ];
-      
+
     case "dataviewCalendarQuery":
       return [
-        "```dataview", 
-        "CALENDAR file.ctime", 
-        'FROM "Daily Notes"', 
-        "```"
+        "```dataview",
+        "CALENDAR file.ctime",
+        'FROM "Daily Notes"',
+        "```",
       ];
-      
+
     case "dataviewFields":
       return ["Due:: 2023-12-31", "Status:: #in-progress", "Priority:: High"];
 
@@ -312,7 +406,7 @@ export function generateDefaultContent(
 
     case "text":
       return ["Enter your text here..."];
-      
+
     case "divider":
       return ["---"];
 
@@ -358,8 +452,24 @@ export function getModuleIcon(moduleType: ModuleType): string {
       return "fas fa-minus";
     case "yaml":
       return "fas fa-code";
+
+    // Templater plugin modules
     case "templaterField":
       return "fas fa-calendar-alt";
+    case "templaterDateAndTime":
+      return "fas fa-clock";
+    case "templaterUserInput":
+      return "fas fa-user-edit";
+    case "templaterFileProperty":
+      return "fas fa-file-alt";
+    case "templaterConditionalContent":
+      return "fas fa-code-branch";
+    case "templaterValueTransformation":
+      return "fas fa-exchange-alt";
+    case "templaterTemplateVariables":
+      return "fas fa-cogs";
+
+    // Dataview plugin modules
     case "dataviewQuery":
       return "fas fa-database";
     case "dataviewListQuery":
@@ -415,7 +525,17 @@ export function isValidModuleType(type: any): type is ModuleType {
     "text",
     "divider",
     "yaml",
+
+    // Templater plugin modules
     "templaterField",
+    "templaterDateAndTime",
+    "templaterFileProperty",
+    "templaterUserInput",
+    "templaterConditionalContent",
+    "templaterValueTransformation",
+    "templaterTemplateVariables",
+
+    // Dataview plugin modules
     "dataviewQuery",
     "dataviewListQuery",
     "dataviewTableQuery",
