@@ -27,7 +27,6 @@ import TextModule from "@/components/TemplateCreator/modules/content/TextModule.
 import DividerModule from "@/components/TemplateCreator/modules/content/DividerModule.vue";
 import YamlModule from "@/components/TemplateCreator/modules/plugins/yaml/YamlModule.vue";
 import TemplaterModule from "@/components/TemplateCreator/modules/plugins/templater/TemplaterModule.vue";
-import DataviewModule from "@/components/TemplateCreator/modules/plugins/dataview/DataviewModule.vue";
 import DataviewListQueryModule from "@/components/TemplateCreator/modules/plugins/dataview/DataviewListQueryModule.vue";
 import DataviewTableQueryModule from "@/components/TemplateCreator/modules/plugins/dataview/DataviewTableQueryModule.vue";
 import DataviewTaskQueryModule from "@/components/TemplateCreator/modules/plugins/dataview/DataviewTaskQueryModule.vue";
@@ -71,8 +70,6 @@ const moduleComponent = computed(() => {
       return YamlModule;
     case "templaterField":
       return TemplaterModule;
-    case "dataviewQuery":
-      return DataviewModule;
     case "dataviewListQuery":
       return DataviewListQueryModule;
     case "dataviewTableQuery":

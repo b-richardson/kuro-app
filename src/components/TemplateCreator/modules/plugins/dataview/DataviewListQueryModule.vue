@@ -11,300 +11,318 @@
     @select="$emit('select')"
     @duplicate="$emit('duplicate')"
     @module-change="$emit('module-change')"
+    @add-line="regenerateQuery"
     ref="baseModuleRef"
   >
-    <!-- Visual Builder Mode -->
-    <div v-if="editorMode === 'visual'">
-      <!-- Quick templates dropdown -->
-      <div class="template-module-editor-line">
-        <div class="template-module-editor-input-group">
-          <label class="template-module-editor-label">Quick templates:</label>
-          <select
-            class="template-module-editor-input"
-            v-model="selectedPreset"
-            @change="applyPreset"
-          >
-            <option value="">Choose a template...</option>
-            <option value="recent">Recent notes</option>
-            <option value="tagged">Notes with tag</option>
-            <option value="folder">Notes in folder</option>
-            <option value="created">Notes created this week</option>
-            <option value="modified">Recently modified notes</option>
-            <option value="custom">Custom query</option>
-          </select>
-        </div>
+    <!-- Module Header -->
+    <div class="dataview-list-editor">
+      <!-- Alert for when not connected to Obsidian -->
+      <div v-if="!obsidianConnected" class="dataview-list-editor__alert">
+        <i class="fas fa-exclamation-triangle"></i>
+        <span>Not connected to Obsidian. Some features may be limited.</span>
       </div>
 
-      <!-- Find notes from -->
-      <div class="template-module-editor-line">
-        <div class="template-module-editor-input-group">
-          <label class="template-module-editor-label">Find notes from:</label>
-          <div class="template-module-editor-inputs-row">
+      <!-- Source Selection Section -->
+      <div class="dataview-list-editor__section">
+        <div class="dataview-list-editor__section-header">
+          <div class="dataview-list-editor__section-title">
+            <i class="fas fa-filter"></i>
+            Source Selection
+          </div>
+        </div>
+
+        <div class="dataview-list-editor__source-options">
+          <button
+            class="dataview-list-editor__source-option"
+            :class="{ active: sourceType === 'all' }"
+            @click="setSourceType('all')"
+          >
+            All notes
+          </button>
+          <button
+            class="dataview-list-editor__source-option"
+            :class="{ active: sourceType === 'folder' }"
+            @click="setSourceType('folder')"
+          >
+            From folder
+          </button>
+          <button
+            class="dataview-list-editor__source-option"
+            :class="{ active: sourceType === 'tag' }"
+            @click="setSourceType('tag')"
+          >
+            With tag
+          </button>
+          <button
+            class="dataview-list-editor__source-option"
+            :class="{ active: sourceType === 'property' }"
+            @click="setSourceType('property')"
+          >
+            With property
+          </button>
+        </div>
+
+        <!-- Folder Selection -->
+        <div
+          v-if="sourceType === 'folder'"
+          class="dataview-list-editor__source-details"
+        >
+          <div class="dataview-list-editor__field">
             <select
-              class="template-module-editor-input source-type-select"
-              v-model="selectedSourceType"
-              @change="handleSourceTypeChange"
+              class="dataview-list-editor__select"
+              v-model="selectedFolder"
+              @change="handleSourceValueChange"
             >
+              <option disabled value="">Select a folder</option>
               <option
-                v-for="source in availableSources"
-                :key="source.id"
-                :value="source.id"
+                v-for="folder in availableFolders"
+                :key="folder.path"
+                :value="folder.path"
               >
-                {{ source.label }}
+                {{ folder.path || "/" }}
               </option>
             </select>
-            <input
-              v-if="selectedSourceType === 'custom'"
-              type="text"
-              class="template-module-editor-input"
-              v-model="queryConfig.source"
-              :placeholder="getSourcePlaceholder()"
-              @input="updateQuery"
-              @focus="setEditing(true)"
-              @blur="setEditing(false)"
-              :ref="isSelected && autoFocus ? setInputRef : undefined"
-            />
-          </div>
-        </div>
-      </div>
-
-      <!-- Order by -->
-      <div class="template-module-editor-line">
-        <div class="template-module-editor-input-group">
-          <label class="template-module-editor-label">Order by:</label>
-          <div class="template-module-editor-inputs-row">
-            <select
-              class="template-module-editor-input"
-              v-model="sortField"
-              @change="updateSorting"
+            <button
+              class="dataview-list-editor__action-btn"
+              title="Refresh folder list"
+              @click="fetchFolders"
             >
-              <option value="">Default order</option>
-              <option value="file.ctime">Creation date</option>
-              <option value="file.mtime">Modified date</option>
-              <option value="file.name">File name</option>
-            </select>
-            <select
-              v-if="sortField"
-              class="template-module-editor-input"
-              v-model="sortDirection"
-              @change="updateSorting"
-            >
-              <option value="desc">Newest first</option>
-              <option value="asc">Oldest first</option>
-            </select>
-          </div>
-        </div>
-      </div>
-
-      <!-- Show at most -->
-      <div class="template-module-editor-line">
-        <div class="template-module-editor-input-group">
-          <label class="template-module-editor-label">Show at most:</label>
-          <div class="template-module-editor-inputs-row">
-            <select
-              class="template-module-editor-input"
-              v-model="selectedLimit"
-              @change="updateLimit"
-            >
-              <option value="0">All notes</option>
-              <option value="5">5 notes</option>
-              <option value="10">10 notes</option>
-              <option value="20">20 notes</option>
-              <option value="50">50 notes</option>
-              <option value="custom">Custom limit</option>
-            </select>
-            <input
-              v-if="selectedLimit === 'custom'"
-              type="number"
-              class="template-module-editor-input"
-              v-model.number="queryConfig.limit"
-              placeholder="Number of results"
-              @input="updateQuery"
-              @focus="setEditing(true)"
-              @blur="setEditing(false)"
-              min="1"
-            />
-          </div>
-        </div>
-      </div>
-
-      <!-- Advanced Options Toggle -->
-      <div class="template-module-editor-line">
-        <button
-          class="advanced-toggle-button"
-          @click="showAdvanced = !showAdvanced"
-        >
-          <i
-            :class="
-              showAdvanced ? 'fas fa-chevron-down' : 'fas fa-chevron-right'
-            "
-          ></i>
-          Advanced Options
-        </button>
-      </div>
-
-      <!-- Advanced Options (collapsed by default) -->
-      <div v-if="showAdvanced">
-        <!-- Filters Section -->
-        <div class="template-module-editor-section">
-          <div class="template-module-editor-section-header">
-            <i class="fas fa-filter"></i> Show only notes that match:
-          </div>
-
-          <div
-            v-for="(filter, index) in queryConfig.filters"
-            :key="filter.id"
-            class="template-module-editor-line"
-          >
-            <div class="template-module-editor-input-group">
-              <div class="template-module-editor-inputs-row">
-                <input
-                  type="text"
-                  class="template-module-editor-input"
-                  v-model="filter.field"
-                  placeholder="Property"
-                  @input="updateQuery"
-                  @focus="setEditing(true)"
-                  @blur="setEditing(false)"
-                />
-                <select
-                  class="template-module-editor-input"
-                  v-model="filter.operator"
-                  @change="updateQuery"
-                >
-                  <option value="=">equals</option>
-                  <option value="!=">doesn't equal</option>
-                  <option value="contains">contains</option>
-                  <option value="does not contain">doesn't contain</option>
-                  <option value=">">is greater than</option>
-                  <option value="<">is less than</option>
-                  <option value="is empty">is empty</option>
-                  <option value="is not empty">is not empty</option>
-                </select>
-                <input
-                  v-if="
-                    filter.operator !== 'is empty' &&
-                    filter.operator !== 'is not empty'
-                  "
-                  type="text"
-                  class="template-module-editor-input"
-                  v-model="filter.value"
-                  placeholder="Value"
-                  @input="updateQuery"
-                  @focus="setEditing(true)"
-                  @blur="setEditing(false)"
-                />
-                <button
-                  class="template-module-editor-line-action"
-                  @click.stop="removeFilter(index)"
-                  title="Remove filter"
-                >
-                  <i class="fas fa-times"></i>
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <div class="template-module-editor-line">
-            <button class="add-filter-button" @click="addFilter()">
-              <i class="fas fa-plus"></i> Add Filter
+              <i class="fas fa-sync-alt"></i>
             </button>
           </div>
         </div>
 
-        <!-- Inline query option -->
-        <div class="template-module-editor-line">
-          <div class="template-module-editor-checkbox-group">
-            <input
-              type="checkbox"
-              id="inline-query-toggle"
-              v-model="queryConfig.inline"
-              @change="updateQuery"
-            />
-            <label
-              for="inline-query-toggle"
-              class="template-module-editor-checkbox-label"
+        <!-- Tag Selection -->
+        <div
+          v-if="sourceType === 'tag'"
+          class="dataview-list-editor__source-details"
+        >
+          <div class="dataview-list-editor__field">
+            <select
+              class="dataview-list-editor__select"
+              v-model="selectedTag"
+              @change="handleSourceValueChange"
             >
-              Use as inline query
-              <span
-                class="tooltip-icon"
-                v-tooltip="
-                  'When checked, the query will be an inline query using `${dv.list(...)}` syntax rather than a code block'
-                "
+              <option disabled value="">Select a tag</option>
+              <option v-for="tag in availableTags" :key="tag" :value="tag">
+                #{{ tag }}
+              </option>
+            </select>
+            <button
+              class="dataview-list-editor__action-btn"
+              title="Refresh tag list"
+              @click="fetchTags"
+            >
+              <i class="fas fa-sync-alt"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- Property Selection -->
+        <div
+          v-if="sourceType === 'property'"
+          class="dataview-list-editor__source-details"
+        >
+          <div class="dataview-list-editor__property-field">
+            <!-- Property name -->
+            <select
+              class="dataview-list-editor__select"
+              v-model="selectedProperty"
+              @change="handlePropertyChange"
+            >
+              <option disabled value="">Select a property</option>
+              <option
+                v-for="prop in availableProperties"
+                :key="prop"
+                :value="prop"
               >
-                <i class="fas fa-info-circle"></i>
-              </span>
+                {{ prop }}
+              </option>
+            </select>
+
+            <!-- Operator -->
+            <select
+              class="dataview-list-editor__select dataview-list-editor__operator-select"
+              v-model="propertyOperator"
+              @change="handlePropertyOperatorChange"
+            >
+              <option value="=">equals</option>
+              <option value="!=">not equals</option>
+              <option value=">">greater than</option>
+              <option value="<">less than</option>
+              <option value=">=">greater/equal</option>
+              <option value="<=">less/equal</option>
+              <option value="contains">contains</option>
+            </select>
+
+            <!-- Value -->
+            <input
+              type="text"
+              class="dataview-list-editor__input"
+              placeholder="Value"
+              v-model="propertyValue"
+              @input="handlePropertyValueChange"
+            />
+
+            <button
+              class="dataview-list-editor__action-btn"
+              title="Refresh property list"
+              @click="fetchProperties"
+            >
+              <i class="fas fa-sync-alt"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Display Options Section -->
+      <div class="dataview-list-editor__section">
+        <div class="dataview-list-editor__section-header">
+          <div class="dataview-list-editor__section-title">
+            <i class="fas fa-list"></i>
+            Display Properties
+          </div>
+        </div>
+
+        <!-- Properties Tags -->
+        <div class="dataview-list-editor__properties">
+          <div
+            v-for="(prop, index) in displayProperties"
+            :key="index"
+            class="dataview-list-editor__property-tag"
+          >
+            <span>{{ prop }}</span>
+            <button
+              class="dataview-list-editor__property-tag-remove"
+              @click="removeDisplayProperty(index)"
+            >
+              <i class="fas fa-times"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- Add property input -->
+        <div class="dataview-list-editor__add-property">
+          <input
+            type="text"
+            class="dataview-list-editor__input"
+            placeholder="Add property..."
+            v-model="newDisplayProperty"
+            list="available-properties"
+            @keydown.enter.prevent="addDisplayProperty"
+          />
+          <datalist id="available-properties">
+            <option
+              v-for="prop in availableProperties"
+              :key="prop"
+              :value="prop"
+            ></option>
+          </datalist>
+          <button
+            class="dataview-list-editor__add-btn"
+            @click="addDisplayProperty"
+            :disabled="!newDisplayProperty"
+          >
+            <i class="fas fa-plus"></i>
+            Add
+          </button>
+        </div>
+      </div>
+
+      <!-- Sort Section -->
+      <div class="dataview-list-editor__section">
+        <div class="dataview-list-editor__section-header">
+          <div class="dataview-list-editor__section-title">
+            <i class="fas fa-sort"></i>
+            Sort Results
+          </div>
+        </div>
+
+        <div class="dataview-list-editor__sort-controls">
+          <select
+            class="dataview-list-editor__select"
+            v-model="sortProperty"
+            @change="handleSortChange"
+          >
+            <option disabled value="">Sort by...</option>
+            <option value="file.name">File name</option>
+            <option value="file.ctime">Creation time</option>
+            <option value="file.mtime">Modified time</option>
+            <option
+              v-for="prop in availableProperties"
+              :key="prop"
+              :value="prop"
+            >
+              {{ prop }}
+            </option>
+          </select>
+
+          <div class="dataview-list-editor__sort-direction">
+            <button
+              class="dataview-list-editor__direction-btn"
+              :class="{ active: sortDirection === 'asc' }"
+              @click="setSortDirection('asc')"
+            >
+              <i class="fas fa-sort-amount-down-alt"></i>
+              Ascending
+            </button>
+            <button
+              class="dataview-list-editor__direction-btn"
+              :class="{ active: sortDirection === 'desc' }"
+              @click="setSortDirection('desc')"
+            >
+              <i class="fas fa-sort-amount-down"></i>
+              Descending
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Limit Section -->
+      <div class="dataview-list-editor__section">
+        <div class="dataview-list-editor__section-header">
+          <div class="dataview-list-editor__section-title">
+            <i class="fas fa-sliders-h"></i>
+            Limit Results
+          </div>
+        </div>
+
+        <div class="dataview-list-editor__limit-controls">
+          <div class="dataview-list-editor__limit-field">
+            <input
+              type="number"
+              class="dataview-list-editor__input dataview-list-editor__number-input"
+              v-model.number="limitCount"
+              min="1"
+              max="1000"
+              @change="handleLimitChange"
+              :disabled="!useLimit"
+            />
+            <label class="dataview-list-editor__limit-toggle">
+              <input
+                type="checkbox"
+                v-model="useLimit"
+                @change="handleLimitChange"
+              />
+              <span class="dataview-list-editor__toggle-slider"></span>
+              <span class="dataview-list-editor__toggle-label"
+                >Apply limit</span
+              >
             </label>
           </div>
         </div>
       </div>
     </div>
-
-    <!-- Code Editor Mode (for advanced users) -->
-    <div v-else>
-      <div class="template-module-editor-line">
-        <div class="template-module-editor-code-editor">
-          <textarea
-            class="template-module-editor-code-textarea"
-            v-model="rawQuery"
-            placeholder="Enter Dataview LIST query..."
-            rows="8"
-            @input="validateRawQuery"
-            @focus="setEditing(true)"
-            @blur="setEditing(false)"
-            :ref="isSelected && autoFocus ? setInputRef : undefined"
-          ></textarea>
-
-          <div
-            v-if="validationError"
-            class="template-module-editor-validation-error"
-          >
-            <i class="fas fa-exclamation-triangle"></i>
-            {{ validationError }}
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Toggle Editor Mode Button -->
-    <div class="template-module-editor-actions">
-      <button
-        class="template-module-editor-toggle-mode"
-        @click="toggleEditorMode"
-        title="Toggle between visual builder and code editor"
-      >
-        <i
-          :class="editorMode === 'visual' ? 'fas fa-code' : 'fas fa-sliders-h'"
-        ></i>
-        {{
-          editorMode === "visual"
-            ? "Switch to Code Editor"
-            : "Switch to Visual Builder"
-        }}
-      </button>
-    </div>
   </BaseModule>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from "vue";
-import { v4 as uuidv4 } from "uuid";
+import { ref, onMounted, watch } from "vue";
 import BaseModule from "@/components/TemplateCreator/modules/core/BaseModule.vue";
 import { TemplateModule } from "@/types/TemplateModule";
 import { obsidianApiService } from "@/services/obsidian";
-import {
-  DataviewQueryType,
-  DataviewQueryConfig,
-  DataviewFilterOperator,
-  DataviewSortDirection,
-  DataviewFilterCondition,
-  DataviewSort,
-  COMMON_SOURCES,
-  generateDataviewQuery,
-  validateDataviewQuery,
-  parseDataviewQuery,
-} from "@/utils/dataviewUtils";
 
+// Define props
 const props = defineProps<{
   module: TemplateModule;
   index: number;
@@ -313,6 +331,7 @@ const props = defineProps<{
   autoFocus?: boolean;
 }>();
 
+// Define emits
 const emit = defineEmits<{
   (e: "update:content", content: string[]): void;
   (e: "update", modules: TemplateModule[]): void;
@@ -324,686 +343,805 @@ const emit = defineEmits<{
 
 // Reference to the base module component
 const baseModuleRef = ref<InstanceType<typeof BaseModule> | null>(null);
-const inputRef = ref<HTMLInputElement | null>(null);
 
-// State variables
-const editorMode = ref<"visual" | "code">("visual");
-const rawQuery = ref("");
-const validationError = ref("");
-const selectedSourceType = ref("current-folder");
-const showAdvanced = ref(false);
-const selectedLimit = ref("0");
-const sortField = ref("");
-const sortDirection = ref("desc");
-const obsidianFolders = ref<string[]>([]);
+// Connection state
+const obsidianConnected = ref(false);
 
-// Default query configuration for LIST queries
-const queryConfig = ref<DataviewQueryConfig>({
-  type: DataviewQueryType.LIST,
-  fields: [], // LIST queries typically don't specify fields
-  source: '"."',
-  filters: [],
-  sorts: [],
-  inline: false,
-  limit: undefined,
-});
+// Source selection
+const sourceType = ref("all");
+const selectedFolder = ref("");
+const selectedTag = ref("");
+const selectedProperty = ref("");
+const propertyOperator = ref("=");
+const propertyValue = ref("");
 
-// Fetch folders from Obsidian if possible
+// Obsidian data
+const availableFolders = ref<{ name: string; path: string; parent: string }[]>(
+  []
+);
+const availableTags = ref<string[]>([]);
+const availableProperties = ref<string[]>([]);
+
+// Display options
+const displayProperties = ref<string[]>([]);
+const newDisplayProperty = ref("");
+
+// Sort options
+const sortProperty = ref("file.name");
+const sortDirection = ref("asc");
+
+// Limit options
+const useLimit = ref(false);
+const limitCount = ref(20);
+
+// Initialize component
 onMounted(async () => {
   try {
-    if (obsidianApiService.isInitialized()) {
-      // Try to get vault info to get available folders
-      const vaultInfo = await obsidianApiService.getVaultInfo();
-      if (vaultInfo.folders) {
-        obsidianFolders.value = vaultInfo.folders;
-      }
+    // Check if connected to Obsidian
+    obsidianConnected.value = await checkObsidianConnection();
+
+    if (obsidianConnected.value) {
+      // Fetch initial data
+      await Promise.all([fetchFolders(), fetchTags(), fetchProperties()]);
     }
-  } catch (error) {
-    console.warn("Could not fetch Obsidian folders:", error);
-  }
-});
 
-// Combined sources - standard ones plus folders from Obsidian
-const availableSources = computed(() => {
-  // Start with the common sources
-  const sources = [...COMMON_SOURCES];
-
-  // Add folders from Obsidian if available
-  if (obsidianFolders.value.length > 0) {
-    // Filter out folders already in common sources
-    const existingFolderPaths = sources
-      .filter((s) => s.type === "folder")
-      .map((s) => s.value.replace(/["']/g, ""));
-
-    // Add each folder as a new source option
-    obsidianFolders.value.forEach((folder) => {
-      // Skip if this folder is already in the common sources
-      if (!existingFolderPaths.includes(folder)) {
-        sources.push({
-          id: `folder-${folder}`,
-          label: `Folder: ${folder}`,
-          type: "folder",
-          value: `"${folder}"`,
-          placeholder: "Enter folder path",
-        });
-      }
-    });
-  }
-
-  // Always add a custom option at the end
-  sources.push({
-    id: "custom",
-    label: "Custom source",
-    type: "custom",
-    value: "",
-    placeholder: "Enter custom source",
-  });
-
-  return sources;
-});
-
-// Generated query based on current configuration
-const generatedQuery = computed(() => {
-  try {
-    return generateDataviewQuery(queryConfig.value);
-  } catch (error) {
-    return "# Error generating query";
-  }
-});
-
-// Helper methods for editing
-const setEditing = (editing: boolean) => {
-  baseModuleRef.value?.setEditing(editing);
-};
-
-const setInputRef = (el: HTMLInputElement) => {
-  inputRef.value = el;
-  baseModuleRef.value?.setInputRef(el);
-};
-
-// Initialize from props
-onMounted(() => {
-  // Ensure module has correct type and plugin type
-  if (
-    props.module.type !== "dataviewListQuery" ||
-    props.module.pluginType !== "dataview"
-  ) {
-    const updatedModule = {
-      ...props.module,
-      type: "dataviewListQuery",
-      pluginType: "dataview",
-    };
-
-    const updatedModules = [...props.modules];
-    updatedModules[props.index] = updatedModule;
-    emit("update", updatedModules);
-  }
-
-  initializeFromContent();
-});
-
-// Watch for content changes from parent
-watch(
-  () => props.module.content,
-  () => {
-    initializeFromContent();
-  },
-  { deep: true }
-);
-
-// Initialize component from content
-function initializeFromContent() {
-  const content = props.module.content?.join("\n") || "";
-
-  // If it's empty, use the default configuration
-  if (!content.trim()) {
-    const defaultConfig: DataviewQueryConfig = {
-      type: DataviewQueryType.LIST,
-      fields: [],
-      source: '"."',
-      filters: [],
-      sorts: [],
-      inline: false,
-    };
-
-    queryConfig.value = defaultConfig;
-    rawQuery.value = generateDataviewQuery(defaultConfig);
-    return;
-  }
-
-  // Set the raw query content
-  rawQuery.value = content;
-
-  // Try to parse the content as a Dataview query
-  const parsedConfig = parseDataviewQuery(content);
-
-  if (parsedConfig) {
-    // Ensure the type is LIST
-    parsedConfig.type = DataviewQueryType.LIST;
-    queryConfig.value = parsedConfig;
-
-    // Set the source type based on the source
-    setSourceTypeFromSource(parsedConfig.source);
-
-    // Set the limit dropdown
-    setLimitFromConfig();
-
-    // Set the sort field
-    setSortFromConfig();
-
-    validationError.value = "";
-  } else {
-    // If parsing fails, keep the raw query but show a validation error
-    validationError.value =
-      "Could not parse the query. You can still edit it in code mode.";
-    editorMode.value = "code";
-  }
-}
-
-// Toggle between visual and code editor modes
-function toggleEditorMode() {
-  if (editorMode.value === "visual") {
-    // Switching to code mode
-    rawQuery.value = generateDataviewQuery(queryConfig.value);
-    editorMode.value = "code";
-  } else {
-    // Switching to visual mode
-    try {
-      const parsedConfig = parseDataviewQuery(rawQuery.value);
-      if (parsedConfig) {
-        // Ensure the type is LIST
-        parsedConfig.type = DataviewQueryType.LIST;
-        queryConfig.value = parsedConfig;
-
-        // Set the source type based on the source
-        setSourceTypeFromSource(parsedConfig.source);
-
-        // Set the limit dropdown
-        setLimitFromConfig();
-
-        // Set the sort field
-        setSortFromConfig();
-
-        validationError.value = "";
-        editorMode.value = "visual";
-      } else {
-        // Parsing failed
-        validationError.value =
-          "Could not parse the query. Please check the syntax.";
-      }
-    } catch (error) {
-      validationError.value = "Error parsing query.";
-    }
-  }
-}
-
-// Set limit dropdown from config value
-function setLimitFromConfig() {
-  const limit = queryConfig.value.limit;
-  if (!limit) {
-    selectedLimit.value = "0";
-  } else if ([5, 10, 20, 50].includes(limit)) {
-    selectedLimit.value = limit.toString();
-  } else {
-    selectedLimit.value = "custom";
-  }
-}
-
-// Set sort field from config value
-function setSortFromConfig() {
-  if (queryConfig.value.sorts && queryConfig.value.sorts.length > 0) {
-    const firstSort = queryConfig.value.sorts[0];
-    sortDirection.value = firstSort.direction;
-
-    // Check if it's a standard field
-    if (["file.ctime", "file.mtime", "file.name"].includes(firstSort.field)) {
-      sortField.value = firstSort.field;
+    // Parse existing content if it exists
+    if (props.module.content.length > 0) {
+      parseExistingQuery(props.module.content[0]);
     } else {
-      // For custom fields, default to "file.name"
-      sortField.value = "file.name";
+      // Generate initial query
+      regenerateQuery();
     }
-  } else {
-    sortField.value = "";
-    sortDirection.value = "desc";
+  } catch (error) {
+    console.error("Error initializing DataviewListModule:", error);
+    baseModuleRef.value?.displayToast("Failed to connect to Obsidian", "error");
+  }
+});
+
+// Check if we can connect to Obsidian
+async function checkObsidianConnection(): Promise<boolean> {
+  try {
+    if (!obsidianApiService.isInitialized()) {
+      return false;
+    }
+    return await obsidianApiService.checkConnection();
+  } catch (error) {
+    console.error("Obsidian connection check failed:", error);
+    return false;
   }
 }
 
-// Validate raw query input
-function validateRawQuery() {
-  validationError.value = "";
+// Fetch available folders from Obsidian
+async function fetchFolders() {
+  if (!obsidianConnected.value) return;
 
-  // Skip validation if empty
-  if (!rawQuery.value.trim()) return;
+  try {
+    console.log("Fetching vault info...");
+    const vaultInfo = await obsidianApiService.getVaultInfo();
+    console.log("Vault info received:", vaultInfo);
 
-  // Validate Dataview query
-  const validation = validateDataviewQuery(rawQuery.value);
-  if (!validation.isValid) {
-    validationError.value = validation.error || "Invalid Dataview query";
-    return;
-  }
-
-  // Check if it's a LIST query
-  if (!rawQuery.value.includes("LIST") && !rawQuery.value.includes("dv.list")) {
-    validationError.value = "This should be a LIST query";
-    return;
-  }
-
-  // If valid, update the content
-  emit("update:content", [rawQuery.value]);
-}
-
-// Update content from parent
-const updateContent = (content: string[]) => {
-  emit("update:content", content);
-};
-
-// Add a filter
-function addFilter() {
-  const newFilter: DataviewFilterCondition = {
-    id: uuidv4(),
-    field: "",
-    operator: DataviewFilterOperator.EQUALS,
-    value: "",
-    isMetadata: true,
-  };
-
-  queryConfig.value.filters.push(newFilter);
-  updateQuery();
-}
-
-// Remove a filter
-function removeFilter(index: number) {
-  queryConfig.value.filters.splice(index, 1);
-  updateQuery();
-}
-
-// Update sorting based on selected fields
-function updateSorting() {
-  // Clear any existing sorts
-  queryConfig.value.sorts = [];
-
-  // If a sort field is selected, add it
-  if (sortField.value) {
-    queryConfig.value.sorts.push({
-      field: sortField.value,
-      direction: sortDirection.value as DataviewSortDirection,
-      isMetadata: true,
-    });
-  }
-
-  updateQuery();
-}
-
-// Update limit based on dropdown selection
-function updateLimit() {
-  if (selectedLimit.value === "0") {
-    queryConfig.value.limit = undefined;
-  } else if (selectedLimit.value === "custom") {
-    // Let the user input their own limit
-  } else {
-    queryConfig.value.limit = parseInt(selectedLimit.value);
-  }
-
-  updateQuery();
-}
-
-// Get placeholder text based on selected source type
-function getSourcePlaceholder(): string {
-  const selectedSource = availableSources.value.find(
-    (s) => s.id === selectedSourceType.value
-  );
-  return selectedSource?.placeholder || "Enter source";
-}
-
-// Handle source type change
-function handleSourceTypeChange() {
-  const selectedSource = availableSources.value.find(
-    (s) => s.id === selectedSourceType.value
-  );
-
-  if (selectedSource) {
-    queryConfig.value.source = selectedSource.value;
-    updateQuery();
-  }
-}
-
-// Set source type based on source value
-function setSourceTypeFromSource(source: string) {
-  // Try to match the source with one of the common sources
-  const matchedSource = availableSources.value.find((s) => s.value === source);
-
-  if (matchedSource) {
-    selectedSourceType.value = matchedSource.id;
-  } else {
-    // If no match, set to custom
-    selectedSourceType.value = "custom";
-
-    // If it's a custom source, store the value
-    if (source) {
-      const customSource = availableSources.value.find(
-        (s) => s.id === "custom"
+    // Extract folders from the files array
+    if (vaultInfo && vaultInfo.files && Array.isArray(vaultInfo.files)) {
+      const folderPaths = vaultInfo.files.filter(
+        (path) => typeof path === "string" && path.endsWith("/")
       );
-      if (customSource) {
-        customSource.value = source;
+
+      availableFolders.value = [
+        { name: "Root", path: "", parent: "" },
+        ...folderPaths.map((folder) => {
+          // Remove trailing slash
+          const cleanPath = folder.endsWith("/") ? folder.slice(0, -1) : folder;
+          return {
+            name: cleanPath.split("/").pop() || cleanPath,
+            path: cleanPath,
+            parent: cleanPath.includes("/")
+              ? cleanPath.split("/").slice(0, -1).join("/")
+              : "",
+          };
+        }),
+      ];
+    } else {
+      console.log("No files found or unexpected structure, using fallback");
+      availableFolders.value = [{ name: "Root", path: "", parent: "" }];
+    }
+
+    baseModuleRef.value?.displayToast("Folders updated", "success");
+  } catch (err) {
+    console.log("Error fetching folders:", err);
+    availableFolders.value = [{ name: "Root", path: "", parent: "" }];
+    baseModuleRef.value?.displayToast("Failed to fetch folders", "error");
+  }
+}
+
+// Fetch available tags from Obsidian
+async function fetchTags() {
+  if (!obsidianConnected.value) return;
+
+  try {
+    // Use a TABLE query instead of LIST with FLATTEN
+    const dql = `TABLE file.tags AS Tags FROM "" WHERE file.tags`;
+
+    const results = await obsidianApiService.searchWithDataview(dql);
+    console.log("Tags query results:", results);
+
+    // Extract tag names from results
+    const tags = new Set<string>();
+
+    if (Array.isArray(results)) {
+      results.forEach((result) => {
+        // Safely access properties using type assertion
+        const item = result as Record<string, any>;
+
+        if (item && typeof item === "object" && "Tags" in item) {
+          const tagValue = item["Tags"];
+
+          // Tags might be an array or a string
+          if (Array.isArray(tagValue)) {
+            tagValue.forEach((tag: any) => {
+              if (typeof tag === "string") {
+                tags.add(tag.replace(/^#/, ""));
+              }
+            });
+          } else if (typeof tagValue === "string") {
+            tags.add(tagValue.replace(/^#/, ""));
+          }
+        }
+      });
+    }
+
+    availableTags.value = Array.from(tags);
+
+    if (availableTags.value.length === 0) {
+      // Fallback if no tags found
+      availableTags.value = [
+        "project",
+        "todo",
+        "idea",
+        "journal",
+        "note",
+        "meeting",
+      ];
+    }
+
+    baseModuleRef.value?.displayToast("Tags updated", "success");
+  } catch (err) {
+    console.log("Error fetching tags:", err);
+    // Fallback to some example tags
+    availableTags.value = [
+      "project",
+      "todo",
+      "idea",
+      "journal",
+      "note",
+      "meeting",
+    ];
+    baseModuleRef.value?.displayToast("Using default tags", "info");
+  }
+}
+
+// Fetch available properties from Obsidian
+async function fetchProperties() {
+  if (!obsidianConnected.value) return;
+
+  try {
+    // Use a TABLE query to get file properties
+    const dql = `TABLE file.name AS FileName FROM "" LIMIT 10`;
+
+    const results = await obsidianApiService.searchWithDataview(dql);
+    console.log("Property query results:", results);
+
+    // For now, use the standard properties since we can't easily extract
+    // all frontmatter keys with a single query
+    availableProperties.value = [
+      "file.name",
+      "file.ctime",
+      "file.mtime",
+      "file.size",
+      "file.path",
+      "file.folder",
+      "tags",
+      "title",
+      "date",
+      "status",
+      "priority",
+      "due",
+      "completed",
+    ];
+
+    // If we get sample files, we could look up their frontmatter in a second query
+    // but that would require multiple API calls
+
+    baseModuleRef.value?.displayToast("Properties updated", "success");
+  } catch (err) {
+    console.log("Error fetching properties:", err);
+    availableProperties.value = [
+      "file.name",
+      "file.ctime",
+      "file.mtime",
+      "file.size",
+      "file.path",
+      "file.folder",
+      "tags",
+      "title",
+      "date",
+      "status",
+      "priority",
+      "due",
+      "completed",
+    ];
+    baseModuleRef.value?.displayToast("Using default properties", "info");
+  }
+}
+
+// Parse an existing Dataview query to initialize the module state
+function parseExistingQuery(query: string) {
+  try {
+    // Remove markdown code block syntax if present
+    let cleanQuery = query.replace(/```dataview\n|\n```/g, "");
+
+    // Basic parsing for LIST queries
+    // This is a simplified parser that won't handle all possible Dataview syntax
+    const lines = cleanQuery.split("\n").map((line) => line.trim());
+
+    // Parse LIST part and display properties
+    const listMatch = lines[0].match(/^LIST\s+(.+)$/i);
+    if (listMatch) {
+      const propsString = listMatch[1];
+      // Split by commas outside of parentheses to handle functions like date(file.ctime)
+      const props = propsString.split(/,(?![^(]*\))/g).map((p) => p.trim());
+      if (props[0] !== "*") {
+        displayProperties.value = props;
       }
     }
-  }
-}
 
-// Apply preset query configuration
-function applyPreset() {
-  if (!selectedPreset.value) return;
+    // Parse FROM part (source)
+    const fromLine = lines.find((line) => line.startsWith("FROM"));
+    if (fromLine) {
+      const fromMatch = fromLine.match(/^FROM\s+(.+)$/i);
+      if (fromMatch) {
+        const source = fromMatch[1];
 
-  // Clear filters and sorts
-  queryConfig.value.filters = [];
-  queryConfig.value.sorts = [];
+        if (source.startsWith('"') && source.endsWith('"')) {
+          // Folder source
+          sourceType.value = "folder";
+          selectedFolder.value = source.slice(1, -1);
+        } else if (source.startsWith("#")) {
+          // Tag source
+          sourceType.value = "tag";
+          selectedTag.value = source.slice(1);
+        } else {
+          // Default to all
+          sourceType.value = "all";
+        }
+      }
+    } else {
+      sourceType.value = "all";
+    }
 
-  switch (selectedPreset.value) {
-    case "recent":
-      // Recent notes, sorted by creation date
-      selectedSourceType.value = "current-folder";
-      queryConfig.value.source = '"."';
-      sortField.value = "file.ctime";
-      sortDirection.value = "desc";
-      selectedLimit.value = "10";
-      queryConfig.value.limit = 10;
-      break;
+    // Parse WHERE part (property filter)
+    const whereLine = lines.find((line) => line.startsWith("WHERE"));
+    if (whereLine) {
+      const whereMatch = whereLine.match(/^WHERE\s+(.+)$/i);
+      if (whereMatch) {
+        const condition = whereMatch[1];
 
-    case "tagged":
-      // Notes with a specific tag
-      selectedSourceType.value = "tag";
-      queryConfig.value.source = '"tag"';
-      sortField.value = "file.mtime";
-      sortDirection.value = "desc";
-      selectedLimit.value = "0";
-      queryConfig.value.limit = undefined;
-      break;
+        // Try to parse a basic property condition (prop = value)
+        const conditionMatch = condition.match(
+          /([^=!<>]+)\s*([=!<>]+|contains)\s*(.+)/i
+        );
+        if (conditionMatch) {
+          sourceType.value = "property";
+          selectedProperty.value = conditionMatch[1].trim();
+          propertyOperator.value = conditionMatch[2].trim();
+          // Remove quotes from value if present
+          let value = conditionMatch[3].trim();
+          if (
+            (value.startsWith('"') && value.endsWith('"')) ||
+            (value.startsWith("'") && value.endsWith("'"))
+          ) {
+            value = value.slice(1, -1);
+          }
+          propertyValue.value = value;
+        }
+      }
+    }
 
-    case "folder":
-      // Notes in a specific folder
-      selectedSourceType.value = "folder";
-      queryConfig.value.source = '"folder"';
-      sortField.value = "file.name";
+    // Parse SORT part
+    const sortLine = lines.find((line) => line.startsWith("SORT"));
+    if (sortLine) {
+      const sortMatch = sortLine.match(/^SORT\s+(.+?)(\s+(ASC|DESC))?$/i);
+      if (sortMatch) {
+        sortProperty.value = sortMatch[1].trim();
+        sortDirection.value = sortMatch[3]?.toLowerCase() || "asc";
+      }
+    } else {
+      // Default sort
+      sortProperty.value = "file.name";
       sortDirection.value = "asc";
-      selectedLimit.value = "0";
-      queryConfig.value.limit = undefined;
-      break;
+    }
 
-    case "created":
-      // Notes created this week
-      selectedSourceType.value = "current-folder";
-      queryConfig.value.source = '"."';
-      // Add filter for created this week
-      queryConfig.value.filters.push({
-        id: uuidv4(),
-        field: "file.ctime",
-        operator: ">",
-        value: "date(today) - dur(1 week)",
-        isMetadata: true,
-      });
-      sortField.value = "file.ctime";
-      sortDirection.value = "desc";
-      selectedLimit.value = "0";
-      queryConfig.value.limit = undefined;
-      break;
+    // Parse LIMIT part
+    const limitLine = lines.find((line) => line.startsWith("LIMIT"));
+    if (limitLine) {
+      const limitMatch = limitLine.match(/^LIMIT\s+(\d+)$/i);
+      if (limitMatch) {
+        useLimit.value = true;
+        limitCount.value = parseInt(limitMatch[1], 10);
+      }
+    } else {
+      useLimit.value = false;
+      limitCount.value = 20;
+    }
 
-    case "modified":
-      // Recently modified notes
-      selectedSourceType.value = "current-folder";
-      queryConfig.value.source = '"."';
-      sortField.value = "file.mtime";
-      sortDirection.value = "desc";
-      selectedLimit.value = "5";
-      queryConfig.value.limit = 5;
-      break;
-
-    case "custom":
-      // Reset to default but keep as custom
-      selectedSourceType.value = "current-folder";
-      queryConfig.value.source = '"."';
-      sortField.value = "";
-      selectedLimit.value = "0";
-      queryConfig.value.limit = undefined;
-      break;
-  }
-
-  updateSorting();
-  updateQuery();
-}
-
-// Generate query from config and update content
-function updateQuery() {
-  if (editorMode.value === "visual") {
-    // Ensure type is LIST
-    queryConfig.value.type = DataviewQueryType.LIST;
-
-    // Generate the updated query
-    const query = generateDataviewQuery(queryConfig.value);
-
-    // Update the raw query (useful when switching to code mode)
-    rawQuery.value = query;
-
-    // Emit the updated content
-    emit("update:content", [query]);
-
-    const updatedModules = [...props.modules];
-    updatedModules[props.index] = {
-      ...props.module,
-      content: [query],
-    };
-
-    emit("update", updatedModules);
+    // Regenerate the query to ensure it's formatted correctly
+    regenerateQuery();
+  } catch (error) {
+    console.error("Error parsing existing query:", error);
+    // If parsing fails, just generate a new default query
+    regenerateQuery();
   }
 }
+
+// Event Handlers
+function setSourceType(type: string) {
+  sourceType.value = type;
+  regenerateQuery();
+}
+
+function setSortDirection(direction: "asc" | "desc") {
+  sortDirection.value = direction;
+  regenerateQuery();
+}
+
+function handleSourceValueChange() {
+  regenerateQuery();
+}
+
+function handlePropertyChange() {
+  regenerateQuery();
+}
+
+function handlePropertyOperatorChange() {
+  regenerateQuery();
+}
+
+function handlePropertyValueChange() {
+  regenerateQuery();
+}
+
+function handleSortChange() {
+  regenerateQuery();
+}
+
+function handleLimitChange() {
+  regenerateQuery();
+}
+
+// Display Properties Management
+function addDisplayProperty() {
+  if (
+    newDisplayProperty.value &&
+    !displayProperties.value.includes(newDisplayProperty.value)
+  ) {
+    displayProperties.value.push(newDisplayProperty.value);
+    newDisplayProperty.value = "";
+    regenerateQuery();
+    baseModuleRef.value?.displayToast("Property added", "success");
+  }
+}
+
+function removeDisplayProperty(index: number) {
+  displayProperties.value.splice(index, 1);
+  regenerateQuery();
+  baseModuleRef.value?.displayToast("Property removed", "info");
+}
+
+// Query generation
+function generateQuery(): string {
+  let query = "```dataview\n";
+
+  // LIST part
+  if (displayProperties.value.length > 0) {
+    query += `LIST ${displayProperties.value.join(", ")}\n`;
+  } else {
+    query += "LIST\n";
+  }
+
+  // FROM part
+  if (sourceType.value === "folder" && selectedFolder.value) {
+    query += `FROM "${selectedFolder.value}"\n`;
+  } else if (sourceType.value === "tag" && selectedTag.value) {
+    query += `FROM #${selectedTag.value}\n`;
+  } else if (sourceType.value === "all") {
+    query += 'FROM ""\n';
+  }
+
+  // WHERE part
+  if (
+    sourceType.value === "property" &&
+    selectedProperty.value &&
+    propertyValue.value
+  ) {
+    let formattedValue = propertyValue.value;
+
+    // Add quotes for string values unless using contains operator
+    if (
+      isNaN(Number(formattedValue)) &&
+      propertyOperator.value !== "contains"
+    ) {
+      formattedValue = `"${formattedValue}"`;
+    }
+
+    if (propertyOperator.value === "contains") {
+      query += `WHERE contains(${selectedProperty.value}, "${propertyValue.value}")\n`;
+    } else {
+      query += `WHERE ${selectedProperty.value} ${propertyOperator.value} ${formattedValue}\n`;
+    }
+  }
+
+  // SORT part
+  if (sortProperty.value) {
+    query += `SORT ${
+      sortProperty.value
+    } ${sortDirection.value.toUpperCase()}\n`;
+  }
+
+  // LIMIT part
+  if (useLimit.value && limitCount.value > 0) {
+    query += `LIMIT ${limitCount.value}\n`;
+  }
+
+  query += "```";
+  return query;
+}
+
+// Generate the query and update the module content
+function regenerateQuery() {
+  const query = generateQuery();
+  updateContent([query]);
+}
+
+// Update content in parent component
+function updateContent(content: string[]) {
+  emit("update:content", content);
+}
+
+// Watch for Obsidian connection changes
+watch(obsidianConnected, async (isConnected) => {
+  if (isConnected) {
+    await Promise.all([fetchFolders(), fetchTags(), fetchProperties()]);
+  }
+});
 </script>
 
 <style scoped>
-/* Use the application's existing styles for consistency */
-.template-module-editor-line {
-  margin-bottom: var(--spacing-md);
+.dataview-list-editor {
+  width: 100%;
+  color: #cbd5e1;
 }
 
-.template-module-editor-input-group {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-xs);
-}
-
-.template-module-editor-label {
-  font-weight: 500;
-  color: var(--color-text);
-  font-size: 0.9rem;
-}
-
-.template-module-editor-inputs-row {
-  display: flex;
-  gap: var(--spacing-sm);
-  align-items: center;
-}
-
-.template-module-editor-input {
-  flex: 1;
-  padding: var(--spacing-xs) var(--spacing-sm);
-  border: 1px solid var(--color-surface);
-  border-radius: var(--radius-sm);
+.dataview-list-editor__alert {
+  background-color: rgba(239, 68, 68, 0.2);
+  color: #ef4444;
+  padding: 8px 12px;
+  border-radius: 4px;
   font-size: 0.875rem;
-  background-color: rgba(255, 255, 255, 0.05);
-  color: var(--color-text);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+/* Section styling */
+.dataview-list-editor__section {
+  margin-bottom: 20px;
+}
+
+.dataview-list-editor__section-header {
+  margin-bottom: 12px;
+}
+
+.dataview-list-editor__section-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 500;
+  font-size: 0.9375rem;
+  color: #e2e8f0;
+}
+
+/* Source selection */
+.dataview-list-editor__source-options {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.dataview-list-editor__source-option {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #e2e8f0;
+  padding: 8px 12px;
+  border-radius: 4px;
+  font-size: 0.875rem;
+  cursor: pointer;
+  text-align: center;
   transition: all 0.2s;
 }
 
-.template-module-editor-input:focus {
-  outline: none;
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 2px rgba(255, 171, 88, 0.2);
+.dataview-list-editor__source-option:hover {
+  background: rgba(255, 255, 255, 0.1);
 }
 
-.source-type-select {
-  flex: 0 0 auto;
-  min-width: 140px;
-  max-width: 140px;
+.dataview-list-editor__source-option.active {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.25);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.05);
 }
 
-.template-module-editor-section {
-  margin-bottom: var(--spacing-md);
-  padding: var(--spacing-sm);
-  border: 1px solid var(--color-surface);
-  border-radius: var(--radius-sm);
-  background-color: rgba(255, 255, 255, 0.02);
+.dataview-list-editor__source-details {
+  margin-top: 12px;
 }
 
-.template-module-editor-section-header {
-  font-weight: 600;
-  color: var(--color-text);
-  margin-bottom: var(--spacing-sm);
+.dataview-list-editor__field {
   display: flex;
+  gap: 8px;
   align-items: center;
-  gap: var(--spacing-xs);
 }
 
-.template-module-editor-section-header i {
-  color: var(--color-primary);
+.dataview-list-editor__property-field {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr 1.5fr auto;
+  gap: 8px;
+  align-items: center;
 }
 
-.template-module-editor-line-action {
-  background: none;
-  border: none;
-  cursor: pointer;
-  width: 30px;
-  height: 30px;
-  border-radius: var(--radius-sm);
+.dataview-list-editor__select {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #e2e8f0;
+  padding: 8px 12px;
+  border-radius: 4px;
+  font-size: 0.875rem;
+  width: 100%;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23cbd5e1' d='M6 8.825L1.175 4 2.05 3.125 6 7.075 9.95 3.125 10.825 4z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 32px;
+}
+
+.dataview-list-editor__select:focus {
+  outline: none;
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.dataview-list-editor__operator-select {
+  font-size: 0.8125rem;
+}
+
+.dataview-list-editor__input {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #e2e8f0;
+  padding: 8px 12px;
+  border-radius: 4px;
+  font-size: 0.875rem;
+  width: 100%;
+}
+
+.dataview-list-editor__input:focus {
+  outline: none;
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.dataview-list-editor__action-btn {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--color-text-muted);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #94a3b8;
+  width: 36px;
+  height: 36px;
+  border-radius: 4px;
+  cursor: pointer;
   transition: all 0.2s;
-  opacity: 0.7;
+  flex-shrink: 0;
 }
 
-.template-module-editor-line-action:hover {
-  background-color: rgba(239, 68, 68, 0.1);
-  color: #ef4444;
+.dataview-list-editor__action-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #e2e8f0;
+}
+
+/* Display properties */
+.dataview-list-editor__properties {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.dataview-list-editor__property-tag {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255, 171, 88, 0.15);
+  color: #ffab58;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.8125rem;
+}
+
+.dataview-list-editor__property-tag-remove {
+  background: none;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.7;
+  transition: opacity 0.2s;
+}
+
+.dataview-list-editor__property-tag-remove:hover {
   opacity: 1;
 }
 
-.add-filter-button {
+.dataview-list-editor__add-property {
+  display: flex;
+  gap: 8px;
+}
+
+.dataview-list-editor__add-btn {
   display: flex;
   align-items: center;
-  gap: var(--spacing-xs);
-  padding: var(--spacing-xs) var(--spacing-md);
-  background: none;
-  border: 1px dashed var(--color-surface);
-  border-radius: var(--radius-sm);
-  color: var(--color-text-muted);
-  font-size: 0.85rem;
+  gap: 6px;
+  background: rgba(255, 171, 88, 0.1);
+  color: #ffab58;
+  border: 1px solid rgba(255, 171, 88, 0.2);
+  padding: 8px 12px;
+  border-radius: 4px;
+  font-size: 0.875rem;
   cursor: pointer;
   transition: all 0.2s;
 }
 
-.add-filter-button:hover {
-  color: var(--color-text);
-  border-color: var(--color-primary);
-  background-color: rgba(255, 171, 88, 0.05);
+.dataview-list-editor__add-btn:hover:not(:disabled) {
+  background: rgba(255, 171, 88, 0.2);
 }
 
-.advanced-toggle-button {
+.dataview-list-editor__add-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Sort controls */
+.dataview-list-editor__sort-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.dataview-list-editor__sort-direction {
+  display: flex;
+  gap: 8px;
+}
+
+.dataview-list-editor__direction-btn {
+  flex: 1;
   display: flex;
   align-items: center;
-  gap: var(--spacing-sm);
-  background: none;
-  border: none;
-  color: var(--color-text-muted);
-  font-size: 0.9rem;
+  justify-content: center;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #e2e8f0;
+  padding: 8px 12px;
+  border-radius: 4px;
+  font-size: 0.875rem;
   cursor: pointer;
-  padding: var(--spacing-xs) 0;
   transition: all 0.2s;
 }
 
-.advanced-toggle-button:hover {
-  color: var(--color-text);
+.dataview-list-editor__direction-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
 }
 
-.advanced-toggle-button i {
-  width: 16px;
+.dataview-list-editor__direction-btn.active {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.25);
+}
+
+/* Limit controls */
+.dataview-list-editor__limit-controls {
+  margin-top: 8px;
+}
+
+.dataview-list-editor__limit-field {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.dataview-list-editor__number-input {
+  width: 80px;
   text-align: center;
 }
 
-.template-module-editor-checkbox-group {
+.dataview-list-editor__limit-toggle {
   display: flex;
   align-items: center;
-  gap: var(--spacing-sm);
-}
-
-.template-module-editor-checkbox-label {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-xs);
-  color: var(--color-text);
-  font-size: 0.9rem;
+  gap: 8px;
   cursor: pointer;
 }
 
-.tooltip-icon {
-  color: var(--color-text-muted);
-  cursor: help;
-}
-
-.template-module-editor-code-editor {
-  width: 100%;
-}
-
-.template-module-editor-code-textarea {
-  width: 100%;
-  min-height: 180px;
-  padding: var(--spacing-sm);
-  border: 1px solid var(--color-surface);
-  border-radius: var(--radius-sm);
-  background-color: rgba(255, 255, 255, 0.05);
-  color: var(--color-text);
-  font-family: var(--font-monospace, monospace);
-  font-size: 0.9rem;
-  resize: vertical;
-}
-
-.template-module-editor-code-textarea:focus {
-  outline: none;
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 2px rgba(255, 171, 88, 0.2);
-}
-
-.template-module-editor-validation-error {
-  margin-top: var(--spacing-sm);
-  padding: var(--spacing-sm);
-  border-radius: var(--radius-sm);
-  background-color: rgba(239, 68, 68, 0.1);
-  color: #ef4444;
-  font-size: 0.85rem;
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-sm);
-}
-
-.template-module-editor-actions {
-  display: flex;
-  justify-content: flex-end;
-  margin-top: var(--spacing-md);
-}
-
-.template-module-editor-toggle-mode {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-xs);
-  padding: var(--spacing-xs) var(--spacing-md);
-  background-color: rgba(255, 255, 255, 0.05);
-  border: 1px solid var(--color-surface);
-  border-radius: var(--radius-sm);
-  color: var(--color-text);
-  font-size: 0.85rem;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.template-module-editor-toggle-mode:hover {
+.dataview-list-editor__toggle-slider {
+  position: relative;
+  display: inline-block;
+  width: 40px;
+  height: 20px;
   background-color: rgba(255, 255, 255, 0.1);
+  border-radius: 20px;
+  transition: 0.3s;
+}
+
+.dataview-list-editor__toggle-slider:before {
+  position: absolute;
+  content: "";
+  height: 16px;
+  width: 16px;
+  left: 2px;
+  bottom: 2px;
+  background-color: #fff;
+  border-radius: 50%;
+  transition: 0.3s;
+}
+
+.dataview-list-editor__limit-toggle input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.dataview-list-editor__limit-toggle
+  input:checked
+  + .dataview-list-editor__toggle-slider {
+  background-color: rgba(255, 171, 88, 0.6);
+}
+
+.dataview-list-editor__limit-toggle
+  input:checked
+  + .dataview-list-editor__toggle-slider:before {
+  transform: translateX(20px);
+}
+
+.dataview-list-editor__toggle-label {
+  font-size: 0.875rem;
+  color: #e2e8f0;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .dataview-list-editor__source-options {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .dataview-list-editor__property-field {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .dataview-list-editor__sort-controls,
+  .dataview-list-editor__limit-field {
+    flex-direction: column;
+    align-items: flex-start;
+  }
 }
 </style>
