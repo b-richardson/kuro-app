@@ -1,4 +1,11 @@
 <template>
+  <!-- 
+  IMPORTANT NOTE FOR DEVELOPERS:
+  - This component should NOT implement any connection checks to Obsidian
+  - This component should NOT display any toast messages
+  - All connection validation and user feedback should be handled by parent components
+  - Keep this component focused solely on building Dataview queries
+  -->
   <BaseModule
     :module="module"
     :index="index"
@@ -6,255 +13,404 @@
     :isSelected="isSelected"
     :autoFocus="autoFocus"
     @update:content="updateContent"
-    @update="$emit('update', $event)"
+    @update="$emit('update', $event as any)"
     @delete="$emit('delete')"
     @select="$emit('select')"
     @duplicate="$emit('duplicate')"
     @module-change="$emit('module-change')"
+    @add-line="regenerateQuery"
     ref="baseModuleRef"
   >
-    <div class="dataview-builder">
-      <!-- Title -->
-      <div class="builder-header">
-        <h2><i class="fas fa-table"></i> Dataview Table</h2>
-      </div>
-
-      <!-- FIELDS -->
-      <section class="builder-section">
-        <label class="section-label">
-          Fields
-          <small>(Columns)</small>
-        </label>
-        <div class="fields-list">
-          <div
-            v-for="(field, idx) in queryConfig.fields"
-            :key="idx"
-            class="field-item"
-          >
-            <input
-              class="field-input"
-              v-model="queryConfig.fields[idx]"
-              placeholder="e.g. file.ctime"
-              @input="updateQuery"
-              @focus="setEditing(true)"
-              @blur="setEditing(false)"
-              :ref="
-                idx === 0 && isSelected && autoFocus ? setInputRef : undefined
-              "
-            />
-            <button
-              class="remove-btn"
-              title="Remove field"
-              @click="removeField(idx)"
-            >
-              ✕
-            </button>
+    <!-- Module Header -->
+    <div class="dataview-table-editor">
+      <!-- Source Selection Section -->
+      <div class="dataview-table-editor__section">
+        <div class="dataview-table-editor__section-header">
+          <div class="dataview-table-editor__section-title">
+            <i class="fas fa-filter"></i>
+            Source Selection
           </div>
         </div>
-        <div class="actions-row">
-          <button class="add-btn" @click="addField">+ Add Field</button>
-          <button class="add-btn" @click="toggleCommonFields">
-            ⋮ Common Fields
+
+        <div class="dataview-table-editor__source-options">
+          <button
+            class="dataview-table-editor__source-option"
+            :class="{ active: sourceType === 'all' }"
+            @click="setSourceType('all')"
+          >
+            All notes
+          </button>
+          <button
+            class="dataview-table-editor__source-option"
+            :class="{ active: sourceType === 'folder' }"
+            @click="setSourceType('folder')"
+          >
+            From folder
+          </button>
+          <button
+            class="dataview-table-editor__source-option"
+            :class="{ active: sourceType === 'tag' }"
+            @click="setSourceType('tag')"
+          >
+            With tag
+          </button>
+          <button
+            class="dataview-table-editor__source-option"
+            :class="{ active: sourceType === 'property' }"
+            @click="setSourceType('property')"
+          >
+            With property
           </button>
         </div>
 
-        <!-- Common Fields Dropdown -->
-        <div v-if="showCommonFields" class="common-fields-dropdown">
-          <div class="dropdown-header">
-            <span>Common Metadata</span>
-            <button class="close-dropdown" @click="toggleCommonFields">
-              ✕
+        <!-- Folder Selection -->
+        <div
+          v-if="sourceType === 'folder'"
+          class="dataview-table-editor__source-details"
+        >
+          <div class="dataview-table-editor__field">
+            <select
+              class="dataview-table-editor__select"
+              v-model="selectedFolder"
+              @change="handleSourceValueChange"
+            >
+              <option disabled value="">Select a folder</option>
+              <option
+                v-for="folder in availableFolders"
+                :key="folder.path"
+                :value="folder.path"
+              >
+                {{ folder.path || "/" }}
+              </option>
+            </select>
+            <button
+              class="dataview-table-editor__action-btn"
+              title="Refresh folder list"
+              @click="fetchFolders"
+            >
+              <i class="fas fa-sync-alt"></i>
             </button>
           </div>
-          <div class="dropdown-list">
-            <div
-              v-for="field in commonFields"
-              :key="field.id"
-              class="dropdown-item"
-              @click="addCommonField(field.id)"
+        </div>
+
+        <!-- Tag Selection -->
+        <div
+          v-if="sourceType === 'tag'"
+          class="dataview-table-editor__source-details"
+        >
+          <div class="dataview-table-editor__field">
+            <select
+              class="dataview-table-editor__select"
+              v-model="selectedTag"
+              @change="handleSourceValueChange"
             >
-              <strong>{{ field.label }}</strong>
-              <small>{{ field.type }}</small>
+              <option disabled value="">Select a tag</option>
+              <option v-for="tag in availableTags" :key="tag" :value="tag">
+                #{{ tag }}
+              </option>
+            </select>
+            <button
+              class="dataview-table-editor__action-btn"
+              title="Refresh tag list"
+              @click="fetchTags"
+            >
+              <i class="fas fa-sync-alt"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- Property Selection -->
+        <div
+          v-if="sourceType === 'property'"
+          class="dataview-table-editor__source-details"
+        >
+          <div class="dataview-table-editor__property-field">
+            <!-- Property name -->
+            <select
+              class="dataview-table-editor__select"
+              v-model="selectedProperty"
+              @change="handlePropertyChange"
+            >
+              <option disabled value="">Select a property</option>
+              <option
+                v-for="prop in availableProperties"
+                :key="prop"
+                :value="prop"
+              >
+                {{ prop }}
+              </option>
+            </select>
+
+            <!-- Operator -->
+            <select
+              class="dataview-table-editor__select dataview-table-editor__operator-select"
+              v-model="propertyOperator"
+              @change="handlePropertyOperatorChange"
+            >
+              <option value="=">equals</option>
+              <option value="!=">not equals</option>
+              <option value=">">greater than</option>
+              <option value="<">less than</option>
+              <option value=">=">greater/equal</option>
+              <option value="<=">less/equal</option>
+              <option value="contains">contains</option>
+            </select>
+
+            <!-- Value -->
+            <input
+              type="text"
+              class="dataview-table-editor__input"
+              placeholder="Value"
+              v-model="propertyValue"
+              @input="handlePropertyValueChange"
+            />
+
+            <button
+              class="dataview-table-editor__action-btn"
+              title="Refresh property list"
+              @click="fetchProperties"
+            >
+              <i class="fas fa-sync-alt"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Table Columns Section -->
+      <div class="dataview-table-editor__section">
+        <div class="dataview-table-editor__section-header">
+          <div class="dataview-table-editor__section-title">
+            <i class="fas fa-table"></i>
+            Table Columns
+          </div>
+        </div>
+
+        <!-- Column configurations -->
+        <div class="dataview-table-editor__columns">
+          <div
+            v-for="(column, index) in tableColumns"
+            :key="index"
+            class="dataview-table-editor__column-item"
+          >
+            <div class="dataview-table-editor__column-header">
+              <div class="dataview-table-editor__column-drag">
+                <i class="fas fa-grip-lines"></i>
+              </div>
+              <div class="dataview-table-editor__column-fields">
+                <div class="dataview-table-editor__column-property">
+                  <input
+                    type="text"
+                    class="dataview-table-editor__input"
+                    placeholder="Property"
+                    v-model="column.property"
+                    list="available-properties"
+                    @input="updateColumn(index)"
+                  />
+                  <datalist id="available-properties">
+                    <option
+                      v-for="prop in availableProperties"
+                      :key="prop"
+                      :value="prop"
+                    ></option>
+                  </datalist>
+                </div>
+                <div class="dataview-table-editor__column-display">
+                  <input
+                    type="text"
+                    class="dataview-table-editor__input"
+                    placeholder="Display name (optional)"
+                    v-model="column.displayName"
+                    @input="updateColumn(index)"
+                  />
+                </div>
+              </div>
+              <div class="dataview-table-editor__column-actions">
+                <button
+                  class="dataview-table-editor__action-btn"
+                  title="Remove column"
+                  @click="removeColumn(index)"
+                  v-if="tableColumns.length > 1"
+                >
+                  <i class="fas fa-times"></i>
+                </button>
+              </div>
             </div>
           </div>
         </div>
-      </section>
 
-      <!-- SOURCE -->
-      <section class="builder-section">
-        <label class="section-label">Source</label>
-        <div class="source-row">
-          <select
-            class="source-select"
-            v-model="selectedSourceType"
-            @change="handleSourceTypeChange"
-          >
-            <option
-              v-for="source in commonSources"
-              :key="source.id"
-              :value="source.id"
+        <!-- Add column button -->
+        <div class="dataview-table-editor__add-column">
+          <button class="dataview-table-editor__add-btn" @click="addColumn">
+            <i class="fas fa-plus"></i>
+            Add Column
+          </button>
+        </div>
+      </div>
+
+      <!-- Without ID option -->
+      <div class="dataview-table-editor__section">
+        <div class="dataview-table-editor__section-header">
+          <div class="dataview-table-editor__section-title">
+            <i class="fas fa-cog"></i>
+            Table Options
+          </div>
+        </div>
+
+        <div class="dataview-table-editor__options">
+          <label class="dataview-table-editor__option-toggle">
+            <input
+              type="checkbox"
+              v-model="withoutID"
+              @change="regenerateQuery"
+            />
+            <span class="dataview-table-editor__toggle-slider"></span>
+            <span class="dataview-table-editor__toggle-label"
+              >Hide ID column</span
             >
-              {{ source.label }}
+          </label>
+
+          <div class="dataview-table-editor__option-info">
+            <i class="fas fa-info-circle"></i>
+            <span>Hides the first column which is typically the filename</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Sort Section -->
+      <div class="dataview-table-editor__section">
+        <div class="dataview-table-editor__section-header">
+          <div class="dataview-table-editor__section-title">
+            <i class="fas fa-sort"></i>
+            Sort Results
+          </div>
+        </div>
+
+        <div class="dataview-table-editor__sort-controls">
+          <select
+            class="dataview-table-editor__select"
+            v-model="sortProperty"
+            @change="handleSortChange"
+          >
+            <option disabled value="">Sort by...</option>
+            <option value="file.name">File name</option>
+            <option value="file.ctime">Creation time</option>
+            <option value="file.mtime">Modified time</option>
+            <option
+              v-for="prop in availableProperties"
+              :key="prop"
+              :value="prop"
+            >
+              {{ prop }}
             </option>
           </select>
-          <input
-            class="source-input"
-            type="text"
-            v-model="queryConfig.source"
-            :placeholder="sourcePlaceholder"
-            @input="updateQuery"
-            @focus="setEditing(true)"
-            @blur="setEditing(false)"
-          />
-        </div>
-      </section>
 
-      <!-- FILTERS -->
-      <section class="builder-section collapsible">
-        <div class="section-header" @click="toggleSection('filtersOpen')">
-          <span>Filters</span>
-          <span class="chevron">{{ filtersOpen ? "▲" : "▼" }}</span>
-        </div>
-        <div v-if="filtersOpen" class="filters-body">
-          <div
-            v-for="(filter, idx) in queryConfig.filters"
-            :key="filter.id"
-            class="filter-row"
-          >
-            <input
-              class="filter-field"
-              v-model="filter.field"
-              placeholder="Field"
-              @input="updateQuery"
-              @focus="setEditing(true)"
-              @blur="setEditing(false)"
-            />
-            <select
-              class="filter-operator"
-              v-model="filter.operator"
-              @change="updateQuery"
+          <div class="dataview-table-editor__sort-direction">
+            <button
+              class="dataview-table-editor__direction-btn"
+              :class="{ active: sortDirection === 'asc' }"
+              @click="setSortDirection('asc')"
             >
-              <option v-for="op in filterOperators" :key="op" :value="op">
-                {{ op }}
+              <i class="fas fa-sort-amount-down-alt"></i>
+              Ascending
+            </button>
+            <button
+              class="dataview-table-editor__direction-btn"
+              :class="{ active: sortDirection === 'desc' }"
+              @click="setSortDirection('desc')"
+            >
+              <i class="fas fa-sort-amount-down"></i>
+              Descending
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Group By Section (Optional) -->
+      <div class="dataview-table-editor__section">
+        <div class="dataview-table-editor__section-header">
+          <div class="dataview-table-editor__section-title">
+            <i class="fas fa-layer-group"></i>
+            Group Results
+          </div>
+        </div>
+
+        <div class="dataview-table-editor__group-controls">
+          <label class="dataview-table-editor__option-toggle">
+            <input
+              type="checkbox"
+              v-model="useGroupBy"
+              @change="regenerateQuery"
+            />
+            <span class="dataview-table-editor__toggle-slider"></span>
+            <span class="dataview-table-editor__toggle-label"
+              >Group results by property</span
+            >
+          </label>
+
+          <div v-if="useGroupBy" class="dataview-table-editor__group-field">
+            <select
+              class="dataview-table-editor__select"
+              v-model="groupByProperty"
+              @change="regenerateQuery"
+            >
+              <option disabled value="">Select property...</option>
+              <option
+                v-for="prop in availableProperties"
+                :key="prop"
+                :value="prop"
+              >
+                {{ prop }}
               </option>
             </select>
-            <input
-              v-if="showFilterValue(filter.operator)"
-              class="filter-value"
-              v-model="filter.value"
-              placeholder="Value"
-              @input="updateQuery"
-              @focus="setEditing(true)"
-              @blur="setEditing(false)"
-            />
-            <button class="remove-btn" @click="removeFilter(idx)">✕</button>
           </div>
-          <button class="add-btn" @click="addFilter">+ Add Filter</button>
         </div>
-      </section>
+      </div>
 
-      <!-- SORTING -->
-      <section class="builder-section collapsible">
-        <div class="section-header" @click="toggleSection('sortingOpen')">
-          <span>Sorting</span>
-          <span class="chevron">{{ sortingOpen ? "▲" : "▼" }}</span>
-        </div>
-        <div v-if="sortingOpen" class="sorting-body">
-          <div
-            v-for="(sort, idx) in queryConfig.sorts"
-            :key="idx"
-            class="sort-row"
-          >
-            <input
-              class="sort-field"
-              v-model="sort.field"
-              placeholder="Field"
-              @input="updateQuery"
-              @focus="setEditing(true)"
-              @blur="setEditing(false)"
-            />
-            <select
-              class="sort-direction"
-              v-model="sort.direction"
-              @change="updateQuery"
-            >
-              <option value="asc">Asc</option>
-              <option value="desc">Desc</option>
-            </select>
-            <button class="remove-btn" @click="removeSort(idx)">✕</button>
+      <!-- Limit Section -->
+      <div class="dataview-table-editor__section">
+        <div class="dataview-table-editor__section-header">
+          <div class="dataview-table-editor__section-title">
+            <i class="fas fa-sliders-h"></i>
+            Limit Results
           </div>
-          <button class="add-btn" @click="addSort">+ Add Sort</button>
         </div>
-      </section>
 
-      <!-- ADVANCED (Group By, Limit, Inline) -->
-      <section class="builder-section collapsible">
-        <div class="section-header" @click="toggleSection('advancedOpen')">
-          <span>Advanced</span>
-          <span class="chevron">{{ advancedOpen ? "▲" : "▼" }}</span>
-        </div>
-        <div v-if="advancedOpen" class="advanced-body">
-          <!-- Group By -->
-          <div class="advanced-item">
-            <label>Group By (optional)</label>
+        <div class="dataview-table-editor__limit-controls">
+          <div class="dataview-table-editor__limit-field">
             <input
-              class="group-input"
-              v-model="groupField"
-              placeholder="Field to group by"
-              @input="updateGroupBy"
-              @focus="setEditing(true)"
-              @blur="setEditing(false)"
-            />
-          </div>
-          <!-- Limit -->
-          <div class="advanced-item">
-            <label>Limit (optional)</label>
-            <input
-              class="limit-input"
               type="number"
-              v-model.number="queryConfig.limit"
-              placeholder="Max results"
+              class="dataview-table-editor__input dataview-table-editor__number-input"
+              v-model.number="limitCount"
               min="1"
-              @input="updateQuery"
-              @focus="setEditing(true)"
-              @blur="setEditing(false)"
+              max="1000"
+              @change="handleLimitChange"
+              :disabled="!useLimit"
             />
-          </div>
-          <!-- Inline -->
-          <div class="advanced-item inline-check">
-            <label>
+            <label class="dataview-table-editor__limit-toggle">
               <input
                 type="checkbox"
-                v-model="queryConfig.inline"
-                @change="updateQuery"
+                v-model="useLimit"
+                @change="handleLimitChange"
               />
-              Inline Query
+              <span class="dataview-table-editor__toggle-slider"></span>
+              <span class="dataview-table-editor__toggle-label"
+                >Apply limit</span
+              >
             </label>
           </div>
         </div>
-      </section>
+      </div>
     </div>
   </BaseModule>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from "vue";
-import { v4 as uuidv4 } from "uuid";
+import { ref, onMounted } from "vue";
 import BaseModule from "@/components/TemplateCreator/modules/core/BaseModule.vue";
 import { TemplateModule } from "@/types/TemplateModule";
-import {
-  DataviewQueryType,
-  DataviewQueryConfig,
-  DataviewFilterOperator,
-  DataviewSortDirection,
-  DataviewFilterCondition,
-  DataviewSort,
-  COMMON_METADATA_FIELDS,
-  COMMON_SOURCES,
-  generateDataviewQuery,
-  parseDataviewQuery,
-} from "@/utils/dataviewUtils";
+import { obsidianApiService } from "@/services/obsidian";
 
+// Define props
 const props = defineProps<{
   module: TemplateModule;
   index: number;
@@ -263,6 +419,7 @@ const props = defineProps<{
   autoFocus?: boolean;
 }>();
 
+// Define emits
 const emit = defineEmits<{
   (e: "update:content", content: string[]): void;
   (e: "update", modules: TemplateModule[]): void;
@@ -272,505 +429,841 @@ const emit = defineEmits<{
   (e: "module-change"): void;
 }>();
 
-// Refs
+// Reference to the base module component
 const baseModuleRef = ref<InstanceType<typeof BaseModule> | null>(null);
-const inputRef = ref<HTMLInputElement | null>(null);
 
-// UI Toggles
-const showCommonFields = ref(false);
-const filtersOpen = ref(true);
-const sortingOpen = ref(false);
-const advancedOpen = ref(false);
+// Source selection
+const sourceType = ref("all");
+const selectedFolder = ref("");
+const selectedTag = ref("");
+const selectedProperty = ref("");
+const propertyOperator = ref("=");
+const propertyValue = ref("");
 
-// Query config
-const queryConfig = ref<DataviewQueryConfig>({
-  type: DataviewQueryType.TABLE,
-  fields: ["file.link"], // Start simpler with just one default
-  source: '"."',
-  filters: [],
-  sorts: [],
-  inline: false,
-  limit: undefined,
+// Table columns
+interface TableColumn {
+  property: string;
+  displayName: string;
+}
+
+const tableColumns = ref<TableColumn[]>([
+  { property: "file.name", displayName: "File" },
+  { property: "file.mtime", displayName: "Modified" },
+]);
+
+// Table options
+const withoutID = ref(false);
+
+// Obsidian data
+const availableFolders = ref<{ name: string; path: string; parent: string }[]>([
+  { name: "Root", path: "", parent: "" },
+]);
+const availableTags = ref<string[]>([]);
+const availableProperties = ref<string[]>([
+  "file.name",
+  "file.ctime",
+  "file.mtime",
+  "file.size",
+  "file.path",
+  "file.folder",
+  "tags",
+  "title",
+  "date",
+  "status",
+  "priority",
+  "due",
+  "completed",
+]);
+
+// Sort options
+const sortProperty = ref("file.name");
+const sortDirection = ref("asc");
+
+// Group by options
+const useGroupBy = ref(false);
+const groupByProperty = ref("");
+
+// Limit options
+const useLimit = ref(false);
+const limitCount = ref(20);
+
+// Initialize component
+onMounted(async () => {
+  try {
+    // Fetch initial data from API service
+    await Promise.all([fetchFolders(), fetchTags(), fetchProperties()]);
+
+    // Parse existing content if it exists
+    if (props.module.content.length > 0) {
+      parseExistingQuery(props.module.content[0]);
+    } else {
+      // Generate initial query
+      regenerateQuery();
+    }
+  } catch (error) {
+    console.error("Error initializing DataviewTableModule:", error);
+  }
 });
 
-// Additional state
-const groupField = ref("");
-const selectedSourceType = ref("current-folder");
+// Fetch available folders from Obsidian
+async function fetchFolders() {
+  try {
+    const vaultInfo = await obsidianApiService.getVaultInfo();
 
-const commonSources = computed(() => COMMON_SOURCES);
-const commonFields = COMMON_METADATA_FIELDS;
-const filterOperators = Object.values(DataviewFilterOperator);
+    // Extract folders from the files array
+    if (vaultInfo && vaultInfo.files && Array.isArray(vaultInfo.files)) {
+      const folderPaths = vaultInfo.files.filter(
+        (path) => typeof path === "string" && path.endsWith("/")
+      );
 
-// Lifecycle
-onMounted(() => {
-  if (
-    props.module.type !== "dataviewTableQuery" ||
-    props.module.pluginType !== "dataview"
-  ) {
-    const updatedModule = {
-      ...props.module,
-      type: "dataviewTableQuery",
-      pluginType: "dataview",
-    };
-    const updatedModules = [...props.modules];
-    updatedModules[props.index] = updatedModule;
-    emit("update", updatedModules);
-  }
-  initFromContent();
-});
-
-watch(
-  () => props.module.content,
-  () => {
-    initFromContent();
-  },
-  { deep: true }
-);
-
-// Methods
-function initFromContent() {
-  const content = props.module.content?.join("\n") || "";
-  if (!content.trim()) {
-    // If no content, ensure defaults
-    queryConfig.value = {
-      type: DataviewQueryType.TABLE,
-      fields: ["file.link"],
-      source: '"."',
-      filters: [],
-      sorts: [],
-      inline: false,
-    };
-    updateQuery();
-    return;
-  }
-
-  const parsed = parseDataviewQuery(content);
-  if (parsed && parsed.type === DataviewQueryType.TABLE) {
-    queryConfig.value = parsed;
-    groupField.value = parsed.groupBy?.field || "";
-    setSourceTypeFromSource(parsed.source);
+      availableFolders.value = [
+        { name: "Root", path: "", parent: "" },
+        ...folderPaths.map((folder) => {
+          // Remove trailing slash
+          const cleanPath = folder.endsWith("/") ? folder.slice(0, -1) : folder;
+          return {
+            name: cleanPath.split("/").pop() || cleanPath,
+            path: cleanPath,
+            parent: cleanPath.includes("/")
+              ? cleanPath.split("/").slice(0, -1).join("/")
+              : "",
+          };
+        }),
+      ];
+    }
+  } catch (err) {
+    console.error("Error fetching folders:", err);
   }
 }
 
-function updateQuery() {
-  // Generate the raw markdown from queryConfig
-  queryConfig.value.type = DataviewQueryType.TABLE;
-  const query = generateDataviewQuery(queryConfig.value);
-  emit("update:content", [query]);
+// Fetch available tags from Obsidian
+async function fetchTags() {
+  try {
+    // Use a TABLE query instead of LIST with FLATTEN
+    const dql = `TABLE file.tags AS Tags FROM "" WHERE file.tags`;
+    const results = await obsidianApiService.searchWithDataview(dql);
+
+    // Extract tag names from results
+    const tags = new Set<string>();
+
+    if (Array.isArray(results)) {
+      results.forEach((result) => {
+        // Safely access properties using type assertion
+        const item = result as Record<string, any>;
+
+        if (item && typeof item === "object" && "Tags" in item) {
+          const tagValue = item["Tags"];
+
+          // Tags might be an array or a string
+          if (Array.isArray(tagValue)) {
+            tagValue.forEach((tag: any) => {
+              if (typeof tag === "string") {
+                tags.add(tag.replace(/^#/, ""));
+              }
+            });
+          } else if (typeof tagValue === "string") {
+            tags.add(tagValue.replace(/^#/, ""));
+          }
+        }
+      });
+    }
+
+    availableTags.value = Array.from(tags);
+
+    if (availableTags.value.length === 0) {
+      // Fallback if no tags found
+      availableTags.value = [
+        "project",
+        "todo",
+        "idea",
+        "journal",
+        "note",
+        "meeting",
+      ];
+    }
+  } catch (err) {
+    console.error("Error fetching tags:", err);
+    // Fallback to some example tags
+    availableTags.value = [
+      "project",
+      "todo",
+      "idea",
+      "journal",
+      "note",
+      "meeting",
+    ];
+  }
 }
 
-function setEditing(editing: boolean) {
-  baseModuleRef.value?.setEditing(editing);
+// Fetch available properties from Obsidian
+async function fetchProperties() {
+  try {
+    // Use a TABLE query to get file properties
+    const dql = `TABLE file.name AS FileName FROM "" LIMIT 10`;
+    const results = await obsidianApiService.searchWithDataview(dql);
+
+    // Standard properties since we can't easily extract all frontmatter keys with a single query
+    availableProperties.value = [
+      "file.name",
+      "file.ctime",
+      "file.mtime",
+      "file.size",
+      "file.path",
+      "file.folder",
+      "tags",
+      "title",
+      "date",
+      "status",
+      "priority",
+      "due",
+      "completed",
+    ];
+
+    // Additional logic could be added here to extract properties from results if needed
+  } catch (err) {
+    console.error("Error fetching properties:", err);
+  }
 }
 
-function setInputRef(el: HTMLInputElement) {
-  inputRef.value = el;
-  baseModuleRef.value?.setInputRef(el);
+// Parse an existing Dataview query to initialize the module state
+function parseExistingQuery(query: string) {
+  try {
+    // Remove markdown code block syntax if present
+    let cleanQuery = query.replace(/```dataview\n|\n```/g, "");
+
+    // Basic parsing for TABLE queries
+    // This is a simplified parser that won't handle all possible Dataview syntax
+    const lines = cleanQuery.split("\n").map((line) => line.trim());
+
+    // Parse TABLE part and columns
+    const tableMatch = lines[0].match(/^TABLE\s+(WITHOUT\s+ID\s+)?(.+)$/i);
+    if (tableMatch) {
+      // Check for WITHOUT ID
+      withoutID.value = !!tableMatch[1];
+
+      // Parse columns
+      const columnsStr = tableMatch[2];
+
+      // Handle column aliases (format: property AS "Display Name")
+      const columnRegex =
+        /([^,]+?)(?:\s+AS\s+(?:"([^"]+)"|'([^']+)'|([^,]+)))?(?:,|$)/g;
+      const columns: TableColumn[] = [];
+
+      let match;
+      while ((match = columnRegex.exec(columnsStr)) !== null) {
+        const property = match[1].trim();
+        // Display name could be in any of the capturing groups
+        const displayName = match[2] || match[3] || match[4] || "";
+
+        columns.push({ property, displayName });
+      }
+
+      if (columns.length > 0) {
+        tableColumns.value = columns;
+      }
+    }
+
+    // Parse FROM part (source)
+    const fromLine = lines.find((line) => line.startsWith("FROM"));
+    if (fromLine) {
+      const fromMatch = fromLine.match(/^FROM\s+(.+)$/i);
+      if (fromMatch) {
+        const source = fromMatch[1];
+
+        if (source.startsWith('"') && source.endsWith('"')) {
+          // Folder source
+          sourceType.value = "folder";
+          selectedFolder.value = source.slice(1, -1);
+        } else if (source.startsWith("#")) {
+          // Tag source
+          sourceType.value = "tag";
+          selectedTag.value = source.slice(1);
+        } else {
+          // Default to all
+          sourceType.value = "all";
+        }
+      }
+    } else {
+      sourceType.value = "all";
+    }
+
+    // Parse WHERE part (property filter)
+    const whereLine = lines.find((line) => line.startsWith("WHERE"));
+    if (whereLine) {
+      const whereMatch = whereLine.match(/^WHERE\s+(.+)$/i);
+      if (whereMatch) {
+        const condition = whereMatch[1];
+
+        // Try to parse a basic property condition (prop = value)
+        const conditionMatch = condition.match(
+          /([^=!<>]+)\s*([=!<>]+|contains)\s*(.+)/i
+        );
+        if (conditionMatch) {
+          sourceType.value = "property";
+          selectedProperty.value = conditionMatch[1].trim();
+          propertyOperator.value = conditionMatch[2].trim();
+          // Remove quotes from value if present
+          let value = conditionMatch[3].trim();
+          if (
+            (value.startsWith('"') && value.endsWith('"')) ||
+            (value.startsWith("'") && value.endsWith("'"))
+          ) {
+            value = value.slice(1, -1);
+          }
+          propertyValue.value = value;
+        }
+      }
+    }
+
+    // Parse GROUP BY part
+    const groupByLine = lines.find((line) => line.startsWith("GROUP BY"));
+    if (groupByLine) {
+      const groupByMatch = groupByLine.match(/^GROUP BY\s+(.+)$/i);
+      if (groupByMatch) {
+        useGroupBy.value = true;
+        groupByProperty.value = groupByMatch[1].trim();
+      }
+    } else {
+      useGroupBy.value = false;
+    }
+
+    // Parse SORT part
+    const sortLine = lines.find((line) => line.startsWith("SORT"));
+    if (sortLine) {
+      const sortMatch = sortLine.match(/^SORT\s+(.+?)(\s+(ASC|DESC))?$/i);
+      if (sortMatch) {
+        sortProperty.value = sortMatch[1].trim();
+        sortDirection.value = sortMatch[3]?.toLowerCase() || "asc";
+      }
+    } else {
+      // Default sort
+      sortProperty.value = "file.name";
+      sortDirection.value = "asc";
+    }
+
+    // Parse LIMIT part
+    const limitLine = lines.find((line) => line.startsWith("LIMIT"));
+    if (limitLine) {
+      const limitMatch = limitLine.match(/^LIMIT\s+(\d+)$/i);
+      if (limitMatch) {
+        useLimit.value = true;
+        limitCount.value = parseInt(limitMatch[1], 10);
+      }
+    } else {
+      useLimit.value = false;
+      limitCount.value = 20;
+    }
+
+    // Regenerate the query to ensure it's formatted correctly
+    regenerateQuery();
+  } catch (error) {
+    console.error("Error parsing existing query:", error);
+    // If parsing fails, just generate a new default query
+    regenerateQuery();
+  }
 }
 
-// Fields
-function addField() {
-  queryConfig.value.fields.push("");
-  updateQuery();
+// Event Handlers
+function setSourceType(type: string) {
+  sourceType.value = type;
+  regenerateQuery();
 }
 
-function removeField(idx: number) {
-  queryConfig.value.fields.splice(idx, 1);
-  updateQuery();
+function setSortDirection(direction: "asc" | "desc") {
+  sortDirection.value = direction;
+  regenerateQuery();
 }
 
-// Common Fields
-function toggleCommonFields() {
-  showCommonFields.value = !showCommonFields.value;
+function handleSourceValueChange() {
+  regenerateQuery();
 }
 
-function addCommonField(fieldId: string) {
-  queryConfig.value.fields.push(fieldId);
-  showCommonFields.value = false;
-  updateQuery();
+function handlePropertyChange() {
+  regenerateQuery();
 }
 
-// Filters
-function addFilter() {
-  const newFilter: DataviewFilterCondition = {
-    id: uuidv4(),
-    field: "",
-    operator: DataviewFilterOperator.EQUALS,
-    value: "",
-    isMetadata: true,
-  };
-  queryConfig.value.filters.push(newFilter);
-  updateQuery();
+function handlePropertyOperatorChange() {
+  regenerateQuery();
 }
 
-function removeFilter(idx: number) {
-  queryConfig.value.filters.splice(idx, 1);
-  updateQuery();
+function handlePropertyValueChange() {
+  regenerateQuery();
 }
 
-function showFilterValue(operator: string) {
-  return operator !== "is empty" && operator !== "is not empty";
+function handleSortChange() {
+  regenerateQuery();
 }
 
-// Sorting
-function addSort() {
-  const newSort: DataviewSort = {
-    field: "",
-    direction: DataviewSortDirection.ASC,
-    isMetadata: true,
-  };
-  queryConfig.value.sorts.push(newSort);
-  updateQuery();
+function handleLimitChange() {
+  regenerateQuery();
 }
 
-function removeSort(idx: number) {
-  queryConfig.value.sorts.splice(idx, 1);
-  updateQuery();
+// Column Management
+function addColumn() {
+  tableColumns.value.push({ property: "", displayName: "" });
 }
 
-// Advanced
-function updateGroupBy() {
-  if (groupField.value.trim()) {
-    queryConfig.value.groupBy = {
-      field: groupField.value.trim(),
-      isMetadata: true,
-    };
+function removeColumn(index: number) {
+  if (tableColumns.value.length > 1) {
+    tableColumns.value.splice(index, 1);
+    regenerateQuery();
+  }
+}
+
+function updateColumn(index: number) {
+  regenerateQuery();
+}
+
+// Query generation
+function generateQuery(): string {
+  let query = "```dataview\n";
+
+  // TABLE part with columns
+  const columnDefinitions = tableColumns.value
+    .filter((col) => col.property.trim()) // Skip empty columns
+    .map((col) => {
+      if (col.displayName) {
+        return `${col.property} AS "${col.displayName}"`;
+      }
+      return col.property;
+    })
+    .join(", ");
+
+  if (withoutID.value) {
+    query += `TABLE WITHOUT ID ${columnDefinitions}\n`;
   } else {
-    queryConfig.value.groupBy = undefined;
+    query += `TABLE ${columnDefinitions}\n`;
   }
-  updateQuery();
-}
 
-// Source
-function handleSourceTypeChange() {
-  const selected = commonSources.value.find(
-    (s) => s.id === selectedSourceType.value
-  );
-  if (selected) {
-    queryConfig.value.source = selected.value;
-    updateQuery();
+  // FROM part
+  if (sourceType.value === "folder" && selectedFolder.value) {
+    query += `FROM "${selectedFolder.value}"\n`;
+  } else if (sourceType.value === "tag" && selectedTag.value) {
+    query += `FROM #${selectedTag.value}\n`;
+  } else if (sourceType.value === "all") {
+    query += 'FROM ""\n';
   }
+
+  // WHERE part
+  if (
+    sourceType.value === "property" &&
+    selectedProperty.value &&
+    propertyValue.value
+  ) {
+    let formattedValue = propertyValue.value;
+
+    // Add quotes for string values unless using contains operator
+    if (
+      isNaN(Number(formattedValue)) &&
+      propertyOperator.value !== "contains"
+    ) {
+      formattedValue = `"${formattedValue}"`;
+    }
+
+    if (propertyOperator.value === "contains") {
+      query += `WHERE contains(${selectedProperty.value}, "${propertyValue.value}")\n`;
+    } else {
+      query += `WHERE ${selectedProperty.value} ${propertyOperator.value} ${formattedValue}\n`;
+    }
+  }
+
+  // GROUP BY part
+  if (useGroupBy && groupByProperty.value) {
+    query += `GROUP BY ${groupByProperty.value}\n`;
+  }
+
+  // SORT part
+  if (sortProperty.value) {
+    query += `SORT ${
+      sortProperty.value
+    } ${sortDirection.value.toUpperCase()}\n`;
+  }
+
+  // LIMIT part
+  if (useLimit.value && limitCount.value > 0) {
+    query += `LIMIT ${limitCount.value}\n`;
+  }
+
+  query += "```";
+  return query;
 }
 
-function setSourceTypeFromSource(source: string) {
-  const match = commonSources.value.find((s) => s.value === source);
-  selectedSourceType.value = match ? match.id : "custom";
+// Generate the query and update the module content
+function regenerateQuery() {
+  const query = generateQuery();
+  updateContent([query]);
 }
 
-const sourcePlaceholder = computed(() => {
-  const selected = commonSources.value.find(
-    (s) => s.id === selectedSourceType.value
-  );
-  return selected?.placeholder || "Enter folder/tag/etc.";
-});
-
-function toggleSection(
-  section: "filtersOpen" | "sortingOpen" | "advancedOpen"
-) {
-  if (section === "filtersOpen") filtersOpen.value = !filtersOpen.value;
-  if (section === "sortingOpen") sortingOpen.value = !sortingOpen.value;
-  if (section === "advancedOpen") advancedOpen.value = !advancedOpen.value;
-}
-
-// Forward content updates from the BaseModule
+// Update content in parent component
 function updateContent(content: string[]) {
   emit("update:content", content);
 }
 </script>
 
 <style scoped>
-/* Container */
-.dataview-builder {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
+.dataview-table-editor {
   width: 100%;
-  padding: 0.75rem;
-  box-sizing: border-box;
-  background: var(--background-primary);
-  border-radius: 6px;
+  color: #cbd5e1;
 }
 
-/* Header */
-.builder-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 0.25rem;
-}
-
-.builder-header h2 {
-  font-size: 1rem;
-  color: var(--text-normal);
-  margin: 0;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.builder-header i {
-  color: var(--interactive-accent);
-}
-
-/* Section Layout */
-.builder-section {
-  background: var(--background-secondary);
+.dataview-table-editor__alert {
+  background-color: rgba(239, 68, 68, 0.2);
+  color: #ef4444;
+  padding: 8px 12px;
   border-radius: 4px;
-  padding: 0.5rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.section-label {
-  font-weight: 600;
   font-size: 0.875rem;
-  color: var(--text-normal);
-  margin-bottom: 0.25rem;
   display: flex;
   align-items: center;
-  gap: 0.25rem;
+  gap: 8px;
+  margin-bottom: 16px;
 }
 
-.section-label small {
-  color: var(--text-muted);
-  font-weight: normal;
+/* Section styling */
+.dataview-table-editor__section {
+  margin-bottom: 20px;
 }
 
-/* Fields */
-.fields-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
+.dataview-table-editor__section-header {
+  margin-bottom: 12px;
 }
 
-.field-item {
+.dataview-table-editor__section-title {
   display: flex;
   align-items: center;
-  gap: 0.25rem;
+  gap: 8px;
+  font-weight: 500;
+  font-size: 0.9375rem;
+  color: #e2e8f0;
 }
 
-.field-input {
-  flex: 1;
-  padding: 0.4rem;
-  font-size: 0.85rem;
-  border: 1px solid var(--background-modifier-border);
-  border-radius: 3px;
-  background: var(--background-primary);
-  color: var(--text-normal);
+/* Source selection */
+.dataview-table-editor__source-options {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-bottom: 12px;
 }
 
-.field-input:focus {
-  border-color: var(--interactive-accent);
-  outline: none;
-}
-
-.remove-btn {
-  background: none;
-  border: none;
-  font-size: 0.9rem;
-  color: var(--text-muted);
-  cursor: pointer;
-  width: 1.5rem;
-  height: 1.5rem;
-  text-align: center;
-  border-radius: 2px;
-}
-
-.remove-btn:hover {
-  background-color: var(--background-modifier-hover);
-  color: var(--text-error);
-}
-
-/* Common Fields */
-.actions-row {
-  display: flex;
-  gap: 0.25rem;
-}
-
-.add-btn {
-  background: var(--background-primary);
-  border: 1px dashed var(--background-modifier-border);
-  color: var(--text-muted);
-  font-size: 0.8rem;
-  padding: 0.3rem 0.6rem;
-  border-radius: 3px;
-  cursor: pointer;
-}
-
-.add-btn:hover {
-  background: var(--background-modifier-hover);
-  color: var(--text-normal);
-  border-color: var(--background-modifier-border-hover);
-}
-
-.common-fields-dropdown {
-  position: relative;
-  background: var(--background-primary);
-  border: 1px solid var(--background-modifier-border);
+.dataview-table-editor__source-option {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #e2e8f0;
+  padding: 8px 12px;
   border-radius: 4px;
-  padding: 0.25rem 0.5rem 0.5rem;
-  margin-top: 0.25rem;
+  font-size: 0.875rem;
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.2s;
 }
 
-.dropdown-header {
+.dataview-table-editor__source-option:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.dataview-table-editor__source-option.active {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.25);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.05);
+}
+
+.dataview-table-editor__source-details {
+  margin-top: 12px;
+}
+
+.dataview-table-editor__field {
   display: flex;
-  justify-content: space-between;
+  gap: 8px;
   align-items: center;
-  padding: 0.25rem 0;
-  color: var(--text-normal);
 }
 
-.close-dropdown {
-  background: none;
-  border: none;
-  color: var(--text-muted);
-  cursor: pointer;
-  font-size: 1rem;
+.dataview-table-editor__property-field {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr 1.5fr auto;
+  gap: 8px;
+  align-items: center;
 }
 
-.dropdown-list {
-  max-height: 150px;
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
+.dataview-table-editor__select {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #e2e8f0;
+  padding: 8px 12px;
+  border-radius: 4px;
+  font-size: 0.875rem;
+  width: 100%;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23cbd5e1' d='M6 8.825L1.175 4 2.05 3.125 6 7.075 9.95 3.125 10.825 4z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 32px;
 }
 
-.dropdown-item {
-  padding: 0.25rem 0.25rem;
-  border-radius: 3px;
-  cursor: pointer;
-}
-
-.dropdown-item:hover {
-  background: var(--background-modifier-hover);
-}
-
-/* Source */
-.source-row {
-  display: flex;
-  gap: 0.25rem;
-}
-
-.source-select,
-.source-input {
-  flex: 1;
-  padding: 0.4rem;
-  font-size: 0.85rem;
-  border: 1px solid var(--background-modifier-border);
-  border-radius: 3px;
-  background: var(--background-primary);
-  color: var(--text-normal);
-}
-
-.source-select:focus,
-.source-input:focus {
-  border-color: var(--interactive-accent);
+.dataview-table-editor__select:focus {
   outline: none;
+  border-color: rgba(255, 255, 255, 0.3);
 }
 
-/* Collapsible Section Headers */
-.section-header {
+.dataview-table-editor__operator-select {
+  font-size: 0.8125rem;
+}
+
+.dataview-table-editor__input {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #e2e8f0;
+  padding: 8px 12px;
+  border-radius: 4px;
+  font-size: 0.875rem;
+  width: 100%;
+}
+
+.dataview-table-editor__input:focus {
+  outline: none;
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.dataview-table-editor__action-btn {
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #94a3b8;
+  width: 36px;
+  height: 36px;
+  border-radius: 4px;
   cursor: pointer;
-  background: var(--background-primary);
-  padding: 0.3rem 0.4rem;
-  border-radius: 3px;
+  transition: all 0.2s;
+  flex-shrink: 0;
 }
 
-.section-header:hover {
-  background: var(--background-modifier-hover);
+.dataview-table-editor__action-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #e2e8f0;
 }
 
-.section-header span {
-  font-size: 0.85rem;
-  color: var(--text-normal);
-}
-
-.chevron {
-  font-size: 0.75rem;
-  color: var(--text-muted);
-}
-
-/* Filters */
-.filters-body,
-.sorting-body,
-.advanced-body {
-  margin-top: 0.25rem;
+/* Column management */
+.dataview-table-editor__columns {
   display: flex;
   flex-direction: column;
-  gap: 0.4rem;
+  gap: 12px;
+  margin-bottom: 16px;
 }
 
-.filter-row {
+.dataview-table-editor__column-item {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  padding: 10px;
+}
+
+.dataview-table-editor__column-header {
   display: flex;
-  gap: 0.25rem;
+  gap: 8px;
   align-items: center;
 }
 
-.filter-field,
-.filter-operator,
-.filter-value {
-  flex: 1;
-  padding: 0.4rem;
-  font-size: 0.85rem;
-  border: 1px solid var(--background-modifier-border);
-  border-radius: 3px;
-  background: var(--background-primary);
-  color: var(--text-normal);
+.dataview-table-editor__column-drag {
+  color: #64748b;
+  cursor: move;
+  padding: 4px;
 }
 
-/* Sorting */
-.sort-row {
+.dataview-table-editor__column-fields {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.dataview-table-editor__add-column {
+  margin-top: 8px;
+}
+
+.dataview-table-editor__add-btn {
   display: flex;
-  gap: 0.25rem;
   align-items: center;
+  gap: 6px;
+  background: rgba(255, 171, 88, 0.1);
+  color: #ffab58;
+  border: 1px solid rgba(255, 171, 88, 0.2);
+  padding: 8px 12px;
+  border-radius: 4px;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all 0.2s;
 }
 
-.sort-field,
-.sort-direction {
-  flex: 1;
-  padding: 0.4rem;
-  font-size: 0.85rem;
-  border: 1px solid var(--background-modifier-border);
-  border-radius: 3px;
-  background: var(--background-primary);
-  color: var(--text-normal);
+.dataview-table-editor__add-btn:hover:not(:disabled) {
+  background: rgba(255, 171, 88, 0.2);
 }
 
-/* Advanced */
-.advanced-item {
+.dataview-table-editor__add-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Table options */
+.dataview-table-editor__options {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
+  gap: 8px;
 }
 
-.advanced-item label {
-  font-size: 0.8rem;
-  color: var(--text-muted);
-}
-
-.group-input,
-.limit-input {
-  padding: 0.4rem;
-  font-size: 0.85rem;
-  border: 1px solid var(--background-modifier-border);
-  border-radius: 3px;
-  background: var(--background-primary);
-  color: var(--text-normal);
-}
-
-.inline-check {
-  flex-direction: row;
+.dataview-table-editor__option-info {
+  display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 6px;
+  color: #94a3b8;
+  font-size: 0.8125rem;
+  padding-left: 48px;
 }
 
-.inline-check input {
-  transform: scale(1.2);
+/* Sort controls */
+.dataview-table-editor__sort-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.dataview-table-editor__sort-direction {
+  display: flex;
+  gap: 8px;
+}
+
+.dataview-table-editor__direction-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #e2e8f0;
+  padding: 8px 12px;
+  border-radius: 4px;
+  font-size: 0.875rem;
   cursor: pointer;
+  transition: all 0.2s;
+}
+
+.dataview-table-editor__direction-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.dataview-table-editor__direction-btn.active {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.25);
+}
+
+/* Group by controls */
+.dataview-table-editor__group-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.dataview-table-editor__group-field {
+  margin-top: 4px;
+}
+
+/* Limit controls */
+.dataview-table-editor__limit-controls {
+  margin-top: 8px;
+}
+
+.dataview-table-editor__limit-field {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.dataview-table-editor__number-input {
+  width: 80px;
+  text-align: center;
+}
+
+.dataview-table-editor__option-toggle,
+.dataview-table-editor__limit-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.dataview-table-editor__toggle-slider {
+  position: relative;
+  display: inline-block;
+  width: 40px;
+  height: 20px;
+  background-color: rgba(255, 255, 255, 0.1);
+  border-radius: 20px;
+  transition: 0.3s;
+}
+
+.dataview-table-editor__toggle-slider:before {
+  position: absolute;
+  content: "";
+  height: 16px;
+  width: 16px;
+  left: 2px;
+  bottom: 2px;
+  background-color: #fff;
+  border-radius: 50%;
+  transition: 0.3s;
+}
+
+.dataview-table-editor__option-toggle input,
+.dataview-table-editor__limit-toggle input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.dataview-table-editor__option-toggle
+  input:checked
+  + .dataview-table-editor__toggle-slider,
+.dataview-table-editor__limit-toggle
+  input:checked
+  + .dataview-table-editor__toggle-slider {
+  background-color: rgba(255, 171, 88, 0.6);
+}
+
+.dataview-table-editor__option-toggle
+  input:checked
+  + .dataview-table-editor__toggle-slider:before,
+.dataview-table-editor__limit-toggle
+  input:checked
+  + .dataview-table-editor__toggle-slider:before {
+  transform: translateX(20px);
+}
+
+.dataview-table-editor__toggle-label {
+  font-size: 0.875rem;
+  color: #e2e8f0;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .dataview-table-editor__source-options {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .dataview-table-editor__property-field {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .dataview-table-editor__column-fields {
+    grid-template-columns: 1fr;
+  }
+
+  .dataview-table-editor__sort-controls,
+  .dataview-table-editor__limit-field {
+    flex-direction: column;
+    align-items: flex-start;
+  }
 }
 </style>

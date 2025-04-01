@@ -1,4 +1,4 @@
-import { supabase } from "./client";
+import { supabase } from "./index";
 import { encryptData, decryptData } from "@/utils/encryptionUtils";
 
 /** Save Obsidian Integration to Supabase */

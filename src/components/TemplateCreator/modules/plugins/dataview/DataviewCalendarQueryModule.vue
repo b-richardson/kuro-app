@@ -1,4 +1,11 @@
 <template>
+  <!-- 
+  IMPORTANT NOTE FOR DEVELOPERS:
+  - This component should NOT implement any connection checks to Obsidian
+  - This component should NOT display any toast messages
+  - All connection validation and user feedback should be handled by parent components
+  - Keep this component focused solely on building Dataview Calendar queries
+  -->
   <BaseModule
     :module="module"
     :index="index"
@@ -6,274 +13,378 @@
     :isSelected="isSelected"
     :autoFocus="autoFocus"
     @update:content="updateContent"
-    @update="$emit('update', $event)"
+    @update="$emit('update', $event as any)"
     @delete="$emit('delete')"
     @select="$emit('select')"
     @duplicate="$emit('duplicate')"
     @module-change="$emit('module-change')"
+    @add-line="regenerateQuery"
     ref="baseModuleRef"
   >
-    <div class="dataview-calendar-module">
-      <!-- Module Title -->
-      <div class="dataview-module-title">
-        <i class="fas fa-calendar-alt"></i> Dataview Calendar Query
-      </div>
-      
-      <!-- Visual Builder Mode -->
-      <div v-if="editorMode === 'visual'" class="dataview-visual-builder">
-        <!-- Date Field Section -->
-        <div class="dataview-section">
-          <h3 class="dataview-section-title">
-            <i class="fas fa-calendar-alt"></i> Date Field
-          </h3>
-          <div class="dataview-date-field-container">
-            <p class="dataview-info">
-              <i class="fas fa-info-circle"></i>
-              Calendar view requires a date field to organize notes by date. Select a field that contains dates.
-            </p>
-            
-            <div class="dataview-date-field-input">
-              <input 
-                type="text" 
-                v-model="dateField"
-                placeholder="Field containing date (e.g. file.ctime, date, due)"
-                class="dataview-input"
-                @input="updateDateField"
-                @focus="setEditing(true)"
-                @blur="setEditing(false)"
-                :ref="isSelected && autoFocus ? setInputRef : undefined"
-              />
-            </div>
-            
-            <div class="dataview-date-field-suggestions">
-              <p class="dataview-subheading">Common Date Fields:</p>
-              <div class="dataview-suggestion-buttons">
-                <button 
-                  v-for="suggestion in commonDateFields" 
-                  :key="suggestion.id"
-                  class="dataview-suggestion-btn"
-                  @click="selectDateField(suggestion.id)"
-                >
-                  {{ suggestion.label }}
-                </button>
-              </div>
-            </div>
+    <!-- Module Header -->
+    <div class="dataview-calendar-editor">
+      <!-- Source Selection Section -->
+      <div class="dataview-calendar-editor__section">
+        <div class="dataview-calendar-editor__section-header">
+          <div class="dataview-calendar-editor__section-title">
+            <i class="fas fa-filter"></i>
+            Source Selection
           </div>
         </div>
-        
-        <!-- Source Section -->
-        <div class="dataview-section">
-          <h3 class="dataview-section-title">
-            <i class="fas fa-filter"></i> Source
-          </h3>
-          <div class="dataview-source-container">
-            <div class="dataview-source-select">
-              <select 
-                v-model="selectedSourceType"
-                class="dataview-select"
-                @change="handleSourceTypeChange"
-              >
-                <option 
-                  v-for="source in commonSources" 
-                  :key="source.id" 
-                  :value="source.id"
-                >
-                  {{ source.label }}
-                </option>
-              </select>
-            </div>
-            
-            <div class="dataview-source-value">
-              <input 
-                type="text" 
-                v-model="queryConfig.source"
-                :placeholder="getSourcePlaceholder()"
-                class="dataview-input"
-                @input="updateQuery"
-                @focus="setEditing(true)"
-                @blur="setEditing(false)"
-              />
-            </div>
-          </div>
+
+        <div class="dataview-calendar-editor__source-options">
+          <button
+            class="dataview-calendar-editor__source-option"
+            :class="{ active: sourceType === 'all' }"
+            @click="setSourceType('all')"
+          >
+            All notes
+          </button>
+          <button
+            class="dataview-calendar-editor__source-option"
+            :class="{ active: sourceType === 'folder' }"
+            @click="setSourceType('folder')"
+          >
+            From folder
+          </button>
+          <button
+            class="dataview-calendar-editor__source-option"
+            :class="{ active: sourceType === 'tag' }"
+            @click="setSourceType('tag')"
+          >
+            With tag
+          </button>
         </div>
-        
-        <!-- Filters Section -->
-        <div class="dataview-section">
-          <h3 class="dataview-section-title">
-            <i class="fas fa-filter"></i> Additional Filters
-          </h3>
-          <div class="dataview-filters-container">
-            <div 
-              v-for="(filter, index) in filters" 
-              :key="filter.id"
-              class="dataview-filter-row"
+
+        <!-- Folder Selection -->
+        <div
+          v-if="sourceType === 'folder'"
+          class="dataview-calendar-editor__source-details"
+        >
+          <div class="dataview-calendar-editor__field">
+            <select
+              class="dataview-calendar-editor__select"
+              v-model="selectedFolder"
+              @change="handleSourceValueChange"
             >
-              <div class="dataview-filter-field">
-                <input 
-                  type="text" 
-                  v-model="filter.field"
-                  placeholder="Field name"
-                  class="dataview-input"
-                  @input="updateFilters"
-                  @focus="setEditing(true)"
-                  @blur="setEditing(false)"
-                />
-              </div>
-              
-              <div class="dataview-filter-operator">
-                <select 
-                  v-model="filter.operator"
-                  class="dataview-select"
-                  @change="updateFilters"
-                >
-                  <option 
-                    v-for="op in filterOperators"
-                    :key="op"
-                    :value="op"
-                  >
-                    {{ op }}
-                  </option>
-                </select>
-              </div>
-              
-              <div 
-                v-if="filter.operator !== 'is empty' && filter.operator !== 'is not empty'" 
-                class="dataview-filter-value"
+              <option disabled value="">Select a folder</option>
+              <option
+                v-for="folder in availableFolders"
+                :key="folder.path"
+                :value="folder.path"
               >
-                <input 
-                  type="text" 
-                  v-model="filter.value"
-                  placeholder="Value"
-                  class="dataview-input"
-                  @input="updateFilters"
-                  @focus="setEditing(true)"
-                  @blur="setEditing(false)"
-                />
-              </div>
-              
-              <div class="dataview-filter-controls">
-                <button 
-                  class="dataview-btn-icon dataview-btn-remove"
-                  @click="removeFilter(index)"
-                  title="Remove filter"
-                >
-                  <i class="fas fa-times"></i>
-                </button>
-              </div>
-            </div>
-            
-            <button 
-              class="dataview-btn-add"
-              @click="addFilter()"
+                {{ folder.path || "/" }}
+              </option>
+            </select>
+            <button
+              class="dataview-calendar-editor__action-btn"
+              title="Refresh folder list"
+              @click="fetchFolders"
             >
-              <i class="fas fa-plus"></i> Add Filter
+              <i class="fas fa-sync-alt"></i>
             </button>
           </div>
         </div>
-        
-        <!-- Limit Section -->
-        <div class="dataview-section">
-          <h3 class="dataview-section-title">
-            <i class="fas fa-sort-numeric-down"></i> Limit 
-            <span class="dataview-optional">(Optional)</span>
-          </h3>
-          <div class="dataview-limit-container">
-            <input 
-              type="number" 
-              v-model.number="queryConfig.limit"
-              placeholder="Number of results (leave empty for no limit)"
-              class="dataview-input"
-              @input="updateQuery"
-              @focus="setEditing(true)"
-              @blur="setEditing(false)"
-              min="1"
-            />
+
+        <!-- Tag Selection -->
+        <div
+          v-if="sourceType === 'tag'"
+          class="dataview-calendar-editor__source-details"
+        >
+          <div class="dataview-calendar-editor__field">
+            <select
+              class="dataview-calendar-editor__select"
+              v-model="selectedTag"
+              @change="handleSourceValueChange"
+            >
+              <option disabled value="">Select a tag</option>
+              <option v-for="tag in availableTags" :key="tag" :value="tag">
+                #{{ tag }}
+              </option>
+            </select>
+            <button
+              class="dataview-calendar-editor__action-btn"
+              title="Refresh tag list"
+              @click="fetchTags"
+            >
+              <i class="fas fa-sync-alt"></i>
+            </button>
           </div>
         </div>
-        
-        <!-- Options Section -->
-        <div class="dataview-section">
-          <h3 class="dataview-section-title">
-            <i class="fas fa-cog"></i> Options
-          </h3>
-          <div class="dataview-options-container">
-            <label class="dataview-checkbox">
-              <input 
-                type="checkbox" 
-                v-model="queryConfig.inline"
-                @change="updateQuery"
+      </div>
+
+      <!-- Date Field Selection -->
+      <div class="dataview-calendar-editor__section">
+        <div class="dataview-calendar-editor__section-header">
+          <div class="dataview-calendar-editor__section-title">
+            <i class="fas fa-calendar"></i>
+            Date Settings
+          </div>
+        </div>
+
+        <div class="dataview-calendar-editor__date-settings">
+          <!-- Date Field Selection -->
+          <div class="dataview-calendar-editor__field-group">
+            <label class="dataview-calendar-editor__label">
+              Date field to use:
+            </label>
+            <div class="dataview-calendar-editor__field">
+              <select
+                class="dataview-calendar-editor__select"
+                v-model="dateField"
+                @change="handleDateFieldChange"
+              >
+                <option value="file.ctime">Creation date</option>
+                <option value="file.mtime">Modified date</option>
+                <option
+                  v-for="prop in dateProperties"
+                  :key="prop"
+                  :value="prop"
+                >
+                  {{ prop }}
+                </option>
+              </select>
+              <button
+                class="dataview-calendar-editor__action-btn"
+                title="Refresh properties"
+                @click="fetchDateProperties"
+              >
+                <i class="fas fa-sync-alt"></i>
+              </button>
+            </div>
+          </div>
+
+          <!-- Date Range Section -->
+          <div class="dataview-calendar-editor__field-group">
+            <label class="dataview-calendar-editor__label">Time range:</label>
+            <div class="dataview-calendar-editor__range-options">
+              <button
+                class="dataview-calendar-editor__range-option"
+                :class="{ active: dateRange === 'month' }"
+                @click="setDateRange('month')"
+              >
+                Month
+              </button>
+              <button
+                class="dataview-calendar-editor__range-option"
+                :class="{ active: dateRange === 'week' }"
+                @click="setDateRange('week')"
+              >
+                Week
+              </button>
+              <button
+                class="dataview-calendar-editor__range-option"
+                :class="{ active: dateRange === 'day' }"
+                @click="setDateRange('day')"
+              >
+                Day
+              </button>
+            </div>
+          </div>
+
+          <!-- Custom Date Range -->
+          <div
+            v-if="dateRange === 'custom'"
+            class="dataview-calendar-editor__custom-range"
+          >
+            <div class="dataview-calendar-editor__field">
+              <input
+                type="text"
+                class="dataview-calendar-editor__input"
+                v-model="customDateRange"
+                placeholder="e.g., 2025/01 or 2025/W01"
+                @input="handleCustomRangeChange"
               />
-              <span class="dataview-checkbox-label">
-                Inline Query
-                <span class="dataview-tooltip" title="When checked, the query will be an inline query using `${dv.calendar(...)}` syntax rather than a code block">
-                  <i class="fas fa-info-circle"></i>
-                </span>
-              </span>
+              <div class="dataview-calendar-editor__help-tooltip">
+                <i class="fas fa-question-circle"></i>
+                <div class="dataview-calendar-editor__tooltip-content">
+                  <p>Format examples:</p>
+                  <ul>
+                    <li>Month: 2025/01</li>
+                    <li>Week: 2025/W01</li>
+                    <li>Day: 2025/01/01</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Calendar View Options -->
+      <div class="dataview-calendar-editor__section">
+        <div class="dataview-calendar-editor__section-header">
+          <div class="dataview-calendar-editor__section-title">
+            <i class="fas fa-th-large"></i>
+            Display Options
+          </div>
+        </div>
+
+        <div class="dataview-calendar-editor__display-settings">
+          <!-- Start of Week Selection -->
+          <div class="dataview-calendar-editor__field-group">
+            <label class="dataview-calendar-editor__label">
+              First day of week:
+            </label>
+            <div class="dataview-calendar-editor__field">
+              <select
+                class="dataview-calendar-editor__select"
+                v-model="startOfWeek"
+                @change="handleStartOfWeekChange"
+              >
+                <option value="1">Monday</option>
+                <option value="0">Sunday</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Show Event Time Toggle -->
+          <div class="dataview-calendar-editor__field-group">
+            <label class="dataview-calendar-editor__label"
+              >Show event time:</label
+            >
+            <label class="dataview-calendar-editor__toggle">
+              <input
+                type="checkbox"
+                v-model="showEventTime"
+                @change="handleShowEventTimeChange"
+              />
+              <span class="dataview-calendar-editor__toggle-slider"></span>
+            </label>
+          </div>
+
+          <!-- Show Hover Preview Toggle -->
+          <div class="dataview-calendar-editor__field-group">
+            <label class="dataview-calendar-editor__label"
+              >Show hover preview:</label
+            >
+            <label class="dataview-calendar-editor__toggle">
+              <input
+                type="checkbox"
+                v-model="showHoverPreview"
+                @change="handleHoverPreviewChange"
+              />
+              <span class="dataview-calendar-editor__toggle-slider"></span>
             </label>
           </div>
         </div>
       </div>
-      
-      <!-- Code Editor Mode -->
-      <div v-else class="dataview-code-editor">
-        <textarea
-          v-model="rawQuery"
-          class="dataview-code-textarea"
-          placeholder="Enter Dataview CALENDAR query..."
-          rows="10"
-          @input="validateRawQuery"
-          @focus="setEditing(true)"
-          @blur="setEditing(false)"
-          :ref="isSelected && autoFocus ? setInputRef : undefined"
-        ></textarea>
-        
-        <div v-if="validationError" class="dataview-validation-error">
-          <i class="fas fa-exclamation-triangle"></i>
-          {{ validationError }}
+
+      <!-- Event Content Section -->
+      <div class="dataview-calendar-editor__section">
+        <div class="dataview-calendar-editor__section-header">
+          <div class="dataview-calendar-editor__section-title">
+            <i class="fas fa-align-left"></i>
+            Event Display
+          </div>
+        </div>
+
+        <div class="dataview-calendar-editor__field-group">
+          <label class="dataview-calendar-editor__label">
+            Text to show on calendar:
+          </label>
+          <div class="dataview-calendar-editor__field">
+            <select
+              class="dataview-calendar-editor__select"
+              v-model="eventField"
+              @change="handleEventFieldChange"
+            >
+              <option value="file.name">File name</option>
+              <option value="file.link">File link</option>
+              <option
+                v-for="prop in availableProperties"
+                :key="prop"
+                :value="prop"
+              >
+                {{ prop }}
+              </option>
+            </select>
+          </div>
         </div>
       </div>
-      
-      <!-- Preview Section -->
-      <div class="dataview-section">
-        <h3 class="dataview-section-title">
-          <i class="fas fa-eye"></i> Preview
-        </h3>
-        <div class="dataview-preview-container">
-          <pre class="dataview-query-preview"><code>{{ generatedQuery }}</code></pre>
+
+      <!-- Additional Filters Section -->
+      <div class="dataview-calendar-editor__section">
+        <div class="dataview-calendar-editor__section-header">
+          <div class="dataview-calendar-editor__section-title">
+            <i class="fas fa-sliders-h"></i>
+            Additional Filters
+          </div>
+          <button
+            v-if="!showFilters"
+            class="dataview-calendar-editor__add-filter-btn"
+            @click="showFilters = true"
+          >
+            <i class="fas fa-plus"></i>
+            Add filter
+          </button>
         </div>
-      </div>
-      
-      <!-- Bottom controls -->
-      <div class="dataview-module-controls">
-        <button 
-          class="dataview-toggle-mode-btn"
-          @click="toggleEditorMode"
-          title="Toggle between visual builder and code editor"
-        >
-          <i :class="editorMode === 'visual' ? 'fas fa-code' : 'fas fa-sliders-h'"></i>
-          {{ editorMode === 'visual' ? 'Code Editor' : 'Visual Builder' }}
-        </button>
+
+        <div v-if="showFilters" class="dataview-calendar-editor__filters">
+          <div class="dataview-calendar-editor__property-field">
+            <!-- Property name -->
+            <select
+              class="dataview-calendar-editor__select"
+              v-model="filterProperty"
+              @change="handleFilterPropertyChange"
+            >
+              <option disabled value="">Select a property</option>
+              <option
+                v-for="prop in availableProperties"
+                :key="prop"
+                :value="prop"
+              >
+                {{ prop }}
+              </option>
+            </select>
+
+            <!-- Operator -->
+            <select
+              class="dataview-calendar-editor__select dataview-calendar-editor__operator-select"
+              v-model="filterOperator"
+              @change="handleFilterOperatorChange"
+            >
+              <option value="=">equals</option>
+              <option value="!=">not equals</option>
+              <option value=">">greater than</option>
+              <option value="<">less than</option>
+              <option value=">=">greater/equal</option>
+              <option value="<=">less/equal</option>
+              <option value="contains">contains</option>
+            </select>
+
+            <!-- Value -->
+            <input
+              type="text"
+              class="dataview-calendar-editor__input"
+              placeholder="Value"
+              v-model="filterValue"
+              @input="handleFilterValueChange"
+            />
+
+            <div class="dataview-calendar-editor__filter-actions">
+              <button
+                class="dataview-calendar-editor__action-btn"
+                title="Remove filter"
+                @click="removeFilter"
+              >
+                <i class="fas fa-times"></i>
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </BaseModule>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from "vue";
-import { v4 as uuidv4 } from "uuid";
+import { ref, onMounted } from "vue";
 import BaseModule from "@/components/TemplateCreator/modules/core/BaseModule.vue";
 import { TemplateModule } from "@/types/TemplateModule";
-import { 
-  DataviewQueryType,
-  DataviewQueryConfig,
-  DataviewFilterOperator,
-  DataviewFilterCondition,
-  COMMON_SOURCES,
-  generateDataviewQuery,
-  validateDataviewQuery,
-  parseDataviewQuery
-} from "@/utils/dataviewUtils";
+import { obsidianApiService } from "@/services/obsidian";
 
+// Define props
 const props = defineProps<{
   module: TemplateModule;
   index: number;
@@ -282,6 +393,7 @@ const props = defineProps<{
   autoFocus?: boolean;
 }>();
 
+// Define emits
 const emit = defineEmits<{
   (e: "update:content", content: string[]): void;
   (e: "update", modules: TemplateModule[]): void;
@@ -293,647 +405,776 @@ const emit = defineEmits<{
 
 // Reference to the base module component
 const baseModuleRef = ref<InstanceType<typeof BaseModule> | null>(null);
-const inputRef = ref<HTMLInputElement | null>(null);
 
-// State variables
-const editorMode = ref<'visual' | 'code'>('visual');
-const rawQuery = ref('');
-const validationError = ref('');
-const selectedSourceType = ref('current-folder');
-const dateField = ref('file.day');
+// Source selection
+const sourceType = ref("all");
+const selectedFolder = ref("");
+const selectedTag = ref("");
 
-// Default query configuration for CALENDAR queries
-const queryConfig = ref<DataviewQueryConfig>({
-  type: DataviewQueryType.CALENDAR,
-  fields: [], // CALENDAR queries don't need fields
-  source: '"."',
-  filters: [],
-  sorts: [],
-  inline: false,
-  limit: undefined
-});
+// Calendar options
+const dateField = ref("file.ctime");
+const dateRange = ref("month");
+const customDateRange = ref("");
+const startOfWeek = ref("1"); // Monday = 1, Sunday = 0
+const showEventTime = ref(false);
+const showHoverPreview = ref(true);
+const eventField = ref("file.name");
 
-// Common date fields suggestions
-const commonDateFields = [
-  { id: 'file.day', label: 'File Date' },
-  { id: 'file.cday', label: 'Creation Date' },
-  { id: 'file.mday', label: 'Modified Date' },
-  { id: 'date', label: 'date' },
-  { id: 'due', label: 'due' },
-  { id: 'created', label: 'created' },
-  { id: 'birthday', label: 'birthday' }
-];
+// Filter options
+const showFilters = ref(false);
+const filterProperty = ref("");
+const filterOperator = ref("=");
+const filterValue = ref("");
 
-// Computed properties
-const commonSources = computed(() => COMMON_SOURCES);
-const filterOperators = Object.values(DataviewFilterOperator);
+// Obsidian data
+const availableFolders = ref<{ name: string; path: string; parent: string }[]>([
+  { name: "Root", path: "", parent: "" },
+]);
+const availableTags = ref<string[]>([]);
+const availableProperties = ref<string[]>([
+  "file.name",
+  "file.ctime",
+  "file.mtime",
+  "file.size",
+  "file.path",
+  "file.folder",
+  "tags",
+  "title",
+  "date",
+  "status",
+  "priority",
+  "due",
+  "completed",
+]);
+const dateProperties = ref<string[]>([
+  "date",
+  "created",
+  "modified",
+  "due",
+  "start",
+  "end",
+  "completion",
+]);
 
-// Track additional filters separately from date field filter
-const filters = ref<DataviewFilterCondition[]>([]);
-
-// Generated query based on current configuration
-const generatedQuery = computed(() => {
+// Initialize component
+onMounted(async () => {
   try {
-    return generateDataviewQuery(queryConfig.value);
+    // Fetch initial data from API service
+    await Promise.all([
+      fetchFolders(),
+      fetchTags(),
+      fetchProperties(),
+      fetchDateProperties(),
+    ]);
+
+    // Parse existing content if it exists
+    if (props.module.content.length > 0) {
+      parseExistingQuery(props.module.content[0]);
+    } else {
+      // Generate initial query
+      regenerateQuery();
+    }
   } catch (error) {
-    return '# Error generating query';
+    console.error("Error initializing DataviewCalendarModule:", error);
   }
 });
 
-// Helper methods for editing
-const setEditing = (editing: boolean) => {
-  baseModuleRef.value?.setEditing(editing);
-};
+// Fetch available folders from Obsidian
+async function fetchFolders() {
+  try {
+    const vaultInfo = await obsidianApiService.getVaultInfo();
 
-const setInputRef = (el: HTMLInputElement) => {
-  inputRef.value = el;
-  baseModuleRef.value?.setInputRef(el);
-};
+    // Extract folders from the files array
+    if (vaultInfo && vaultInfo.files && Array.isArray(vaultInfo.files)) {
+      const folderPaths = vaultInfo.files.filter(
+        (path) => typeof path === "string" && path.endsWith("/")
+      );
 
-// Initialize from props
-onMounted(() => {
-  // Ensure module has correct type and plugin type
-  if (props.module.type !== "dataviewCalendarQuery" || props.module.pluginType !== "dataview") {
-    const updatedModule = {
-      ...props.module,
-      type: "dataviewCalendarQuery",
-      pluginType: "dataview",
-    };
-
-    const updatedModules = [...props.modules];
-    updatedModules[props.index] = updatedModule;
-    emit("update", updatedModules);
+      availableFolders.value = [
+        { name: "Root", path: "", parent: "" },
+        ...folderPaths.map((folder) => {
+          // Remove trailing slash
+          const cleanPath = folder.endsWith("/") ? folder.slice(0, -1) : folder;
+          return {
+            name: cleanPath.split("/").pop() || cleanPath,
+            path: cleanPath,
+            parent: cleanPath.includes("/")
+              ? cleanPath.split("/").slice(0, -1).join("/")
+              : "",
+          };
+        }),
+      ];
+    }
+  } catch (err) {
+    console.error("Error fetching folders:", err);
   }
-  
-  initializeFromContent();
-  
-  console.log('Dataview Calendar Query Module initialized', props.module.type);
-});
+}
 
-// Watch for content changes from parent
-watch(() => props.module.content, () => {
-  initializeFromContent();
-}, { deep: true });
+// Fetch available tags from Obsidian
+async function fetchTags() {
+  try {
+    // Use a TABLE query instead of LIST with FLATTEN
+    const dql = `TABLE file.tags AS Tags FROM "" WHERE file.tags`;
+    const results = await obsidianApiService.searchWithDataview(dql);
 
-// Initialize component from content
-function initializeFromContent() {
-  const content = props.module.content?.join('\n') || '';
-  
-  // If it's empty, use the default configuration
-  if (!content.trim()) {
-    const defaultConfig: DataviewQueryConfig = {
-      type: DataviewQueryType.CALENDAR,
-      fields: [],
-      source: '"."',
-      filters: [
-        {
-          id: 'calendar-date-field',
-          field: 'file.day',
-          operator: DataviewFilterOperator.NOT_EMPTY,
-          value: '',
-          isMetadata: true
+    // Extract tag names from results
+    const tags = new Set<string>();
+
+    if (Array.isArray(results)) {
+      results.forEach((result) => {
+        // Safely access properties using type assertion
+        const item = result as Record<string, any>;
+
+        if (item && typeof item === "object" && "Tags" in item) {
+          const tagValue = item["Tags"];
+
+          // Tags might be an array or a string
+          if (Array.isArray(tagValue)) {
+            tagValue.forEach((tag: any) => {
+              if (typeof tag === "string") {
+                tags.add(tag.replace(/^#/, ""));
+              }
+            });
+          } else if (typeof tagValue === "string") {
+            tags.add(tagValue.replace(/^#/, ""));
+          }
         }
-      ],
-      sorts: [],
-      inline: false
-    };
-    
-    queryConfig.value = defaultConfig;
-    dateField.value = 'file.day';
-    filters.value = [];
-    rawQuery.value = generateDataviewQuery(defaultConfig);
-    return;
-  }
-  
-  // Set the raw query content
-  rawQuery.value = content;
-  
-  // Try to parse the content as a Dataview query
-  const parsedConfig = parseDataviewQuery(content);
-  
-  if (parsedConfig) {
-    // Ensure the type is CALENDAR
-    parsedConfig.type = DataviewQueryType.CALENDAR;
-    queryConfig.value = parsedConfig;
-    
-    // Look for a date field in filters or special comment
-    extractDateField(parsedConfig.filters);
-    
-    // Set the source type based on the source
-    setSourceTypeFromSource(parsedConfig.source);
-    validationError.value = '';
-  } else {
-    // If parsing fails, keep the raw query but show a validation error
-    validationError.value = 'Could not parse the query. You can still edit it in code mode.';
-    editorMode.value = 'code';
+      });
+    }
+
+    availableTags.value = Array.from(tags);
+
+    if (availableTags.value.length === 0) {
+      // Fallback if no tags found
+      availableTags.value = [
+        "project",
+        "todo",
+        "idea",
+        "journal",
+        "note",
+        "meeting",
+      ];
+    }
+  } catch (err) {
+    console.error("Error fetching tags:", err);
+    // Fallback to some example tags
+    availableTags.value = [
+      "project",
+      "todo",
+      "idea",
+      "journal",
+      "note",
+      "meeting",
+    ];
   }
 }
 
-// Extract date field from filters
-function extractDateField(allFilters: DataviewFilterCondition[]) {
-  // Find a date-like field
-  const dateFilter = allFilters.find(f => {
-    const fieldLower = f.field.toLowerCase();
-    return fieldLower.includes('date') || fieldLower.includes('day') || 
-           fieldLower === 'due' || fieldLower === 'created' ||
-           fieldLower === 'birthday';
-  });
-  
-  if (dateFilter) {
-    dateField.value = dateFilter.field;
-    
-    // Remove this filter from the regular filters
-    filters.value = allFilters.filter(f => f.field !== dateFilter.field);
-  } else {
-    // Default to file.day if no date field found
-    dateField.value = 'file.day';
-    filters.value = [...allFilters];
+// Fetch available properties from Obsidian
+async function fetchProperties() {
+  try {
+    // Use a TABLE query to get file properties
+    const dql = `TABLE file.name AS FileName FROM "" LIMIT 10`;
+    const results = await obsidianApiService.searchWithDataview(dql);
+
+    // Standard properties since we can't easily extract all frontmatter keys with a single query
+    availableProperties.value = [
+      "file.name",
+      "file.ctime",
+      "file.mtime",
+      "file.size",
+      "file.path",
+      "file.folder",
+      "tags",
+      "title",
+      "date",
+      "status",
+      "priority",
+      "due",
+      "completed",
+      "description",
+      "summary",
+      "content",
+    ];
+
+    // Additional logic could be added here to extract properties from results if needed
+  } catch (err) {
+    console.error("Error fetching properties:", err);
   }
 }
 
-// Toggle between visual and code editor modes
-function toggleEditorMode() {
-  if (editorMode.value === 'visual') {
-    // Switching to code mode
-    rawQuery.value = generateDataviewQuery(queryConfig.value);
-    editorMode.value = 'code';
-  } else {
-    // Switching to visual mode
-    try {
-      const parsedConfig = parseDataviewQuery(rawQuery.value);
-      if (parsedConfig) {
-        // Ensure the type is CALENDAR
-        parsedConfig.type = DataviewQueryType.CALENDAR;
-        queryConfig.value = parsedConfig;
-        
-        // Extract date field from filters
-        extractDateField(parsedConfig.filters);
-        
-        validationError.value = '';
-        editorMode.value = 'visual';
-        
-        // Set the source type based on the source
-        setSourceTypeFromSource(parsedConfig.source);
-      } else {
-        // Parsing failed
-        validationError.value = 'Could not parse the query. Please check the syntax.';
+// Fetch date-specific properties from Obsidian
+async function fetchDateProperties() {
+  try {
+    // This would ideally query Obsidian to find properties that contain dates
+    // But for simplicity, we'll use a common set of date fields
+    dateProperties.value = [
+      "date",
+      "created",
+      "modified",
+      "due",
+      "start",
+      "end",
+      "completion",
+      "reviewed",
+      "scheduled",
+      "published",
+      "birthdate",
+      "deadline",
+    ];
+  } catch (err) {
+    console.error("Error fetching date properties:", err);
+  }
+}
+
+// Parse an existing Dataview query to initialize the module state
+function parseExistingQuery(query: string) {
+  try {
+    // Remove markdown code block syntax if present
+    let cleanQuery = query.replace(/```dataview\n|\n```/g, "");
+
+    // Basic parsing for CALENDAR queries
+    // This is a simplified parser that won't handle all possible Dataview syntax
+    const lines = cleanQuery.split("\n").map((line) => line.trim());
+
+    // Parse CALENDAR part
+    const calendarMatch = lines[0].match(/^CALENDAR\s+(.+)$/i);
+    if (calendarMatch) {
+      dateField.value = calendarMatch[1].trim();
+    }
+
+    // Parse FROM part (source)
+    const fromLine = lines.find((line) => line.startsWith("FROM"));
+    if (fromLine) {
+      const fromMatch = fromLine.match(/^FROM\s+(.+)$/i);
+      if (fromMatch) {
+        const source = fromMatch[1];
+
+        if (source.startsWith('"') && source.endsWith('"')) {
+          // Folder source
+          sourceType.value = "folder";
+          selectedFolder.value = source.slice(1, -1);
+        } else if (source.startsWith("#")) {
+          // Tag source
+          sourceType.value = "tag";
+          selectedTag.value = source.slice(1);
+        } else {
+          // Default to all
+          sourceType.value = "all";
+        }
       }
-    } catch (error) {
-      validationError.value = 'Error parsing query.';
+    } else {
+      sourceType.value = "all";
+    }
+
+    // Parse WHERE part (filter)
+    const whereLine = lines.find((line) => line.startsWith("WHERE"));
+    if (whereLine) {
+      const whereMatch = whereLine.match(/^WHERE\s+(.+)$/i);
+      if (whereMatch) {
+        showFilters.value = true;
+        const condition = whereMatch[1];
+
+        // Try to parse a basic property condition (prop = value)
+        const conditionMatch = condition.match(
+          /([^=!<>]+)\s*([=!<>]+|contains)\s*(.+)/i
+        );
+        if (conditionMatch) {
+          filterProperty.value = conditionMatch[1].trim();
+          filterOperator.value = conditionMatch[2].trim();
+          // Remove quotes from value if present
+          let value = conditionMatch[3].trim();
+          if (
+            (value.startsWith('"') && value.endsWith('"')) ||
+            (value.startsWith("'") && value.endsWith("'"))
+          ) {
+            value = value.slice(1, -1);
+          }
+          filterValue.value = value;
+        }
+      }
+    }
+
+    // Parse ID part (event display field)
+    const idLine = lines.find((line) => line.startsWith("ID"));
+    if (idLine) {
+      const idMatch = idLine.match(/^ID\s+(.+)$/i);
+      if (idMatch) {
+        eventField.value = idMatch[1].trim();
+      }
+    }
+
+    // Regenerate the query to ensure it's formatted correctly
+    regenerateQuery();
+  } catch (error) {
+    console.error("Error parsing existing query:", error);
+    // If parsing fails, just generate a new default query
+    regenerateQuery();
+  }
+}
+
+// Event Handlers
+function setSourceType(type: string) {
+  sourceType.value = type;
+  regenerateQuery();
+}
+
+function setDateRange(range: string) {
+  dateRange.value = range;
+  regenerateQuery();
+}
+
+function handleDateFieldChange() {
+  regenerateQuery();
+}
+
+function handleStartOfWeekChange() {
+  regenerateQuery();
+}
+
+function handleShowEventTimeChange() {
+  regenerateQuery();
+}
+
+function handleHoverPreviewChange() {
+  regenerateQuery();
+}
+
+function handleEventFieldChange() {
+  regenerateQuery();
+}
+
+function handleSourceValueChange() {
+  regenerateQuery();
+}
+
+function handleCustomRangeChange() {
+  regenerateQuery();
+}
+
+function handleFilterPropertyChange() {
+  regenerateQuery();
+}
+
+function handleFilterOperatorChange() {
+  regenerateQuery();
+}
+
+function handleFilterValueChange() {
+  regenerateQuery();
+}
+
+function removeFilter() {
+  showFilters.value = false;
+  filterProperty.value = "";
+  filterOperator.value = "=";
+  filterValue.value = "";
+  regenerateQuery();
+}
+
+// Query generation
+function generateQuery(): string {
+  let query = "```dataview\n";
+
+  // CALENDAR part
+  query += `CALENDAR ${dateField.value}\n`;
+
+  // FROM part
+  if (sourceType.value === "folder" && selectedFolder.value) {
+    query += `FROM "${selectedFolder.value}"\n`;
+  } else if (sourceType.value === "tag" && selectedTag.value) {
+    query += `FROM #${selectedTag.value}\n`;
+  } else if (sourceType.value === "all") {
+    query += 'FROM ""\n';
+  }
+
+  // WHERE part - add filter if specified
+  if (showFilters.value && filterProperty.value && filterValue.value) {
+    let formattedValue = filterValue.value;
+
+    // Add quotes for string values unless using contains operator
+    if (isNaN(Number(formattedValue)) && filterOperator.value !== "contains") {
+      formattedValue = `"${formattedValue}"`;
+    }
+
+    if (filterOperator.value === "contains") {
+      query += `WHERE contains(${filterProperty.value}, "${filterValue.value}")\n`;
+    } else {
+      query += `WHERE ${filterProperty.value} ${filterOperator.value} ${formattedValue}\n`;
     }
   }
+
+  // ID part (text to show for events)
+  if (eventField.value && eventField.value !== "file.link") {
+    query += `ID ${eventField.value}\n`;
+  }
+
+  // Options
+  const options = [];
+
+  // Start of week
+  if (startOfWeek.value === "0") {
+    options.push('startOfWeek: "sunday"');
+  }
+
+  // Event time display
+  options.push(`showEventTime: ${showEventTime.value}`);
+
+  // Hover preview
+  options.push(`hoverPreview: ${showHoverPreview.value}`);
+
+  // Time range
+  if (dateRange.value !== "month") {
+    options.push(`timespan: "${dateRange.value}"`);
+  }
+
+  // Custom date range
+  if (dateRange.value === "custom" && customDateRange.value) {
+    options.push(`initialDate: "${customDateRange.value}"`);
+  }
+
+  // Add options to query if any are set
+  if (options.length > 0) {
+    query += `OPTIONS ${options.join(", ")}\n`;
+  }
+
+  query += "```";
+  return query;
 }
 
-// Validate raw query input
-function validateRawQuery() {
-  validationError.value = '';
-  
-  // Skip validation if empty
-  if (!rawQuery.value.trim()) return;
-  
-  // Validate Dataview query
-  const validation = validateDataviewQuery(rawQuery.value);
-  if (!validation.isValid) {
-    validationError.value = validation.error || 'Invalid Dataview query';
-    return;
-  }
-  
-  // Check if it's a CALENDAR query
-  if (!rawQuery.value.includes('CALENDAR') && !rawQuery.value.includes('dv.calendar')) {
-    validationError.value = 'This should be a CALENDAR query';
-    return;
-  }
-  
-  // If valid, update the content
-  emit("update:content", [rawQuery.value]);
+// Generate the query and update the module content
+function regenerateQuery() {
+  const query = generateQuery();
+  updateContent([query]);
 }
 
-// Update content from parent
-const updateContent = (content: string[]) => {
+// Update content in parent component
+function updateContent(content: string[]) {
   emit("update:content", content);
-};
-
-// Update date field
-function updateDateField() {
-  updateAllFilters();
-}
-
-// Select a date field from suggestions
-function selectDateField(field: string) {
-  dateField.value = field;
-  updateDateField();
-}
-
-// Add a filter
-function addFilter() {
-  const newFilter: DataviewFilterCondition = {
-    id: uuidv4(),
-    field: '',
-    operator: DataviewFilterOperator.EQUALS,
-    value: '',
-    isMetadata: true
-  };
-  
-  filters.value.push(newFilter);
-  updateFilters();
-}
-
-// Remove a filter
-function removeFilter(index: number) {
-  filters.value.splice(index, 1);
-  updateFilters();
-}
-
-// Update filters and combine with date field filter
-function updateFilters() {
-  updateAllFilters();
-}
-
-// Update all filters including date field filter
-function updateAllFilters() {
-  // Combine date field filter with other filters
-  const allFilters: DataviewFilterCondition[] = [];
-  
-  // Add date field filter if specified
-  if (dateField.value.trim()) {
-    allFilters.push({
-      id: 'calendar-date-field',
-      field: dateField.value.trim(),
-      operator: DataviewFilterOperator.NOT_EMPTY,
-      value: '',
-      isMetadata: true
-    });
-  }
-  
-  // Add other filters
-  filters.value.forEach(filter => {
-    if (filter.field.trim()) {
-      allFilters.push(filter);
-    }
-  });
-  
-  // Update the query configuration
-  queryConfig.value.filters = allFilters;
-  updateQuery();
-}
-
-// Get placeholder text based on selected source type
-function getSourcePlaceholder(): string {
-  const selectedSource = commonSources.value.find(s => s.id === selectedSourceType.value);
-  return selectedSource?.placeholder || 'Enter source';
-}
-
-// Handle source type change
-function handleSourceTypeChange() {
-  const selectedSource = commonSources.value.find(s => s.id === selectedSourceType.value);
-  
-  if (selectedSource) {
-    queryConfig.value.source = selectedSource.value;
-    updateQuery();
-  }
-}
-
-// Set source type based on source value
-function setSourceTypeFromSource(source: string) {
-  // Try to match the source with one of the common sources
-  const matchedSource = commonSources.value.find(s => s.value === source);
-  
-  if (matchedSource) {
-    selectedSourceType.value = matchedSource.id;
-  } else {
-    // If no match, set to custom
-    selectedSourceType.value = 'custom';
-  }
-}
-
-// Generate query from config and update content
-function updateQuery() {
-  if (editorMode.value === 'visual') {
-    // Ensure type is CALENDAR
-    queryConfig.value.type = DataviewQueryType.CALENDAR;
-    
-    // Generate the updated query
-    const query = generateDataviewQuery(queryConfig.value);
-    
-    // Update the raw query (useful when switching to code mode)
-    rawQuery.value = query;
-    
-    // Emit the updated content
-    emit("update:content", [query]);
-  }
 }
 </script>
 
 <style scoped>
-.dataview-calendar-module {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
+.dataview-calendar-editor {
   width: 100%;
-  height: 100%;
+  color: #cbd5e1;
 }
 
-.dataview-module-title {
-  font-size: 1.1rem;
-  font-weight: 600;
-  color: var(--text-normal);
+/* Section styling */
+.dataview-calendar-editor__section {
+  margin-bottom: 20px;
+}
+
+.dataview-calendar-editor__section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.dataview-calendar-editor__section-title {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  margin-bottom: 0.75rem;
-  padding-bottom: 0.75rem;
-  border-bottom: 1px solid var(--background-modifier-border);
+  gap: 8px;
+  font-weight: 500;
+  font-size: 0.9375rem;
+  color: #e2e8f0;
 }
 
-.dataview-module-title i {
-  color: var(--interactive-accent);
-}
-
-.dataview-visual-builder {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-  width: 100%;
-}
-
-.dataview-section {
-  background-color: var(--background-primary);
-  border: 1px solid var(--background-modifier-border);
-  border-radius: 6px;
-  padding: 1rem;
-}
-
-.dataview-section-title {
-  font-size: 1rem;
-  font-weight: 600;
-  margin: 0 0 0.75rem 0;
+.dataview-calendar-editor__add-filter-btn {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  color: var(--text-normal);
-}
-
-.dataview-section-title i {
-  color: var(--interactive-accent);
-}
-
-.dataview-optional {
-  font-size: 0.8rem;
-  font-weight: normal;
-  color: var(--text-muted);
-  margin-left: 0.25rem;
-}
-
-.dataview-date-field-container,
-.dataview-source-container,
-.dataview-filters-container,
-.dataview-limit-container,
-.dataview-options-container {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-}
-
-.dataview-info {
-  display: flex;
-  align-items: flex-start;
-  gap: 0.5rem;
-  font-size: 0.85rem;
-  color: var(--text-muted);
-  background-color: var(--background-secondary);
-  padding: 0.75rem;
-  border-radius: 4px;
-  margin: 0 0 0.5rem 0;
-  line-height: 1.4;
-}
-
-.dataview-info i {
-  color: var(--interactive-accent);
-  margin-top: 0.2rem;
-}
-
-.dataview-date-field-suggestions {
-  margin-top: 0.5rem;
-}
-
-.dataview-subheading {
-  font-size: 0.8375rem;
-  color: var(--text-muted);
-  margin-bottom: 0.5rem;
-}
-
-.dataview-suggestion-buttons {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-}
-
-.dataview-suggestion-btn {
-  padding: 0.375rem 0.625rem;
-  background-color: var(--background-secondary);
-  border: 1px solid var(--background-modifier-border);
+  gap: 6px;
+  background: rgba(255, 171, 88, 0.1);
+  color: #ffab58;
+  border: 1px solid rgba(255, 171, 88, 0.2);
+  padding: 6px 10px;
   border-radius: 4px;
   font-size: 0.8125rem;
-  color: var(--text-muted);
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.2s;
 }
 
-.dataview-suggestion-btn:hover {
-  background-color: var(--background-modifier-hover);
-  color: var(--text-normal);
+.dataview-calendar-editor__add-filter-btn:hover {
+  background: rgba(255, 171, 88, 0.2);
 }
 
-.dataview-source-container {
+/* Source selection */
+.dataview-calendar-editor__source-options {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.dataview-calendar-editor__source-option {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #e2e8f0;
+  padding: 8px 12px;
+  border-radius: 4px;
+  font-size: 0.875rem;
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.2s;
+}
+
+.dataview-calendar-editor__source-option:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.dataview-calendar-editor__source-option.active {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.25);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.05);
+}
+
+.dataview-calendar-editor__source-details {
+  margin-top: 12px;
+}
+
+.dataview-calendar-editor__field {
   display: flex;
-  flex-direction: row;
-  gap: 0.75rem;
-}
-
-.dataview-source-select {
-  width: 150px;
-}
-
-.dataview-source-value {
-  flex: 1;
-}
-
-.dataview-filter-row {
-  display: flex;
-  gap: 0.5rem;
+  gap: 8px;
   align-items: center;
 }
 
-.dataview-filter-field {
-  flex: 1;
+.dataview-calendar-editor__property-field {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr 1.5fr auto;
+  gap: 8px;
+  align-items: center;
 }
 
-.dataview-filter-operator {
-  width: 150px;
-}
-
-.dataview-filter-value {
-  flex: 1;
-}
-
-.dataview-select,
-.dataview-input {
-  width: 100%;
-  padding: 0.5rem;
+.dataview-calendar-editor__select {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #e2e8f0;
+  padding: 8px 12px;
   border-radius: 4px;
-  border: 1px solid var(--background-modifier-border);
-  background: var(--background-secondary);
-  color: var(--text-normal);
-  font-size: 0.9rem;
+  font-size: 0.875rem;
+  width: 100%;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23cbd5e1' d='M6 8.825L1.175 4 2.05 3.125 6 7.075 9.95 3.125 10.825 4z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 32px;
 }
 
-.dataview-select:focus,
-.dataview-input:focus {
-  border-color: var(--interactive-accent);
+.dataview-calendar-editor__select:focus {
   outline: none;
+  border-color: rgba(255, 255, 255, 0.3);
 }
 
-.dataview-btn-icon {
+.dataview-calendar-editor__operator-select {
+  font-size: 0.8125rem;
+}
+
+.dataview-calendar-editor__input {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #e2e8f0;
+  padding: 8px 12px;
+  border-radius: 4px;
+  font-size: 0.875rem;
+  width: 100%;
+}
+
+.dataview-calendar-editor__input:focus {
+  outline: none;
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.dataview-calendar-editor__action-btn {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 30px;
-  height: 30px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #94a3b8;
+  width: 36px;
+  height: 36px;
   border-radius: 4px;
-  background: var(--background-secondary);
-  border: 1px solid var(--background-modifier-border);
-  color: var(--text-muted);
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.2s;
+  flex-shrink: 0;
 }
 
-.dataview-btn-icon:hover {
-  background: var(--background-modifier-hover);
-  color: var(--text-normal);
+.dataview-calendar-editor__action-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #e2e8f0;
 }
 
-.dataview-btn-remove:hover {
-  background-color: rgba(255, 0, 0, 0.1);
-  color: #d32f2f;
-  border-color: rgba(255, 0, 0, 0.2);
+/* Date settings */
+.dataview-calendar-editor__date-settings {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
-.dataview-btn-add {
+.dataview-calendar-editor__field-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.dataview-calendar-editor__label {
+  font-size: 0.875rem;
+  color: #cbd5e1;
+}
+
+.dataview-calendar-editor__range-options {
+  display: flex;
+  gap: 8px;
+}
+
+.dataview-calendar-editor__range-option {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #e2e8f0;
+  padding: 8px 12px;
+  border-radius: 4px;
+  font-size: 0.875rem;
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.2s;
+}
+
+.dataview-calendar-editor__range-option:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.dataview-calendar-editor__range-option.active {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.25);
+}
+
+.dataview-calendar-editor__custom-range {
+  margin-top: 8px;
+}
+
+.dataview-calendar-editor__help-tooltip {
+  position: relative;
   display: flex;
   align-items: center;
-  gap: 0.375rem;
-  padding: 0.5rem 0.75rem;
-  border-radius: 4px;
-  background: var(--background-secondary);
-  border: 1px dashed var(--background-modifier-border);
-  color: var(--text-muted);
-  font-size: 0.9rem;
+  justify-content: center;
+  color: #94a3b8;
   cursor: pointer;
-  transition: all 0.2s ease;
+}
+
+.dataview-calendar-editor__help-tooltip:hover
+  .dataview-calendar-editor__tooltip-content {
+  display: block;
+}
+
+.dataview-calendar-editor__tooltip-content {
+  display: none;
+  position: absolute;
+  bottom: 100%;
+  right: 0;
+  background: #1e293b;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  padding: 8px 12px;
+  width: 200px;
+  font-size: 0.8125rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  z-index: 10;
+  color: #e2e8f0;
+  margin-bottom: 8px;
+}
+
+.dataview-calendar-editor__tooltip-content p {
+  margin: 0 0 4px 0;
+}
+
+.dataview-calendar-editor__tooltip-content ul {
+  margin: 0;
+  padding-left: 16px;
+}
+
+/* Display settings */
+.dataview-calendar-editor__display-settings {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.dataview-calendar-editor__toggle {
+  position: relative;
+  display: inline-block;
+  width: 40px;
+  height: 20px;
   align-self: flex-start;
 }
 
-.dataview-btn-add:hover {
-  background: var(--background-modifier-hover);
-  color: var(--text-normal);
-  border-color: var(--background-modifier-border-hover);
+.dataview-calendar-editor__toggle input {
+  opacity: 0;
+  width: 0;
+  height: 0;
 }
 
-.dataview-checkbox {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
+.dataview-calendar-editor__toggle-slider {
+  position: absolute;
   cursor: pointer;
-  user-select: none;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(255, 255, 255, 0.1);
+  border-radius: 20px;
+  transition: 0.3s;
 }
 
-.dataview-checkbox input {
-  width: 1rem;
-  height: 1rem;
-  cursor: pointer;
+.dataview-calendar-editor__toggle-slider:before {
+  position: absolute;
+  content: "";
+  height: 16px;
+  width: 16px;
+  left: 2px;
+  bottom: 2px;
+  background-color: #fff;
+  border-radius: 50%;
+  transition: 0.3s;
 }
 
-.dataview-checkbox-label {
-  font-size: 0.9rem;
-  color: var(--text-normal);
+.dataview-calendar-editor__toggle
+  input:checked
+  + .dataview-calendar-editor__toggle-slider {
+  background-color: rgba(255, 171, 88, 0.6);
+}
+
+.dataview-calendar-editor__toggle
+  input:checked
+  + .dataview-calendar-editor__toggle-slider:before {
+  transform: translateX(20px);
+}
+
+/* Filter section */
+.dataview-calendar-editor__filters {
+  margin-top: 12px;
+}
+
+.dataview-calendar-editor__filter-actions {
   display: flex;
-  align-items: center;
-  gap: 0.375rem;
+  gap: 4px;
 }
 
-.dataview-tooltip {
-  color: var(--text-muted);
-  cursor: help;
-}
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .dataview-calendar-editor__source-options {
+    grid-template-columns: repeat(2, 1fr);
+  }
 
-.dataview-code-editor {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  width: 100%;
-}
+  .dataview-calendar-editor__property-field {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
 
-.dataview-code-textarea {
-  width: 100%;
-  min-height: 200px;
-  padding: 0.75rem;
-  border: 1px solid var(--background-modifier-border);
-  border-radius: 4px;
-  background: var(--background-primary);
-  color: var(--text-normal);
-  font-family: var(--font-monospace);
-  font-size: 0.9em;
-  resize: vertical;
-}
-
-.dataview-validation-error {
-  padding: 0.5rem;
-  border-radius: 4px;
-  background-color: rgba(255, 0, 0, 0.1);
-  color: #d32f2f;
-  font-size: 0.85rem;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.dataview-preview-container {
-  background-color: var(--background-secondary);
-  border-radius: 4px;
-  overflow: hidden;
-}
-
-.dataview-query-preview {
-  margin: 0;
-  padding: 0.75rem;
-  font-family: var(--font-monospace);
-  font-size: 0.9em;
-  white-space: pre-wrap;
-  overflow-x: auto;
-  color: var(--text-normal);
-}
-
-.dataview-module-controls {
-  display: flex;
-  justify-content: space-between;
-  margin-top: 0.5rem;
-}
-
-.dataview-toggle-mode-btn {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.4rem 0.8rem;
-  border-radius: 4px;
-  background: var(--background-secondary);
-  border: 1px solid var(--background-modifier-border);
-  color: var(--text-normal);
-  font-size: 0.85rem;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.dataview-toggle-mode-btn:hover {
-  background: var(--background-modifier-hover);
+  .dataview-calendar-editor__range-options {
+    flex-direction: column;
+  }
 }
 </style>

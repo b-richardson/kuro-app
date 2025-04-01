@@ -1,4 +1,11 @@
 <template>
+  <!-- 
+  IMPORTANT NOTE FOR DEVELOPERS:
+  - This component should NOT implement any connection checks to Obsidian
+  - This component should NOT display any toast messages
+  - All connection validation and user feedback should be handled by parent components
+  - Keep this component focused solely on building Dataview queries
+  -->
   <BaseModule
     :module="module"
     :index="index"
@@ -6,7 +13,7 @@
     :isSelected="isSelected"
     :autoFocus="autoFocus"
     @update:content="updateContent"
-    @update="$emit('update', $event)"
+    @update="$emit('update', $event as any)"
     @delete="$emit('delete')"
     @select="$emit('select')"
     @duplicate="$emit('duplicate')"
@@ -16,12 +23,6 @@
   >
     <!-- Module Header -->
     <div class="dataview-list-editor">
-      <!-- Alert for when not connected to Obsidian -->
-      <div v-if="!obsidianConnected" class="dataview-list-editor__alert">
-        <i class="fas fa-exclamation-triangle"></i>
-        <span>Not connected to Obsidian. Some features may be limited.</span>
-      </div>
-
       <!-- Source Selection Section -->
       <div class="dataview-list-editor__section">
         <div class="dataview-list-editor__section-header">
@@ -317,7 +318,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch } from "vue";
+import { ref, onMounted } from "vue";
 import BaseModule from "@/components/TemplateCreator/modules/core/BaseModule.vue";
 import { TemplateModule } from "@/types/TemplateModule";
 import { obsidianApiService } from "@/services/obsidian";
@@ -344,9 +345,6 @@ const emit = defineEmits<{
 // Reference to the base module component
 const baseModuleRef = ref<InstanceType<typeof BaseModule> | null>(null);
 
-// Connection state
-const obsidianConnected = ref(false);
-
 // Source selection
 const sourceType = ref("all");
 const selectedFolder = ref("");
@@ -356,11 +354,25 @@ const propertyOperator = ref("=");
 const propertyValue = ref("");
 
 // Obsidian data
-const availableFolders = ref<{ name: string; path: string; parent: string }[]>(
-  []
-);
+const availableFolders = ref<{ name: string; path: string; parent: string }[]>([
+  { name: "Root", path: "", parent: "" },
+]);
 const availableTags = ref<string[]>([]);
-const availableProperties = ref<string[]>([]);
+const availableProperties = ref<string[]>([
+  "file.name",
+  "file.ctime",
+  "file.mtime",
+  "file.size",
+  "file.path",
+  "file.folder",
+  "tags",
+  "title",
+  "date",
+  "status",
+  "priority",
+  "due",
+  "completed",
+]);
 
 // Display options
 const displayProperties = ref<string[]>([]);
@@ -377,13 +389,8 @@ const limitCount = ref(20);
 // Initialize component
 onMounted(async () => {
   try {
-    // Check if connected to Obsidian
-    obsidianConnected.value = await checkObsidianConnection();
-
-    if (obsidianConnected.value) {
-      // Fetch initial data
-      await Promise.all([fetchFolders(), fetchTags(), fetchProperties()]);
-    }
+    // Fetch initial data from API service
+    await Promise.all([fetchFolders(), fetchTags(), fetchProperties()]);
 
     // Parse existing content if it exists
     if (props.module.content.length > 0) {
@@ -394,31 +401,13 @@ onMounted(async () => {
     }
   } catch (error) {
     console.error("Error initializing DataviewListModule:", error);
-    baseModuleRef.value?.displayToast("Failed to connect to Obsidian", "error");
   }
 });
 
-// Check if we can connect to Obsidian
-async function checkObsidianConnection(): Promise<boolean> {
-  try {
-    if (!obsidianApiService.isInitialized()) {
-      return false;
-    }
-    return await obsidianApiService.checkConnection();
-  } catch (error) {
-    console.error("Obsidian connection check failed:", error);
-    return false;
-  }
-}
-
 // Fetch available folders from Obsidian
 async function fetchFolders() {
-  if (!obsidianConnected.value) return;
-
   try {
-    console.log("Fetching vault info...");
     const vaultInfo = await obsidianApiService.getVaultInfo();
-    console.log("Vault info received:", vaultInfo);
 
     // Extract folders from the files array
     if (vaultInfo && vaultInfo.files && Array.isArray(vaultInfo.files)) {
@@ -440,29 +429,18 @@ async function fetchFolders() {
           };
         }),
       ];
-    } else {
-      console.log("No files found or unexpected structure, using fallback");
-      availableFolders.value = [{ name: "Root", path: "", parent: "" }];
     }
-
-    baseModuleRef.value?.displayToast("Folders updated", "success");
   } catch (err) {
-    console.log("Error fetching folders:", err);
-    availableFolders.value = [{ name: "Root", path: "", parent: "" }];
-    baseModuleRef.value?.displayToast("Failed to fetch folders", "error");
+    console.error("Error fetching folders:", err);
   }
 }
 
 // Fetch available tags from Obsidian
 async function fetchTags() {
-  if (!obsidianConnected.value) return;
-
   try {
     // Use a TABLE query instead of LIST with FLATTEN
     const dql = `TABLE file.tags AS Tags FROM "" WHERE file.tags`;
-
     const results = await obsidianApiService.searchWithDataview(dql);
-    console.log("Tags query results:", results);
 
     // Extract tag names from results
     const tags = new Set<string>();
@@ -502,10 +480,8 @@ async function fetchTags() {
         "meeting",
       ];
     }
-
-    baseModuleRef.value?.displayToast("Tags updated", "success");
   } catch (err) {
-    console.log("Error fetching tags:", err);
+    console.error("Error fetching tags:", err);
     // Fallback to some example tags
     availableTags.value = [
       "project",
@@ -515,23 +491,17 @@ async function fetchTags() {
       "note",
       "meeting",
     ];
-    baseModuleRef.value?.displayToast("Using default tags", "info");
   }
 }
 
 // Fetch available properties from Obsidian
 async function fetchProperties() {
-  if (!obsidianConnected.value) return;
-
   try {
     // Use a TABLE query to get file properties
     const dql = `TABLE file.name AS FileName FROM "" LIMIT 10`;
-
     const results = await obsidianApiService.searchWithDataview(dql);
-    console.log("Property query results:", results);
 
-    // For now, use the standard properties since we can't easily extract
-    // all frontmatter keys with a single query
+    // Standard properties since we can't easily extract all frontmatter keys with a single query
     availableProperties.value = [
       "file.name",
       "file.ctime",
@@ -548,28 +518,9 @@ async function fetchProperties() {
       "completed",
     ];
 
-    // If we get sample files, we could look up their frontmatter in a second query
-    // but that would require multiple API calls
-
-    baseModuleRef.value?.displayToast("Properties updated", "success");
+    // Additional logic could be added here to extract properties from results if needed
   } catch (err) {
-    console.log("Error fetching properties:", err);
-    availableProperties.value = [
-      "file.name",
-      "file.ctime",
-      "file.mtime",
-      "file.size",
-      "file.path",
-      "file.folder",
-      "tags",
-      "title",
-      "date",
-      "status",
-      "priority",
-      "due",
-      "completed",
-    ];
-    baseModuleRef.value?.displayToast("Using default properties", "info");
+    console.error("Error fetching properties:", err);
   }
 }
 
@@ -726,14 +677,12 @@ function addDisplayProperty() {
     displayProperties.value.push(newDisplayProperty.value);
     newDisplayProperty.value = "";
     regenerateQuery();
-    baseModuleRef.value?.displayToast("Property added", "success");
   }
 }
 
 function removeDisplayProperty(index: number) {
   displayProperties.value.splice(index, 1);
   regenerateQuery();
-  baseModuleRef.value?.displayToast("Property removed", "info");
 }
 
 // Query generation
@@ -805,13 +754,6 @@ function regenerateQuery() {
 function updateContent(content: string[]) {
   emit("update:content", content);
 }
-
-// Watch for Obsidian connection changes
-watch(obsidianConnected, async (isConnected) => {
-  if (isConnected) {
-    await Promise.all([fetchFolders(), fetchTags(), fetchProperties()]);
-  }
-});
 </script>
 
 <style scoped>
