@@ -6,7 +6,7 @@
     :isSelected="isSelected"
     :autoFocus="autoFocus"
     @update:content="updateContent"
-    @update="$emit('update', $event)"
+    @update="$emit('update', $event as any)"
     @delete="$emit('delete')"
     @select="$emit('select')"
     @duplicate="$emit('duplicate')"
@@ -14,43 +14,86 @@
     @add-line="addContentLine"
     ref="baseModuleRef"
   >
-    <div
-      v-for="(line, index) in module.content"
-      :key="index"
-      class="template-module-editor-line"
-    >
-      <div class="template-module-editor-input-group">
-        <select
-          class="template-module-editor-select"
-          :value="getHeaderLevel(line)"
-          @input="updateHeaderLevel(index, $event.target.value)"
-          @focus="setEditing(true)"
-          @blur="setEditing(false)"
-          :ref="(el) => { if (index === 0 && autoFocus) setInputRef(el); }"
+    <div class="header-editor">
+      <!-- Module Header -->
+      <div class="header-editor__header">
+        <div class="header-editor__header-icon">
+          <i class="fas fa-heading"></i>
+        </div>
+        <div class="header-editor__header-title">Headers</div>
+      </div>
+
+      <!-- Header Items -->
+      <div class="header-editor__items">
+        <div 
+          v-for="(line, idx) in module.content" 
+          :key="idx"
+          class="header-editor__item"
         >
-          <option value="1">H1</option>
-          <option value="2">H2</option>
-          <option value="3">H3</option>
-          <option value="4">H4</option>
-          <option value="5">H5</option>
-          <option value="6">H6</option>
-        </select>
-        <input
-          type="text"
-          class="template-module-editor-input"
-          :value="getHeaderText(line)"
-          @input="updateHeaderText(index, $event.target.value)"
-          @focus="setEditing(true)"
-          @blur="setEditing(false)"
-          placeholder="Header text"
-        />
-        <button
-          v-if="module.content.length > 1"
-          class="template-module-editor-line-action"
-          title="Delete line"
-          @click.stop="deleteContentLine(index)"
-        >
-          <i class="fas fa-times"></i>
+          <div class="header-editor__item-inputs">
+            <select
+              class="header-editor__level-select"
+              :value="getHeaderLevel(line)"
+              @input="updateHeaderLevel(idx, $event.target.value)"
+              @focus="setEditing(true)"
+              @blur="setEditing(false)"
+              :ref="(el) => { if (idx === 0 && autoFocus) setInputRef(el); }"
+            >
+              <option value="1">H1</option>
+              <option value="2">H2</option>
+              <option value="3">H3</option>
+              <option value="4">H4</option>
+              <option value="5">H5</option>
+              <option value="6">H6</option>
+            </select>
+            
+            <input
+              type="text"
+              class="header-editor__text-input"
+              :value="getHeaderText(line)"
+              @input="updateHeaderText(idx, $event.target.value)"
+              @focus="setEditing(true)"
+              @blur="setEditing(false)"
+              placeholder="Header text"
+            />
+          </div>
+          
+          <div class="header-editor__item-actions">
+            <button 
+              class="header-editor__move-btn"
+              @click="moveHeader(idx, 'up')"
+              :disabled="idx === 0"
+              title="Move up"
+            >
+              <i class="fas fa-arrow-up"></i>
+            </button>
+            
+            <button 
+              class="header-editor__move-btn"
+              @click="moveHeader(idx, 'down')"
+              :disabled="idx === module.content.length - 1"
+              title="Move down"
+            >
+              <i class="fas fa-arrow-down"></i>
+            </button>
+            
+            <button
+              v-if="module.content.length > 1"
+              class="header-editor__delete-btn"
+              title="Delete header"
+              @click.stop="deleteContentLine(idx)"
+            >
+              <i class="fas fa-times"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Add Header Button -->
+      <div class="header-editor__add-section">
+        <button class="header-editor__add-btn" @click="addContentLine">
+          <i class="fas fa-plus"></i>
+          <span>Add Header</span>
         </button>
       </div>
     </div>
@@ -58,7 +101,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from "vue";
+import { ref, onMounted } from "vue";
 import BaseModule from "@/components/TemplateCreator/modules/core/BaseModule.vue";
 import { TemplateModule } from "@/types/TemplateModule";
 import { addNewContentLine, deleteContentLine, updateContentLine } from "@/components/TemplateCreator/modules/core/moduleUtils";
@@ -127,86 +170,206 @@ const addContentLine = () => {
   emit("update:content", newContent);
   
   // Show success toast
-  baseModuleRef.value?.displayToast("Line added", "success");
+  baseModuleRef.value?.displayToast("Header added", "success");
 };
 
 const deleteContentLine = (index: number) => {
   if (props.module.content.length <= 1) {
-    baseModuleRef.value?.displayToast("Cannot delete the last line", "error");
+    baseModuleRef.value?.displayToast("Cannot delete the last header", "error");
     return;
   }
   
   const newContent = deleteContentLine(props.module.content, index);
   emit("update:content", newContent);
-  
-  // Show info toast
-  baseModuleRef.value?.displayToast("Line deleted", "info");
 };
+
+// Move headers up or down
+const moveHeader = (index: number, direction: 'up' | 'down') => {
+  if (direction === 'up' && index === 0) return;
+  if (direction === 'down' && index === props.module.content.length - 1) return;
+  
+  const newContent = [...props.module.content];
+  const targetIndex = direction === 'up' ? index - 1 : index + 1;
+  
+  // Swap items
+  [newContent[index], newContent[targetIndex]] = [newContent[targetIndex], newContent[index]];
+  
+  emit("update:content", newContent);
+};
+
+// Initialize with default content if empty
+onMounted(() => {
+  if (props.module.content.length === 1 && props.module.content[0] === "") {
+    emit("update:content", ["# New Header"]);
+  }
+});
 </script>
 
 <style scoped>
-.template-module-editor-line {
-  margin-bottom: var(--spacing-md);
+.header-editor {
+  width: 100%;
+  color: var(--color-text);
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
 }
 
-.template-module-editor-input-group {
+/* Header styles */
+.header-editor__header {
   display: flex;
   align-items: center;
-  gap: var(--spacing-sm);
+  gap: 10px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-.template-module-editor-select {
-  width: 80px;
-  padding: var(--spacing-xs) var(--spacing-sm);
-  border: 1px solid var(--color-surface);
-  border-radius: var(--radius-sm);
-  font-size: 0.875rem;
-  background-color: rgba(255, 255, 255, 0.05);
-  color: var(--color-text);
-  transition: all 0.2s;
+.header-editor__header-icon {
+  color: var(--color-primary);
+  font-size: 18px;
 }
 
-.template-module-editor-select:focus {
-  outline: none;
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 2px rgba(255, 171, 88, 0.2);
+.header-editor__header-title {
+  font-size: 16px;
+  font-weight: 500;
 }
 
-.template-module-editor-input {
+/* Header items */
+.header-editor__items {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.header-editor__item {
+  display: flex;
+  gap: 12px;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  transition: all 0.2s ease;
+}
+
+.header-editor__item:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.header-editor__item-inputs {
+  display: flex;
   flex: 1;
-  padding: var(--spacing-xs) var(--spacing-sm);
-  border: 1px solid var(--color-surface);
-  border-radius: var(--radius-sm);
-  font-size: 0.875rem;
-  background-color: rgba(255, 255, 255, 0.05);
+  gap: 8px;
+}
+
+.header-editor__level-select {
+  width: 70px;
+  padding: 8px 10px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
   color: var(--color-text);
+  font-size: 14px;
+  font-weight: 500;
   transition: all 0.2s;
 }
 
-.template-module-editor-input:focus {
+.header-editor__level-select:focus {
   outline: none;
   border-color: var(--color-primary);
-  box-shadow: 0 0 0 2px rgba(255, 171, 88, 0.2);
+  box-shadow: 0 0 0 1px rgba(var(--color-primary-rgb), 0.2);
+  background: rgba(255, 255, 255, 0.08);
 }
 
-.template-module-editor-line-action {
-  background: none;
-  border: none;
-  cursor: pointer;
-  width: 30px;
-  height: 30px;
-  border-radius: var(--radius-sm);
+.header-editor__text-input {
+  flex: 1;
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+  color: var(--color-text);
+  font-size: 14px;
+  transition: all 0.2s;
+}
+
+.header-editor__text-input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: 0 0 0 1px rgba(var(--color-primary-rgb), 0.2);
+}
+
+.header-editor__item-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.header-editor__move-btn,
+.header-editor__delete-btn {
+  width: 28px;
+  height: 28px;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--color-text-muted);
+  background: rgba(255, 255, 255, 0.05);
+  border: none;
+  border-radius: 6px;
+  color: rgba(255, 255, 255, 0.5);
+  cursor: pointer;
   transition: all 0.2s;
-  opacity: 0.7;
+  font-size: 12px;
 }
 
-.template-module-editor-line-action:hover {
-  background-color: rgba(239, 68, 68, 0.1);
+.header-editor__move-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--color-text);
+}
+
+.header-editor__move-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.header-editor__delete-btn:hover {
+  background: rgba(239, 68, 68, 0.2);
   color: #ef4444;
-  opacity: 1;
+}
+
+/* Add button */
+.header-editor__add-section {
+  margin-top: 8px;
+}
+
+.header-editor__add-btn {
+  width: 100%;
+  padding: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: rgba(var(--color-primary-rgb), 0.1);
+  border: 1px dashed rgba(var(--color-primary-rgb), 0.3);
+  border-radius: 8px;
+  color: var(--color-primary);
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s;
+}
+
+.header-editor__add-btn:hover {
+  background: rgba(var(--color-primary-rgb), 0.15);
+  border-color: rgba(var(--color-primary-rgb), 0.4);
+  transform: translateY(-2px);
+}
+
+/* Responsive styles */
+@media (max-width: 768px) {
+  .header-editor__item {
+    flex-direction: column;
+  }
+  
+  .header-editor__item-actions {
+    margin-top: 8px;
+    justify-content: flex-end;
+  }
 }
 </style>

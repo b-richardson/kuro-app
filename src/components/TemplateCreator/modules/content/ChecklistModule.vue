@@ -31,11 +31,13 @@
 
       <!-- Checklist Items -->
       <div class="checklist-editor__items">
-        <div 
-          v-for="(line, idx) in module.content" 
+        <div
+          v-for="(line, idx) in module.content"
           :key="idx"
           class="checklist-editor__item"
-          :class="{'checklist-editor__item--checked': isCheckboxChecked(line)}"
+          :class="{
+            'checklist-editor__item--checked': isCheckboxChecked(line),
+          }"
         >
           <div class="checklist-editor__item-checkbox">
             <input
@@ -46,14 +48,17 @@
               @blur="setEditing(false)"
             />
           </div>
-          
-          <div class="checklist-editor__item-emoji" @click="openEmojiPicker(idx)">
+
+          <div
+            class="checklist-editor__item-emoji"
+            @click="openEmojiPicker(idx)"
+          >
             <span v-if="getItemEmoji(line)">{{ getItemEmoji(line) }}</span>
             <span v-else class="checklist-editor__item-emoji-placeholder">
               <i class="far fa-smile"></i>
             </span>
           </div>
-          
+
           <input
             type="text"
             class="checklist-editor__item-input"
@@ -62,11 +67,15 @@
             @focus="setEditing(true)"
             @blur="setEditing(false)"
             placeholder="Checklist item"
-            :ref="(el) => { if (idx === 0 && autoFocus) setInputRef(el); }"
+            :ref="
+              (el) => {
+                if (idx === 0 && autoFocus) setInputRef(el);
+              }
+            "
           />
-          
+
           <div class="checklist-editor__item-actions">
-            <button 
+            <button
               class="checklist-editor__item-move-btn"
               @click="moveItem(idx, 'up')"
               :disabled="idx === 0"
@@ -74,8 +83,8 @@
             >
               <i class="fas fa-arrow-up"></i>
             </button>
-            
-            <button 
+
+            <button
               class="checklist-editor__item-move-btn"
               @click="moveItem(idx, 'down')"
               :disabled="idx === module.content.length - 1"
@@ -83,7 +92,7 @@
             >
               <i class="fas fa-arrow-down"></i>
             </button>
-            
+
             <button
               v-if="module.content.length > 1"
               class="checklist-editor__item-delete-btn"
@@ -95,7 +104,7 @@
           </div>
         </div>
       </div>
-      
+
       <!-- Add Item Button -->
       <div class="checklist-editor__add-section">
         <button class="checklist-editor__add-btn" @click="addNewItem">
@@ -103,32 +112,35 @@
           <span>Add Item</span>
         </button>
       </div>
-      
+
       <!-- Emoji Picker -->
       <Teleport to="body">
-        <div v-if="showEmojiPicker" class="checklist-editor__emoji-picker-container">
-          <div class="checklist-editor__emoji-picker-backdrop" @click="closeEmojiPicker"></div>
+        <div
+          v-if="showEmojiPicker"
+          class="checklist-editor__emoji-picker-container"
+        >
+          <div
+            class="checklist-editor__emoji-picker-backdrop"
+            @click="closeEmojiPicker"
+          ></div>
           <div class="checklist-editor__emoji-picker">
             <div class="checklist-editor__emoji-picker-header">
               <div class="checklist-editor__emoji-picker-title">
                 <i class="far fa-smile"></i>
                 <span>Select Emoji</span>
               </div>
-              <button 
-                class="checklist-editor__emoji-picker-close" 
+              <button
+                class="checklist-editor__emoji-picker-close"
                 @click="closeEmojiPicker"
               >
                 <i class="fas fa-times"></i>
               </button>
             </div>
-            
-            <EmojiPicker 
-              @select="onEmojiSelect"
-              :native="true"
-            />
-            
+
+            <EmojiPicker @select="onEmojiSelect" :native="true" />
+
             <div class="checklist-editor__emoji-picker-footer">
-              <button 
+              <button
                 class="checklist-editor__emoji-picker-clear"
                 @click="selectEmoji('')"
               >
@@ -138,7 +150,7 @@
           </div>
         </div>
       </Teleport>
-      
+
       <!-- User Tips -->
       <div class="checklist-editor__tips">
         <div class="checklist-editor__tips-header">
@@ -160,9 +172,13 @@
 import { ref, onMounted, onUnmounted } from "vue";
 import BaseModule from "@/components/TemplateCreator/modules/core/BaseModule.vue";
 import { TemplateModule } from "@/types/TemplateModule";
-import { addNewContentLine, deleteContentLine, updateContentLine } from "@/components/TemplateCreator/modules/core/moduleUtils";
-import EmojiPicker from 'vue3-emoji-picker';
-import 'vue3-emoji-picker/css';
+import {
+  addNewContentLine,
+  deleteContentLine,
+  updateContentLine,
+} from "@/components/TemplateCreator/modules/core/moduleUtils";
+import EmojiPicker from "vue3-emoji-picker";
+import "vue3-emoji-picker/css";
 
 const props = defineProps<{
   module: TemplateModule;
@@ -210,15 +226,23 @@ const isCheckboxChecked = (line: string): boolean => {
 // Get emoji from checklist line (if any)
 const getItemEmoji = (line: string): string => {
   // Match an emoji after the checkbox syntax
-  const match = line.replace(/^- \[([ x])\]\s/, "").match(/^([\p{Emoji}\p{Emoji_Presentation}\p{Emoji_Modifier}\p{Emoji_Component}\u200d]+)\s/u);
-  return match ? match[1] : '';
+  const match = line
+    .replace(/^- \[([ x])\]\s/, "")
+    .match(
+      /^([\p{Emoji}\p{Emoji_Presentation}\p{Emoji_Modifier}\p{Emoji_Component}\u200d]+)\s/u
+    );
+  return match ? match[1] : "";
 };
 
 // Get text from checklist line (without checkbox and emoji)
 const getItemText = (line: string): string => {
   // Remove checkbox syntax and any leading emoji
-  return line.replace(/^- \[([ x])\]\s/, "")
-    .replace(/^([\p{Emoji}\p{Emoji_Presentation}\p{Emoji_Modifier}\p{Emoji_Component}\u200d]+)\s/u, "");
+  return line
+    .replace(/^- \[([ x])\]\s/, "")
+    .replace(
+      /^([\p{Emoji}\p{Emoji_Presentation}\p{Emoji_Modifier}\p{Emoji_Component}\u200d]+)\s/u,
+      ""
+    );
 };
 
 // Toggle checkbox state
@@ -226,12 +250,12 @@ const toggleCheckbox = (index: number) => {
   const emoji = getItemEmoji(props.module.content[index]);
   const text = getItemText(props.module.content[index]);
   const isChecked = isCheckboxChecked(props.module.content[index]);
-  
+
   // Construct new line with proper checkbox state
   const prefix = isChecked ? "- [ ] " : "- [x] ";
-  const emojiPart = emoji ? `${emoji} ` : '';
+  const emojiPart = emoji ? `${emoji} ` : "";
   const newLine = `${prefix}${emojiPart}${text}`;
-  
+
   const newContent = updateContentLine(props.module.content, index, newLine);
   emit("update:content", newContent);
 };
@@ -240,12 +264,12 @@ const toggleCheckbox = (index: number) => {
 const updateItemText = (index: number, text: string) => {
   const isChecked = isCheckboxChecked(props.module.content[index]);
   const emoji = getItemEmoji(props.module.content[index]);
-  
+
   // Construct new line preserving checkbox state and emoji
   const prefix = isChecked ? "- [x] " : "- [ ] ";
-  const emojiPart = emoji ? `${emoji} ` : '';
+  const emojiPart = emoji ? `${emoji} ` : "";
   const newLine = `${prefix}${emojiPart}${text}`;
-  
+
   const newContent = updateContentLine(props.module.content, index, newLine);
   emit("update:content", newContent);
 };
@@ -254,12 +278,12 @@ const updateItemText = (index: number, text: string) => {
 const updateItemEmoji = (index: number, emoji: string) => {
   const isChecked = isCheckboxChecked(props.module.content[index]);
   const text = getItemText(props.module.content[index]);
-  
+
   // Construct new line with updated emoji
   const prefix = isChecked ? "- [x] " : "- [ ] ";
-  const emojiPart = emoji ? `${emoji} ` : '';
+  const emojiPart = emoji ? `${emoji} ` : "";
   const newLine = `${prefix}${emojiPart}${text}`;
-  
+
   const newContent = updateContentLine(props.module.content, index, newLine);
   emit("update:content", newContent);
 };
@@ -276,18 +300,18 @@ const closeEmojiPicker = () => {
 
 // Handle keyboard events for emoji picker
 const handleKeyDown = (e: KeyboardEvent) => {
-  if (e.key === 'Escape' && showEmojiPicker.value) {
+  if (e.key === "Escape" && showEmojiPicker.value) {
     closeEmojiPicker();
   }
 };
 
 // Add and remove event listeners
 onMounted(() => {
-  document.addEventListener('keydown', handleKeyDown);
+  document.addEventListener("keydown", handleKeyDown);
 });
 
 onUnmounted(() => {
-  document.removeEventListener('keydown', handleKeyDown);
+  document.removeEventListener("keydown", handleKeyDown);
 });
 
 const selectEmoji = (emoji: string) => {
@@ -320,22 +344,25 @@ const deleteItem = (index: number) => {
     baseModuleRef.value?.displayToast("Cannot delete the last item", "error");
     return;
   }
-  
+
   const newContent = deleteContentLine(props.module.content, index);
   emit("update:content", newContent);
 };
 
 // Move items up or down
-const moveItem = (index: number, direction: 'up' | 'down') => {
-  if (direction === 'up' && index === 0) return;
-  if (direction === 'down' && index === props.module.content.length - 1) return;
-  
+const moveItem = (index: number, direction: "up" | "down") => {
+  if (direction === "up" && index === 0) return;
+  if (direction === "down" && index === props.module.content.length - 1) return;
+
   const newContent = [...props.module.content];
-  const targetIndex = direction === 'up' ? index - 1 : index + 1;
-  
+  const targetIndex = direction === "up" ? index - 1 : index + 1;
+
   // Swap items
-  [newContent[index], newContent[targetIndex]] = [newContent[targetIndex], newContent[index]];
-  
+  [newContent[index], newContent[targetIndex]] = [
+    newContent[targetIndex],
+    newContent[index],
+  ];
+
   emit("update:content", newContent);
 };
 </script>
@@ -704,21 +731,21 @@ const moveItem = (index: number, direction: 'up' | 'down') => {
     width: 90%;
     max-width: 350px;
   }
-  
+
   .checklist-editor__item {
     flex-wrap: wrap;
   }
-  
+
   .checklist-editor__item-input {
     flex-basis: 100%;
     order: 3;
     margin-top: 8px;
   }
-  
+
   .checklist-editor__item-actions {
     margin-left: auto;
   }
-  
+
   :deep(.v3-emoji-picker) {
     max-height: 250px;
   }

@@ -15,12 +15,7 @@ export function generateDefaultContent(
     case "checklist":
       return [""];  // Now self-contained in ChecklistModule.vue
     case "table":
-      return [
-        "| Header 1 | Header 2 | Header 3 |",
-        "|----------|----------|----------|",
-        "| Cell 1   | Cell 2   | Cell 3   |",
-        "| Cell 4   | Cell 5   | Cell 6   |",
-      ];
+      return [""];  // Now self-contained in TableModule.vue
     case "text":
       return ["Enter your text here..."];
     case "divider":
