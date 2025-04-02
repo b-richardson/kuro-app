@@ -53,6 +53,15 @@ const editor = shallowRef<Editor | undefined>(undefined);
 const preprocessContent = (content: string): string => {
   let processedContent = content;
 
+  // Process bold, italic, and bold-italic
+  // Important: Process bold-italic first because it's a combination
+  processedContent = processedContent.replace(/\*\*\*([^*]+)\*\*\*/g, '<strong><em>$1</em></strong>');
+  processedContent = processedContent.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+  processedContent = processedContent.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+  
+  // Also handle underscore style italics
+  processedContent = processedContent.replace(/_([^_]+)_/g, '<em>$1</em>');
+  
   // Preprocess dataview blocks
   processedContent = processedContent.replace(/```dataview\s+([\s\S]*?)```/g, (match, query) => {
     // Replace with explicit HTML structure
