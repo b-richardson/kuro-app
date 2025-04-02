@@ -1,17 +1,26 @@
 <template>
-  <div class="obsidian-editor" 
-       :class="{ 
-         'read-only': readOnly, 
-         'obsidian-dark-theme': isDarkTheme, 
-         'obsidian-light-theme': !isDarkTheme
-       }"
+  <div
+    class="obsidian-editor"
+    :class="{
+      'read-only': readOnly,
+      'obsidian-dark-theme': isDarkTheme,
+      'obsidian-light-theme': !isDarkTheme,
+    }"
   >
     <editor-content v-if="editor" :editor="editor" />
   </div>
 </template>
 
 <script setup lang="ts">
-import { shallowRef, onMounted, onBeforeUnmount, watch, inject, ref, nextTick } from "vue";
+import {
+  shallowRef,
+  onMounted,
+  onBeforeUnmount,
+  watch,
+  inject,
+  ref,
+  nextTick,
+} from "vue";
 import { Editor, EditorContent } from "@tiptap/vue-3";
 import StarterKit from "@tiptap/starter-kit";
 import Link from "@tiptap/extension-link";
@@ -56,18 +65,20 @@ const emit = defineEmits(["update:content"]);
 const editor = shallowRef<Editor | undefined>(undefined);
 
 // Store scroll position and selection state for restoration
-const editorState = ref<{ scrollTop: number; selection?: any }>({ scrollTop: 0 });
+const editorState = ref<{ scrollTop: number; selection?: any }>({
+  scrollTop: 0,
+});
 
 // Helper to save editor state
 const saveEditorState = () => {
   if (!editor.value || editor.value.isDestroyed) return;
-  
+
   // Save current scroll position
-  const editorDOM = document.querySelector('.obsidian-editor .ProseMirror');
+  const editorDOM = document.querySelector(".obsidian-editor .ProseMirror");
   if (editorDOM) {
     editorState.value.scrollTop = (editorDOM as HTMLElement).scrollTop;
   }
-  
+
   // Save selection if needed (for future use)
   if (editor.value.isFocused) {
     editorState.value.selection = editor.value.state.selection;
@@ -77,15 +88,15 @@ const saveEditorState = () => {
 // Helper to restore editor state
 const restoreEditorState = () => {
   if (!editor.value || editor.value.isDestroyed) return;
-  
+
   // Use nextTick to ensure DOM has updated
   nextTick(() => {
     // Restore scroll position
-    const editorDOM = document.querySelector('.obsidian-editor .ProseMirror');
+    const editorDOM = document.querySelector(".obsidian-editor .ProseMirror");
     if (editorDOM && editorState.value.scrollTop) {
       (editorDOM as HTMLElement).scrollTop = editorState.value.scrollTop;
     }
-    
+
     // Restore selection if needed (for future use)
     if (editorState.value.selection && !props.readOnly) {
       // Only restore selection if we're not in read-only mode
@@ -98,36 +109,36 @@ const restoreEditorState = () => {
 const ObsidianTable = Table.extend({
   addNodeView() {
     return ({ editor, node, getPos }) => {
-      const dom = document.createElement('div');
-      dom.className = 'obsidian-table-wrapper';
-      
-      const table = document.createElement('table');
-      table.className = 'obsidian-table';
-      
+      const dom = document.createElement("div");
+      dom.className = "obsidian-table-wrapper";
+
+      const table = document.createElement("table");
+      table.className = "obsidian-table";
+
       dom.append(table);
-      
+
       // Add mutation observer to enhance table cells with UI controls
       const observer = new MutationObserver(() => {
         // Add resize handles to table cells
-        const cells = table.querySelectorAll('th, td');
-        cells.forEach(cell => {
-          if (!cell.querySelector('.column-resize-handle')) {
-            const handle = document.createElement('div');
-            handle.className = 'column-resize-handle';
+        const cells = table.querySelectorAll("th, td");
+        cells.forEach((cell) => {
+          if (!cell.querySelector(".column-resize-handle")) {
+            const handle = document.createElement("div");
+            handle.className = "column-resize-handle";
             cell.appendChild(handle);
           }
         });
-        
+
         // Add "add column" button to last cell in each row
-        const rows = table.querySelectorAll('tr');
-        rows.forEach(row => {
-          const lastCell = row.querySelector('th:last-child, td:last-child');
-          if (lastCell && !lastCell.querySelector('.add-column-button')) {
-            const button = document.createElement('div');
-            button.className = 'add-column-button';
-            button.innerHTML = '+';
-            button.title = 'Add column';
-            button.addEventListener('click', (e) => {
+        const rows = table.querySelectorAll("tr");
+        rows.forEach((row) => {
+          const lastCell = row.querySelector("th:last-child, td:last-child");
+          if (lastCell && !lastCell.querySelector(".add-column-button")) {
+            const button = document.createElement("div");
+            button.className = "add-column-button";
+            button.innerHTML = "+";
+            button.title = "Add column";
+            button.addEventListener("click", (e) => {
               e.preventDefault();
               e.stopPropagation();
               if (editor.isEditable) {
@@ -137,17 +148,17 @@ const ObsidianTable = Table.extend({
             lastCell.appendChild(button);
           }
         });
-        
+
         // Add "add row" button to last row
         const lastRow = rows[rows.length - 1];
         if (lastRow) {
-          const middleCell = lastRow.querySelector('td:first-child');
-          if (middleCell && !middleCell.querySelector('.add-row-button')) {
-            const button = document.createElement('div');
-            button.className = 'add-row-button';
-            button.innerHTML = '+';
-            button.title = 'Add row';
-            button.addEventListener('click', (e) => {
+          const middleCell = lastRow.querySelector("td:first-child");
+          if (middleCell && !middleCell.querySelector(".add-row-button")) {
+            const button = document.createElement("div");
+            button.className = "add-row-button";
+            button.innerHTML = "+";
+            button.title = "Add row";
+            button.addEventListener("click", (e) => {
               e.preventDefault();
               e.stopPropagation();
               if (editor.isEditable) {
@@ -158,24 +169,24 @@ const ObsidianTable = Table.extend({
           }
         }
       });
-      
+
       // Start observing
-      observer.observe(table, { 
-        childList: true, 
+      observer.observe(table, {
+        childList: true,
         subtree: true,
         attributes: false,
-        characterData: false
+        characterData: false,
       });
-      
+
       return {
         dom,
         contentDOM: table,
         destroy: () => {
           observer.disconnect();
-        }
+        },
       };
     };
-  }
+  },
 });
 
 // Helper function to preprocess markdown content to make it more compatible with Obsidian
@@ -184,45 +195,64 @@ const preprocessContent = (content: string): string => {
 
   // Process bold, italic, and bold-italic
   // Important: Process bold-italic first because it's a combination
-  processedContent = processedContent.replace(/\*\*\*([^*]+)\*\*\*/g, '<strong><em>$1</em></strong>');
-  processedContent = processedContent.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
-  processedContent = processedContent.replace(/\*([^*]+)\*/g, '<em>$1</em>');
-  
+  processedContent = processedContent.replace(
+    /\*\*\*([^*]+)\*\*\*/g,
+    "<strong><em>$1</em></strong>"
+  );
+  processedContent = processedContent.replace(
+    /\*\*([^*]+)\*\*/g,
+    "<strong>$1</strong>"
+  );
+  processedContent = processedContent.replace(/\*([^*]+)\*/g, "<em>$1</em>");
+
   // Also handle underscore style italics
-  processedContent = processedContent.replace(/_([^_]+)_/g, '<em>$1</em>');
-  
+  processedContent = processedContent.replace(/_([^_]+)_/g, "<em>$1</em>");
+
   // We'll let TipTap handle the list rendering entirely
   // No custom preprocessing for lists
-  
+
   // Pre-process task list items to ensure consistent formatting
-  processedContent = processedContent.replace(/^(\s*)- \[([ xX])\]\s+(.+)$/gm, (match, indent, checked, content) => {
-    // This formats task items in a way TipTap can reliably parse
-    return `${indent}- [${checked}] ${content}`;
-  });
-  
+  processedContent = processedContent.replace(
+    /^(\s*)- \[([ xX])\]\s+(.+)$/gm,
+    (match, indent, checked, content) => {
+      // This formats task items in a way TipTap can reliably parse
+      return `${indent}- [${checked}] ${content}`;
+    }
+  );
+
   // Pre-process tables to ensure proper parsing
-  processedContent = processedContent.replace(/^\|(.*)\|$/gm, (match, content) => {
-    return `|${content}|`;
-  });
-  
+  processedContent = processedContent.replace(
+    /^\|(.*)\|$/gm,
+    (match, content) => {
+      return `|${content}|`;
+    }
+  );
+
   // Preprocess dataview blocks
-  processedContent = processedContent.replace(/```dataview\s+([\s\S]*?)```/g, (match, query) => {
-    // Replace with explicit HTML structure
-    return `<div class="dataview-block-container"><pre data-language="dataview"><code>${query.trim()}</code></pre></div>`;
-  });
-  
+  processedContent = processedContent.replace(
+    /```dataview\s+([\s\S]*?)```/g,
+    (match, query) => {
+      // Replace with explicit HTML structure
+      return `<div class="dataview-block-container"><pre data-language="dataview"><code>${query.trim()}</code></pre></div>`;
+    }
+  );
+
   // Preprocess callouts to make them more compatible with Obsidian
-  processedContent = processedContent.replace(/>\s*\[!(\w+)\](?:\s*([^\n]*))?(?:\n>?\s*([^\n]*(?:\n>?\s*[^\n]*)*))?/g, 
+  processedContent = processedContent.replace(
+    />\s*\[!(\w+)\](?:\s*([^\n]*))?(?:\n>?\s*([^\n]*(?:\n>?\s*[^\n]*)*))?/g,
     (match, type, title, content) => {
-      const titleAttr = title ? ` data-callout-title="${title.trim()}"` : '';
-      const contentStr = content ? content.replace(/^\s*>\s*/gm, '') : '';
+      const titleAttr = title ? ` data-callout-title="${title.trim()}"` : "";
+      const contentStr = content ? content.replace(/^\s*>\s*/gm, "") : "";
       return `<div class="obsidian-callout obsidian-callout-${type.toLowerCase()}" data-callout-type="${type.toLowerCase()}"${titleAttr}>${contentStr.trim()}</div>`;
     }
   );
-  
+
   // Enhance horizontal rule rendering
-  processedContent = processedContent.replace(/^(\s*[*\-_]{3,}\s*)$/gm, '<hr class="obsidian-hr" />');
-  
+  processedContent = processedContent.replace(
+    /^(\s*[*\-_]{3,}\s*)$/gm,
+    '<hr class="obsidian-hr" />'
+  );
+
   return processedContent;
 };
 
@@ -243,49 +273,39 @@ onMounted(() => {
           keepMarks: true,
           keepAttributes: true,
           HTMLAttributes: {
-            class: 'obsidian-bullet-list',
+            class: "obsidian-bullet-list",
           },
         },
         orderedList: {
           keepMarks: true,
           keepAttributes: true,
           HTMLAttributes: {
-            class: 'obsidian-ordered-list',
+            class: "obsidian-ordered-list",
           },
         },
         listItem: {
           HTMLAttributes: {
-            class: 'obsidian-list-item',
+            class: "obsidian-list-item",
           },
         },
       }),
-      
+
       // Add Task List and Task Item extensions for Obsidian-style task lists
       TaskList.configure({
-        itemTypeName: 'taskItem',
+        itemTypeName: "taskItem",
         HTMLAttributes: {
-          class: 'obsidian-task-list',
+          class: "obsidian-task-list",
         },
       }),
-      
+
       TaskItem.configure({
         nested: true,
-        itemTypeName: 'listItem',
         HTMLAttributes: {
-          class: 'obsidian-task-item',
+          class: "obsidian-task-item",
         },
-        onReadOnlyChecked: (node, checked) => {
+        onReadOnlyChecked: () => {
           // Allow toggling checkboxes even in read-only mode to match Obsidian behavior
           return true;
-        },
-        // Define custom rendering of checkbox for better control
-        renderLabel: ({ checked, onChange }) => {
-          const attrs = {
-            type: 'checkbox',
-            checked,
-            onclick: onChange,
-          };
-          return ['span', { class: 'obsidian-checkbox-wrapper' }, ['input', attrs]];
         },
       }),
 
@@ -299,27 +319,27 @@ onMounted(() => {
       Placeholder.configure({
         placeholder: "Start writing...",
       }),
-      
+
       // Add custom Obsidian-style table extension
       ObsidianTable.configure({
         resizable: true,
         HTMLAttributes: {
-          class: 'obsidian-table',
+          class: "obsidian-table",
         },
       }),
       TableRow.configure({
         HTMLAttributes: {
-          class: 'obsidian-table-row',
+          class: "obsidian-table-row",
         },
       }),
       TableHeader.configure({
         HTMLAttributes: {
-          class: 'obsidian-table-header',
+          class: "obsidian-table-header",
         },
       }),
       TableCell.configure({
         HTMLAttributes: {
-          class: 'obsidian-table-cell',
+          class: "obsidian-table-cell",
         },
       }),
 
@@ -327,7 +347,7 @@ onMounted(() => {
       CodeBlockLowlight.configure({
         lowlight,
         HTMLAttributes: {
-          class: 'obsidian-code-block',
+          class: "obsidian-code-block",
         },
       }),
 
@@ -381,19 +401,19 @@ watch(
   (newContent, oldContent) => {
     // Only set content if editor exists
     if (!editor.value || editor.value.isDestroyed) return;
-    
+
     // Skip if content hasn't actually changed
     if (newContent === oldContent) return;
-    
+
     // Save the current editor state
     saveEditorState();
-    
+
     // Preprocess content
     let processedContent = preprocessContent(newContent);
-    
+
     // Update content in the editor, preserving history
     editor.value.commands.setContent(processedContent, false);
-    
+
     // Restore state after content update
     restoreEditorState();
   },
@@ -492,106 +512,118 @@ watch(
 
 /* Node selection styles */
 .obsidian-editor .node-selectedCell {
-  background-color: rgba(var(--obsidian-interactive-accent-rgb, 127, 109, 242), 0.1);
+  background-color: rgba(
+    var(--obsidian-interactive-accent-rgb, 127, 109, 242),
+    0.1
+  );
 }
 
-/* Basic task list styling to match Obsidian */
-.obsidian-editor .ProseMirror ul[data-type="taskList"] {
-  list-style-type: none;
-  padding-left: 0;
-  margin-left: 1.5em;
-  margin-bottom: 1em;
+/* 
+  Focused CSS solution for task list layout issues
+  Based on the exact DOM structure from the screenshot
+*/
+
+/* First, let's reset all elements to make sure there are no unexpected styles */
+.tiptap.ProseMirror li.obsidian-task-item,
+.tiptap.ProseMirror li.obsidian-task-item > label,
+.tiptap.ProseMirror li.obsidian-task-item > div,
+.tiptap.ProseMirror li.obsidian-task-item > div > p {
+  margin: 0;
+  padding: 0;
 }
 
-/* Reset some default TipTap styling that might interfere */
-.obsidian-editor .ProseMirror ul[data-type="taskList"] li {
-  padding-left: 0;
-}
-
-/* Fix task item layout to be on a single line */
-.obsidian-editor .ProseMirror li[data-type="taskItem"] {
-  position: relative;
+/* Force the task item to use flex layout */
+.tiptap.ProseMirror li.obsidian-task-item {
   display: flex;
   flex-direction: row;
-  align-items: baseline;
-  margin-bottom: 0.25em;
-  min-height: 20px;
+  align-items: flex-start;
+  margin-bottom: 0.5em;
 }
 
-/* Set proper spacing for task item content */
-.obsidian-editor .ProseMirror li[data-type="taskItem"] > div {
-  flex: 1;
-  margin: 0;
-  padding: 0;
-  display: inline-block;
-}
-
-/* Fix paragraph spacing inside task items */
-.obsidian-editor .ProseMirror li[data-type="taskItem"] > div > p {
-  display: inline;
-  margin: 0;
-  padding: 0;
-}
-
-/* Style the custom checkbox wrapper to ensure proper spacing */
-.obsidian-editor .ProseMirror li[data-type="taskItem"] .obsidian-checkbox-wrapper {
+/* Control the label containing the checkbox */
+.tiptap.ProseMirror li.obsidian-task-item > label {
+  flex-shrink: 0;
+  margin-right: 8px;
+  margin-top: 0.25em; /* Slight adjustment to align with text */
   display: inline-flex;
   align-items: center;
-  margin-right: 0.5em;
-  position: relative;
-  vertical-align: middle;
 }
 
-/* Style the custom checkbox to match Obsidian */
-.obsidian-editor .ProseMirror li[data-type="taskItem"] input[type="checkbox"] {
-  cursor: pointer;
+/* Hide the empty span that might be causing layout issues */
+.tiptap.ProseMirror li.obsidian-task-item > label > span {
+  display: none;
+}
+
+/* Style the checkbox */
+.tiptap.ProseMirror li.obsidian-task-item > label > input[type="checkbox"] {
   width: 16px;
   height: 16px;
-  border-radius: 3px;
-  vertical-align: middle;
-  appearance: none;
-  -webkit-appearance: none;
-  border: 1px solid var(--obsidian-text-muted);
-  background-color: rgba(255, 255, 255, 0.05);
   position: relative;
   margin: 0;
-  transition: all 0.15s ease;
+  border-radius: 3px;
+  appearance: none;
+  -webkit-appearance: none;
+  border: 1px solid var(--obsidian-text-muted, #999);
+  background-color: transparent;
+  cursor: pointer;
 }
 
-/* Hover state for checkbox */
-.obsidian-editor .ProseMirror li[data-type="taskItem"] input[type="checkbox"]:hover {
-  border-color: var(--obsidian-interactive-accent);
+/* Checked state styling */
+.tiptap.ProseMirror
+  li.obsidian-task-item
+  > label
+  > input[type="checkbox"]:checked {
+  background-color: var(--obsidian-interactive-accent, #7f6df2);
+  border-color: var(--obsidian-interactive-accent, #7f6df2);
 }
 
-/* Checked state */
-.obsidian-editor .ProseMirror li[data-type="taskItem"] input[type="checkbox"]:checked {
-  background-color: #7f6df2;
-  border-color: #7f6df2;
-}
-
-.obsidian-editor .ProseMirror li[data-type="taskItem"] input[type="checkbox"]:checked::after {
-  content: '✓';
-  color: black;
+/* Add checkmark and Adjust the checkmark position and color */
+.tiptap.ProseMirror
+  li.obsidian-task-item
+  > label
+  > input[type="checkbox"]:checked::after {
+  content: "✓";
+  color: black; /* Change to black to match Obsidian native */
   position: absolute;
-  left: 3px;
-  top: -1px;
-  font-size: 11px;
+  left: 1px; /* Adjust left position to center horizontally */
+  top: -2px; /* Adjust top position to center vertically */
+  font-size: 14px; /* Slightly smaller size for better fit */
   font-weight: bold;
-  display: inline-block;
 }
 
-/* Apply strikethrough to completed tasks - using a more specific approach */
-.obsidian-editor .ProseMirror li[data-type="taskItem"][data-checked="true"] {
-  color: var(--obsidian-text-muted);
+/* The div container needs to be inline */
+.tiptap.ProseMirror li.obsidian-task-item > div {
+  flex: 1;
+  min-width: 0;
+  display: inline;
 }
 
-.obsidian-editor .ProseMirror li[data-type="taskItem"][data-checked="true"] > div,
-.obsidian-editor .ProseMirror li[data-type="taskItem"][data-checked="true"] > div p,
-.obsidian-editor .ProseMirror li[data-type="taskItem"][data-checked="true"] span {
-  color: var(--obsidian-text-muted);
+/* Make paragraph display inline */
+.tiptap.ProseMirror li.obsidian-task-item > div > p {
+  display: inline;
+}
+
+/* Strikethrough for completed tasks */
+.tiptap.ProseMirror li.obsidian-task-item[data-checked="true"] > div,
+.tiptap.ProseMirror li.obsidian-task-item[data-checked="true"] > div > p {
+  color: var(--obsidian-text-muted, #999);
   text-decoration: line-through;
-  text-decoration-color: var(--obsidian-text-muted);
   opacity: 0.7;
+}
+
+/* Critical: Ensure our styles take precedence over user agent styles */
+@media all {
+  .tiptap.ProseMirror li.obsidian-task-item {
+    display: flex !important;
+  }
+
+  .tiptap.ProseMirror li.obsidian-task-item > div {
+    display: inline !important;
+  }
+
+  .tiptap.ProseMirror li.obsidian-task-item > div > p {
+    display: inline !important;
+  }
 }
 
 /* Table styling to match Obsidian */
@@ -699,7 +731,10 @@ watch(
 
 /* Selected table cell styling */
 .obsidian-editor .ProseMirror table .selectedCell {
-  background-color: rgba(var(--obsidian-interactive-accent-rgb, 127, 109, 242), 0.1);
+  background-color: rgba(
+    var(--obsidian-interactive-accent-rgb, 127, 109, 242),
+    0.1
+  );
 }
 
 /* For mobile and smaller screens */
@@ -707,7 +742,7 @@ watch(
   .obsidian-editor .ProseMirror {
     padding: var(--obsidian-size-16);
   }
-  
+
   .obsidian-editor .ProseMirror table {
     width: 100%;
     display: block;
