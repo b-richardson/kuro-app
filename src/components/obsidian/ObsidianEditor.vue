@@ -11,12 +11,18 @@
 </template>
 
 <script setup lang="ts">
-import { shallowRef, onMounted, onBeforeUnmount, watch, inject, ref } from "vue";
+import { shallowRef, onMounted, onBeforeUnmount, watch, inject, ref, nextTick } from "vue";
 import { Editor, EditorContent } from "@tiptap/vue-3";
 import StarterKit from "@tiptap/starter-kit";
 import Link from "@tiptap/extension-link";
 import Placeholder from "@tiptap/extension-placeholder";
 import CodeBlockLowlight from "@tiptap/extension-code-block-lowlight";
+import TaskList from "@tiptap/extension-task-list";
+import TaskItem from "@tiptap/extension-task-item";
+import Table from "@tiptap/extension-table";
+import TableRow from "@tiptap/extension-table-row";
+import TableCell from "@tiptap/extension-table-cell";
+import TableHeader from "@tiptap/extension-table-header";
 import { common, createLowlight } from "lowlight";
 import { ObsidianCallout } from "./custom-extensions/obsidianCallout";
 import { ObsidianLink } from "./custom-extensions/obsidianInternalLink";
@@ -49,6 +55,129 @@ const emit = defineEmits(["update:content"]);
 // Use shallowRef for complex objects like Editor
 const editor = shallowRef<Editor | undefined>(undefined);
 
+// Store scroll position and selection state for restoration
+const editorState = ref<{ scrollTop: number; selection?: any }>({ scrollTop: 0 });
+
+// Helper to save editor state
+const saveEditorState = () => {
+  if (!editor.value || editor.value.isDestroyed) return;
+  
+  // Save current scroll position
+  const editorDOM = document.querySelector('.obsidian-editor .ProseMirror');
+  if (editorDOM) {
+    editorState.value.scrollTop = (editorDOM as HTMLElement).scrollTop;
+  }
+  
+  // Save selection if needed (for future use)
+  if (editor.value.isFocused) {
+    editorState.value.selection = editor.value.state.selection;
+  }
+};
+
+// Helper to restore editor state
+const restoreEditorState = () => {
+  if (!editor.value || editor.value.isDestroyed) return;
+  
+  // Use nextTick to ensure DOM has updated
+  nextTick(() => {
+    // Restore scroll position
+    const editorDOM = document.querySelector('.obsidian-editor .ProseMirror');
+    if (editorDOM && editorState.value.scrollTop) {
+      (editorDOM as HTMLElement).scrollTop = editorState.value.scrollTop;
+    }
+    
+    // Restore selection if needed (for future use)
+    if (editorState.value.selection && !props.readOnly) {
+      // Only restore selection if we're not in read-only mode
+      editor.value?.commands.setTextSelection(editorState.value.selection);
+    }
+  });
+};
+
+// Custom extension for Obsidian-style table UI
+const ObsidianTable = Table.extend({
+  addNodeView() {
+    return ({ editor, node, getPos }) => {
+      const dom = document.createElement('div');
+      dom.className = 'obsidian-table-wrapper';
+      
+      const table = document.createElement('table');
+      table.className = 'obsidian-table';
+      
+      dom.append(table);
+      
+      // Add mutation observer to enhance table cells with UI controls
+      const observer = new MutationObserver(() => {
+        // Add resize handles to table cells
+        const cells = table.querySelectorAll('th, td');
+        cells.forEach(cell => {
+          if (!cell.querySelector('.column-resize-handle')) {
+            const handle = document.createElement('div');
+            handle.className = 'column-resize-handle';
+            cell.appendChild(handle);
+          }
+        });
+        
+        // Add "add column" button to last cell in each row
+        const rows = table.querySelectorAll('tr');
+        rows.forEach(row => {
+          const lastCell = row.querySelector('th:last-child, td:last-child');
+          if (lastCell && !lastCell.querySelector('.add-column-button')) {
+            const button = document.createElement('div');
+            button.className = 'add-column-button';
+            button.innerHTML = '+';
+            button.title = 'Add column';
+            button.addEventListener('click', (e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              if (editor.isEditable) {
+                editor.commands.addColumnAfter();
+              }
+            });
+            lastCell.appendChild(button);
+          }
+        });
+        
+        // Add "add row" button to last row
+        const lastRow = rows[rows.length - 1];
+        if (lastRow) {
+          const middleCell = lastRow.querySelector('td:first-child');
+          if (middleCell && !middleCell.querySelector('.add-row-button')) {
+            const button = document.createElement('div');
+            button.className = 'add-row-button';
+            button.innerHTML = '+';
+            button.title = 'Add row';
+            button.addEventListener('click', (e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              if (editor.isEditable) {
+                editor.commands.addRowAfter();
+              }
+            });
+            middleCell.appendChild(button);
+          }
+        }
+      });
+      
+      // Start observing
+      observer.observe(table, { 
+        childList: true, 
+        subtree: true,
+        attributes: false,
+        characterData: false
+      });
+      
+      return {
+        dom,
+        contentDOM: table,
+        destroy: () => {
+          observer.disconnect();
+        }
+      };
+    };
+  }
+});
+
 // Helper function to preprocess markdown content to make it more compatible with Obsidian
 const preprocessContent = (content: string): string => {
   let processedContent = content;
@@ -64,6 +193,17 @@ const preprocessContent = (content: string): string => {
   
   // We'll let TipTap handle the list rendering entirely
   // No custom preprocessing for lists
+  
+  // Pre-process task list items to ensure consistent formatting
+  processedContent = processedContent.replace(/^(\s*)- \[([ xX])\]\s+(.+)$/gm, (match, indent, checked, content) => {
+    // This formats task items in a way TipTap can reliably parse
+    return `${indent}- [${checked}] ${content}`;
+  });
+  
+  // Pre-process tables to ensure proper parsing
+  processedContent = processedContent.replace(/^\|(.*)\|$/gm, (match, content) => {
+    return `|${content}|`;
+  });
   
   // Preprocess dataview blocks
   processedContent = processedContent.replace(/```dataview\s+([\s\S]*?)```/g, (match, query) => {
@@ -119,6 +259,35 @@ onMounted(() => {
           },
         },
       }),
+      
+      // Add Task List and Task Item extensions for Obsidian-style task lists
+      TaskList.configure({
+        itemTypeName: 'taskItem',
+        HTMLAttributes: {
+          class: 'obsidian-task-list',
+        },
+      }),
+      
+      TaskItem.configure({
+        nested: true,
+        itemTypeName: 'listItem',
+        HTMLAttributes: {
+          class: 'obsidian-task-item',
+        },
+        onReadOnlyChecked: (node, checked) => {
+          // Allow toggling checkboxes even in read-only mode to match Obsidian behavior
+          return true;
+        },
+        // Define custom rendering of checkbox for better control
+        renderLabel: ({ checked, onChange }) => {
+          const attrs = {
+            type: 'checkbox',
+            checked,
+            onclick: onChange,
+          };
+          return ['span', { class: 'obsidian-checkbox-wrapper' }, ['input', attrs]];
+        },
+      }),
 
       Link.configure({
         openOnClick: false,
@@ -129,6 +298,29 @@ onMounted(() => {
 
       Placeholder.configure({
         placeholder: "Start writing...",
+      }),
+      
+      // Add custom Obsidian-style table extension
+      ObsidianTable.configure({
+        resizable: true,
+        HTMLAttributes: {
+          class: 'obsidian-table',
+        },
+      }),
+      TableRow.configure({
+        HTMLAttributes: {
+          class: 'obsidian-table-row',
+        },
+      }),
+      TableHeader.configure({
+        HTMLAttributes: {
+          class: 'obsidian-table-header',
+        },
+      }),
+      TableCell.configure({
+        HTMLAttributes: {
+          class: 'obsidian-table-cell',
+        },
       }),
 
       // Add CodeBlockLowlight after our custom dataview handler
@@ -186,16 +378,24 @@ watch(
 // Watch for content changes
 watch(
   () => props.content,
-  (newContent) => {
+  (newContent, oldContent) => {
     // Only set content if editor exists
     if (!editor.value || editor.value.isDestroyed) return;
-
-    // If editor doesn't have focus, we can safely update
-    if (!editor.value.isFocused) {
-      // Pre-process the content
-      let processedContent = preprocessContent(newContent);
-      editor.value.commands.setContent(processedContent, false);
-    }
+    
+    // Skip if content hasn't actually changed
+    if (newContent === oldContent) return;
+    
+    // Save the current editor state
+    saveEditorState();
+    
+    // Preprocess content
+    let processedContent = preprocessContent(newContent);
+    
+    // Update content in the editor, preserving history
+    editor.value.commands.setContent(processedContent, false);
+    
+    // Restore state after content update
+    restoreEditorState();
   },
   { deep: true }
 );
@@ -295,10 +495,223 @@ watch(
   background-color: rgba(var(--obsidian-interactive-accent-rgb, 127, 109, 242), 0.1);
 }
 
+/* Basic task list styling to match Obsidian */
+.obsidian-editor .ProseMirror ul[data-type="taskList"] {
+  list-style-type: none;
+  padding-left: 0;
+  margin-left: 1.5em;
+  margin-bottom: 1em;
+}
+
+/* Reset some default TipTap styling that might interfere */
+.obsidian-editor .ProseMirror ul[data-type="taskList"] li {
+  padding-left: 0;
+}
+
+/* Fix task item layout to be on a single line */
+.obsidian-editor .ProseMirror li[data-type="taskItem"] {
+  position: relative;
+  display: flex;
+  flex-direction: row;
+  align-items: baseline;
+  margin-bottom: 0.25em;
+  min-height: 20px;
+}
+
+/* Set proper spacing for task item content */
+.obsidian-editor .ProseMirror li[data-type="taskItem"] > div {
+  flex: 1;
+  margin: 0;
+  padding: 0;
+  display: inline-block;
+}
+
+/* Fix paragraph spacing inside task items */
+.obsidian-editor .ProseMirror li[data-type="taskItem"] > div > p {
+  display: inline;
+  margin: 0;
+  padding: 0;
+}
+
+/* Style the custom checkbox wrapper to ensure proper spacing */
+.obsidian-editor .ProseMirror li[data-type="taskItem"] .obsidian-checkbox-wrapper {
+  display: inline-flex;
+  align-items: center;
+  margin-right: 0.5em;
+  position: relative;
+  vertical-align: middle;
+}
+
+/* Style the custom checkbox to match Obsidian */
+.obsidian-editor .ProseMirror li[data-type="taskItem"] input[type="checkbox"] {
+  cursor: pointer;
+  width: 16px;
+  height: 16px;
+  border-radius: 3px;
+  vertical-align: middle;
+  appearance: none;
+  -webkit-appearance: none;
+  border: 1px solid var(--obsidian-text-muted);
+  background-color: rgba(255, 255, 255, 0.05);
+  position: relative;
+  margin: 0;
+  transition: all 0.15s ease;
+}
+
+/* Hover state for checkbox */
+.obsidian-editor .ProseMirror li[data-type="taskItem"] input[type="checkbox"]:hover {
+  border-color: var(--obsidian-interactive-accent);
+}
+
+/* Checked state */
+.obsidian-editor .ProseMirror li[data-type="taskItem"] input[type="checkbox"]:checked {
+  background-color: #7f6df2;
+  border-color: #7f6df2;
+}
+
+.obsidian-editor .ProseMirror li[data-type="taskItem"] input[type="checkbox"]:checked::after {
+  content: '✓';
+  color: black;
+  position: absolute;
+  left: 3px;
+  top: -1px;
+  font-size: 11px;
+  font-weight: bold;
+  display: inline-block;
+}
+
+/* Apply strikethrough to completed tasks - using a more specific approach */
+.obsidian-editor .ProseMirror li[data-type="taskItem"][data-checked="true"] {
+  color: var(--obsidian-text-muted);
+}
+
+.obsidian-editor .ProseMirror li[data-type="taskItem"][data-checked="true"] > div,
+.obsidian-editor .ProseMirror li[data-type="taskItem"][data-checked="true"] > div p,
+.obsidian-editor .ProseMirror li[data-type="taskItem"][data-checked="true"] span {
+  color: var(--obsidian-text-muted);
+  text-decoration: line-through;
+  text-decoration-color: var(--obsidian-text-muted);
+  opacity: 0.7;
+}
+
+/* Table styling to match Obsidian */
+.obsidian-editor .ProseMirror .obsidian-table-wrapper {
+  margin: 0.5em 0;
+  position: relative;
+  overflow: auto;
+}
+
+.obsidian-editor .ProseMirror table {
+  border-collapse: collapse;
+  width: auto;
+  min-width: 50%;
+  max-width: 100%;
+  table-layout: fixed;
+  border: 1px solid var(--obsidian-background-modifier-border);
+  overflow: hidden;
+  position: relative;
+  font-size: 0.85em;
+}
+
+.obsidian-editor .ProseMirror table th {
+  background-color: var(--obsidian-background-secondary);
+  font-weight: 600;
+  text-align: left;
+  padding: 0.25em 0.3em;
+  border-bottom: 1px solid var(--obsidian-background-modifier-border);
+  position: relative;
+  line-height: 1.3;
+  min-width: 80px;
+  max-width: 200px;
+}
+
+.obsidian-editor .ProseMirror table td {
+  padding: 0.25em 0.3em;
+  border: 1px solid var(--obsidian-background-modifier-border);
+  position: relative;
+  line-height: 1.3;
+  min-width: 80px;
+  max-width: 200px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Column resize handle styling */
+.obsidian-editor .ProseMirror table .column-resize-handle {
+  position: absolute;
+  right: -1px;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background-color: var(--obsidian-interactive-accent);
+  cursor: col-resize;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  z-index: 5;
+}
+
+.obsidian-editor .ProseMirror table th:hover .column-resize-handle,
+.obsidian-editor .ProseMirror table td:hover .column-resize-handle {
+  opacity: 0.3;
+}
+
+.obsidian-editor .ProseMirror table .column-resize-handle.dragging {
+  opacity: 0.5;
+}
+
+/* Add column/row buttons styling */
+.obsidian-editor .ProseMirror table .add-column-button,
+.obsidian-editor .ProseMirror table .add-row-button {
+  position: absolute;
+  background-color: var(--obsidian-interactive-accent);
+  color: white;
+  border-radius: 50%;
+  width: 14px;
+  height: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  z-index: 10;
+}
+
+.obsidian-editor .ProseMirror table .add-column-button {
+  right: -7px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.obsidian-editor .ProseMirror table .add-row-button {
+  bottom: -7px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.obsidian-editor .ProseMirror table tr:last-child:hover .add-row-button,
+.obsidian-editor .ProseMirror table th:last-child:hover .add-column-button,
+.obsidian-editor .ProseMirror table td:last-child:hover .add-column-button {
+  opacity: 1;
+}
+
+/* Selected table cell styling */
+.obsidian-editor .ProseMirror table .selectedCell {
+  background-color: rgba(var(--obsidian-interactive-accent-rgb, 127, 109, 242), 0.1);
+}
+
 /* For mobile and smaller screens */
 @media (max-width: 768px) {
   .obsidian-editor .ProseMirror {
     padding: var(--obsidian-size-16);
+  }
+  
+  .obsidian-editor .ProseMirror table {
+    width: 100%;
+    display: block;
+    overflow-x: auto;
   }
 }
 </style>

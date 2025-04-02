@@ -24,7 +24,6 @@
         <ObsidianEditor 
           :content="markdownText" 
           :read-only="true"
-          :key="markdownText"
         />
       </div>
     </div>

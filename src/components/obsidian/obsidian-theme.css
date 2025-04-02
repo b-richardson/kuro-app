@@ -116,8 +116,6 @@
 
 .obsidian-editor h2 {
   font-size: 1.6em;
-  border-bottom: var(--obsidian-border-width) solid var(--obsidian-background-modifier-border);
-  padding-bottom: var(--obsidian-size-4);
   margin-bottom: var(--obsidian-size-12);
 }
 
