@@ -41,6 +41,7 @@ import DataviewTaskQueryModule from "@/components/TemplateCreator/modules/plugin
 import DataviewCalendarQueryModule from "@/components/TemplateCreator/modules/plugins/dataview/DataviewCalendarQueryModule.vue";
 import KanbanModule from "@/components/TemplateCreator/modules/plugins/kanban/KanbanModule.vue";
 import DataviewInlineQueryModule from "@/components/TemplateCreator/modules/plugins/dataview/DataviewInlineQueryModule.vue";
+import DataviewInlineFieldsModule from "@/components/TemplateCreator/modules/plugins/dataview/DataviewInlineFieldsModule.vue";
 
 // Define props
 const props = defineProps<{
@@ -102,6 +103,10 @@ const moduleComponent = computed(() => {
       return DataviewCalendarQueryModule;
     case "dataviewFields":
       return DataviewInlineQueryModule;
+    case "dataviewInlineFields":
+      return DataviewInlineFieldsModule;
+
+    // Kanban module
     case "kanban":
       return KanbanModule;
     default:

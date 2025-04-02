@@ -231,6 +231,14 @@ export const usePresetStore = defineStore("presets", () => {
       priority: ModulePriority.HIGH,
       content: ["Due:: 2023-12-31", "Status:: #in-progress", "Priority:: High"],
     },
+    {
+      id: "dataview-inline-fields",
+      moduleType: "dataviewInlineFields",
+      title: "Inline Fields",
+      description: "Add inline Dataview fields to your note",
+      priority: ModulePriority.HIGH,
+      content: ["Due:: 2023-12-31", "Status:: #in-progress", "Priority:: High"],
+    },
   ]);
 
   const kanbanModules = ref<ModulePreset[]>([

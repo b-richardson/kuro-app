@@ -386,6 +386,16 @@ export function generateDefaultContent(
     case "dataviewFields":
       return ["Due:: 2023-12-31", "Status:: #in-progress", "Priority:: High"];
 
+    case "dataviewInlineFields":
+      return [
+        "Due:: 2023-12-31",
+        "Status:: #in-progress",
+        "Priority:: High",
+        "Tags:: #work #personal",
+        "Created:: 2023-01-01",
+        "Modified:: 2023-01-02",
+      ];
+
     case "kanban":
       return KANBAN.DEFAULT_BOARD.split("\n");
 
@@ -482,6 +492,9 @@ export function getModuleIcon(moduleType: ModuleType): string {
       return "fas fa-calendar";
     case "dataviewFields":
       return "fas fa-list-alt";
+    case "dataviewInlineFields":
+      return "fas fa-list-alt";
+    // Kanban plugin modules
     case "kanban":
       return "fas fa-columns";
     default:
@@ -542,6 +555,8 @@ export function isValidModuleType(type: any): type is ModuleType {
     "dataviewTaskQuery",
     "dataviewCalendarQuery",
     "dataviewFields",
+    "dataviewInlineFields",
+    // Kanban plugin modules
     "kanban",
   ].includes(type);
 }

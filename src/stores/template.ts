@@ -126,6 +126,8 @@ export const useTemplateStore = defineStore("template", () => {
       "dataviewTaskQuery", // Task query
       "dataviewCalendarQuery", // Calendar query
       "dataviewFields", // Inline dataview fields
+      "dataviewInlineFields", // Inline dataview fields
+      // Kanban plugin modules
       "kanban",
     ];
     return validTypes.includes(type as ModuleType);
