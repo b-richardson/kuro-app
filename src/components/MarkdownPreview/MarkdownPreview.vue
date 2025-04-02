@@ -173,4 +173,6 @@ generateMarkdownContent();
 .markdown-preview .obsidian-editor .ProseMirror {
   padding: 20px 30px;
 }
+
+/* Remove all styling that affects ObsidianEditor content */
 </style>

@@ -62,6 +62,9 @@ const preprocessContent = (content: string): string => {
   // Also handle underscore style italics
   processedContent = processedContent.replace(/_([^_]+)_/g, '<em>$1</em>');
   
+  // We'll let TipTap handle the list rendering entirely
+  // No custom preprocessing for lists
+  
   // Preprocess dataview blocks
   processedContent = processedContent.replace(/```dataview\s+([\s\S]*?)```/g, (match, query) => {
     // Replace with explicit HTML structure
@@ -99,10 +102,21 @@ onMounted(() => {
         bulletList: {
           keepMarks: true,
           keepAttributes: true,
+          HTMLAttributes: {
+            class: 'obsidian-bullet-list',
+          },
         },
         orderedList: {
           keepMarks: true,
           keepAttributes: true,
+          HTMLAttributes: {
+            class: 'obsidian-ordered-list',
+          },
+        },
+        listItem: {
+          HTMLAttributes: {
+            class: 'obsidian-list-item',
+          },
         },
       }),
 
@@ -220,6 +234,12 @@ watch(
   margin: 0;
 }
 
+/* Adjust spacing for paragraphs in editor */
+.obsidian-editor p {
+  margin: 0.5em 0;
+  line-height: 1.4;
+}
+
 /* Theme variations with proper cascade */
 .obsidian-dark-theme {
   color: var(--obsidian-text-normal);
@@ -238,11 +258,23 @@ watch(
   box-sizing: border-box;
   outline: none;
   padding: var(--obsidian-size-24);
+  line-height: 1.4;
 }
 
 /* Add extra space at the bottom for editing */
 .obsidian-editor .ProseMirror {
   padding-bottom: 200px;
+}
+
+/* Simplify list styling for ProseMirror to match Obsidian */
+.obsidian-editor .ProseMirror ul,
+.obsidian-editor .ProseMirror ol {
+  /* Basic list spacing */
+}
+
+/* The most critical fix - remove paragraph margins in list items */
+.obsidian-editor .ProseMirror li p {
+  margin: 0;
 }
 
 /* Specific adjustments for read-only mode */
