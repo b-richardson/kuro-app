@@ -67,7 +67,6 @@ const getCompatibilityIcon = (compatibility) => {
     'core': '🔵', // Core Obsidian
     'dataview': '📊', // Dataview plugin
     'tasks': '✓', // Tasks plugin
-    'kanban': '📋', // Kanban plugin
     'default': '🔌' // Default for other plugins
   };
   

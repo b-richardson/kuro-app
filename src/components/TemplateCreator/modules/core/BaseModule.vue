@@ -234,7 +234,6 @@ const moduleTypeLabel = computed(() => {
     yaml: "YAML Frontmatter",
     templaterField: "Templater Field",
     dataviewQuery: "Dataview Query",
-    kanban: "Kanban Board",
   };
   return labels[props.module.type] || props.module.type;
 });
@@ -437,10 +436,6 @@ defineExpose({
   color: #059669;
 }
 
-.template-module-editor--plugin-kanban .template-module-editor-plugin-tag {
-  background-color: rgba(139, 92, 246, 0.1);
-  color: #8b5cf6;
-}
 
 .template-module-editor-actions {
   margin-left: auto;
@@ -603,7 +598,4 @@ button[title]:hover::after {
   border-top: 3px solid #059669;
 }
 
-.template-module-editor--kanban {
-  border-top: 3px solid #8b5cf6;
-}
 </style>

@@ -51,6 +51,7 @@
         <TemplateModuleLibrary
           :collapsed="isSidebarCollapsed"
           @add-module="addModuleToCanvas"
+          @show-dialog="showInfoDialog"
         />
       </div>
 
@@ -202,8 +203,10 @@
       v-if="uiStore.showConfirmDialog"
       :title="uiStore.confirmDialogTitle"
       :message="uiStore.confirmDialogMessage"
+      :is-HTML="uiStore.confirmDialogIsHTML"
       :confirm-button-text="uiStore.confirmDialogConfirmText"
       :cancel-button-text="uiStore.confirmDialogCancelText"
+      :show-cancel-button="uiStore.confirmDialogShowCancel"
       @confirm="uiStore.handleConfirmDialogConfirm()"
       @cancel="uiStore.handleConfirmDialogCancel()"
     />
@@ -236,6 +239,9 @@ import TemplateModuleLibrary from "@/components/ModuleLibrary/TemplateModuleLibr
 import ModuleCanvas from "@/components/Editor/ModuleCanvas.vue";
 import MarkdownPreview from "@/components/MarkdownPreview/MarkdownPreview.vue";
 import ConfirmationDialog from "@/components/UI/ConfirmationDialog.vue";
+
+// Import a placeholder for showProfileMenu which is missing but referenced
+const showProfileMenu = ref(false);
 
 // Router and stores
 const router = useRouter();
@@ -477,6 +483,27 @@ const saveTemplate = async () => {
 const exportTemplate = () => {
   // Will be implemented later
   uiStore.showToast("Export functionality will be implemented soon", "info");
+};
+
+/**
+ * Show an information dialog
+ */
+const showInfoDialog = (dialogData: { title: string; content: string; type: string }) => {
+  uiStore.setConfirmDialog({
+    title: dialogData.title,
+    message: dialogData.content,
+    isHTML: true,
+    confirmText: "Close",
+    cancelText: "",
+    showCancel: false,
+    onConfirm: () => {
+      // Just close the dialog
+      uiStore.closeConfirmDialog();
+    },
+    onCancel: () => {
+      // No action needed
+    }
+  });
 };
 
 /**

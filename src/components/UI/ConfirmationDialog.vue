@@ -27,7 +27,8 @@
       </div>
       
       <div class="confirmation-dialog__body">
-        <p v-if="message" class="confirmation-dialog__message">{{ message }}</p>
+        <p v-if="message && !isHTML" class="confirmation-dialog__message">{{ message }}</p>
+        <div v-else-if="message && isHTML" class="confirmation-dialog__message" v-html="message"></div>
         <slot></slot>
       </div>
       
@@ -75,6 +76,11 @@ const props = defineProps({
   message: {
     type: String,
     default: '',
+  },
+  // Whether the message contains HTML
+  isHTML: {
+    type: Boolean,
+    default: false,
   },
   // Variant affects the styling (info, warning, danger, success)
   variant: {
@@ -236,6 +242,44 @@ onBeforeUnmount(() => {
   animation: slideIn 0.3s ease-out;
 }
 
+/* Dark theme for the dialog when used in app context */
+.theme-dark .confirmation-dialog__content {
+  background-color: var(--color-surface-dark, #1e1e2e);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--color-border, #313244);
+}
+
+.theme-dark .confirmation-dialog__header {
+  border-bottom: 1px solid var(--color-border, #313244);
+}
+
+.theme-dark .confirmation-dialog__title {
+  color: var(--color-text, #cdd6f4);
+}
+
+.theme-dark .confirmation-dialog__message {
+  color: var(--color-text-muted, #a6adc8);
+}
+
+.theme-dark .confirmation-dialog__message h4 {
+  color: var(--color-text, #cdd6f4);
+}
+
+.theme-dark .confirmation-dialog__footer {
+  border-top: 1px solid var(--color-border, #313244);
+  background-color: var(--color-surface, #1e1e2e);
+}
+
+.theme-dark .confirmation-dialog__btn--cancel {
+  background-color: var(--color-surface-dark, #181825);
+  border-color: var(--color-border, #313244);
+  color: var(--color-text-muted, #a6adc8);
+}
+
+.theme-dark .confirmation-dialog__btn--cancel:hover {
+  background-color: var(--color-surface-hover, #313244);
+}
+
 .confirmation-dialog__header {
   padding: 1.25rem 1.5rem;
   display: flex;
@@ -306,6 +350,34 @@ onBeforeUnmount(() => {
   font-size: 0.9375rem;
   line-height: 1.5;
   color: #475569;
+}
+
+.confirmation-dialog__message h4 {
+  margin: 1.25rem 0 0.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.confirmation-dialog__message p {
+  margin: 0.75rem 0;
+}
+
+.confirmation-dialog__message a {
+  color: #3b82f6;
+  text-decoration: none;
+}
+
+.confirmation-dialog__message a:hover {
+  text-decoration: underline;
+}
+
+.confirmation-dialog__message .info-note {
+  background-color: rgba(59, 130, 246, 0.1);
+  border-left: 4px solid #3b82f6;
+  padding: 0.75rem;
+  margin: 1rem 0;
+  border-radius: 0 4px 4px 0;
 }
 
 .confirmation-dialog__footer {

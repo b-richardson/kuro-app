@@ -83,8 +83,7 @@ const getCompatibilityName = (compatibility) => {
   const names = {
     'core': 'Core Obsidian',
     'dataview': 'Dataview',
-    'tasks': 'Tasks',
-    'kanban': 'Kanban'
+    'tasks': 'Tasks'
   };
   
   return names[compatibility] || compatibility;

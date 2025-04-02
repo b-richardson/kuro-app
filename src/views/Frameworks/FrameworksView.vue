@@ -83,7 +83,6 @@
               <option value="core">Core Obsidian</option>
               <option value="dataview">Dataview</option>
               <option value="tasks">Tasks</option>
-              <option value="kanban">Kanban</option>
             </select>
           </div>
         </div>

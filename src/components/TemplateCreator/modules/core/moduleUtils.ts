@@ -49,7 +49,7 @@ export function addNewContentLine(
       newLine = "New paragraph";
       break;
     case "checklist":
-      newLine = "[ ] New item";
+      newLine = "- [ ] New item";
       break;
     case "table":
       newLine = "| Column 1 | Column 2 |";

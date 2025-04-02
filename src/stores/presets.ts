@@ -224,14 +224,6 @@ export const usePresetStore = defineStore("presets", () => {
       ],
     },
     {
-      id: "dataview-fields",
-      moduleType: "dataviewFields",
-      title: "Inline Fields",
-      description: "Add inline Dataview fields to your note",
-      priority: ModulePriority.HIGH,
-      content: ["Due:: 2023-12-31", "Status:: #in-progress", "Priority:: High"],
-    },
-    {
       id: "dataview-inline-fields",
       moduleType: "dataviewInlineFields",
       title: "Inline Fields",
@@ -241,29 +233,7 @@ export const usePresetStore = defineStore("presets", () => {
     },
   ]);
 
-  const kanbanModules = ref<ModulePreset[]>([
-    {
-      id: "basic-kanban",
-      moduleType: "kanban",
-      title: "Basic Kanban",
-      description: "Create a kanban board with basic columns",
-      priority: ModulePriority.SECONDARY,
-      content: [
-        "---",
-        "kanban-plugin: basic",
-        "---",
-        "",
-        "## To Do",
-        "- [ ] Task 1",
-        "",
-        "## In Progress",
-        "- [ ] Task 2",
-        "",
-        "## Done",
-        "- [x] Task 3",
-      ],
-    },
-  ]);
+  const kanbanModules = ref<ModulePreset[]>([]);
 
   // --- Getters (as plain functions or computed values if needed) ---
   const getYamlPresetById = (id: string) =>
@@ -275,8 +245,6 @@ export const usePresetStore = defineStore("presets", () => {
         return templaterModules.value;
       case "dataview":
         return dataviewModules.value;
-      case "kanban":
-        return kanbanModules.value;
       default:
         return [];
     }
@@ -328,9 +296,6 @@ export const usePresetStore = defineStore("presets", () => {
       case "dataview":
         dataviewModules.value.push(newModule);
         break;
-      case "kanban":
-        kanbanModules.value.push(newModule);
-        break;
     }
 
     return newModule.id;
@@ -355,7 +320,6 @@ export const usePresetStore = defineStore("presets", () => {
     yamlPresets,
     templaterModules,
     dataviewModules,
-    kanbanModules,
 
     // getters
     getYamlPresetById,

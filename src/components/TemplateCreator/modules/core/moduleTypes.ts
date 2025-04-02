@@ -23,12 +23,9 @@ export type ModuleType =
   | "dataviewTableQuery"
   | "dataviewTaskQuery"
   | "dataviewCalendarQuery"
-  | "dataviewFields"
-  | "dataviewInlineFields"
-  // Kanban plugin modules
-  | "kanban";
+  | "dataviewInlineFields";
 
-export type PluginType = "templater" | "dataview" | "yaml" | "kanban" | null;
+export type PluginType = "templater" | "dataview" | "yaml" | null;
 
 export interface ModuleMetadata {
   level?: number;

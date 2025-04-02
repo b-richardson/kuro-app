@@ -19,8 +19,10 @@ export const useUIStore = defineStore('ui', () => {
   const showConfirmDialog = ref(false)
   const confirmDialogTitle = ref('')
   const confirmDialogMessage = ref('')
+  const confirmDialogIsHTML = ref(false)
   const confirmDialogConfirmText = ref('Confirm')
   const confirmDialogCancelText = ref('Cancel')
+  const confirmDialogShowCancel = ref(true)
   const confirmDialogConfirmCallback = ref<(() => void) | null>(null)
   const confirmDialogCancelCallback = ref<(() => void) | null>(null)
 
@@ -83,15 +85,44 @@ export const useUIStore = defineStore('ui', () => {
     confirmText: string = 'Confirm', 
     cancelText: string = 'Cancel',
     onConfirm: (() => void) | null = null,
-    onCancel: (() => void) | null = null
+    onCancel: (() => void) | null = null,
+    isHTML: boolean = false,
+    showCancel: boolean = true
   ) {
     confirmDialogTitle.value = title
     confirmDialogMessage.value = message
+    confirmDialogIsHTML.value = isHTML
     confirmDialogConfirmText.value = confirmText
     confirmDialogCancelText.value = cancelText
+    confirmDialogShowCancel.value = showCancel
     confirmDialogConfirmCallback.value = onConfirm
     confirmDialogCancelCallback.value = onCancel
     showConfirmDialog.value = true
+  }
+  
+  function setConfirmDialog(options: {
+    title: string;
+    message: string;
+    isHTML?: boolean;
+    confirmText?: string;
+    cancelText?: string;
+    showCancel?: boolean;
+    onConfirm?: () => void;
+    onCancel?: () => void;
+  }) {
+    confirmDialogTitle.value = options.title
+    confirmDialogMessage.value = options.message
+    confirmDialogIsHTML.value = options.isHTML ?? false
+    confirmDialogConfirmText.value = options.confirmText ?? 'Confirm'
+    confirmDialogCancelText.value = options.cancelText ?? 'Cancel'
+    confirmDialogShowCancel.value = options.showCancel ?? true
+    confirmDialogConfirmCallback.value = options.onConfirm ?? null
+    confirmDialogCancelCallback.value = options.onCancel ?? null
+    showConfirmDialog.value = true
+  }
+  
+  function closeConfirmDialog() {
+    showConfirmDialog.value = false
   }
   
   function handleConfirmDialogConfirm() {
@@ -150,8 +181,10 @@ export const useUIStore = defineStore('ui', () => {
     showConfirmDialog,
     confirmDialogTitle,
     confirmDialogMessage,
+    confirmDialogIsHTML,
     confirmDialogConfirmText,
     confirmDialogCancelText,
+    confirmDialogShowCancel,
     toggleMarkdownPreview,
     setMarkdownPreview,
     toggleSidebar,
@@ -164,6 +197,8 @@ export const useUIStore = defineStore('ui', () => {
     setEditorWidth,
     setFocusMode,
     showConfirmationDialog,
+    setConfirmDialog,
+    closeConfirmDialog,
     handleConfirmDialogConfirm,
     handleConfirmDialogCancel,
     loadUIPreferences,

@@ -125,10 +125,7 @@ export const useTemplateStore = defineStore("template", () => {
       "dataviewListQuery", // List query
       "dataviewTaskQuery", // Task query
       "dataviewCalendarQuery", // Calendar query
-      "dataviewFields", // Inline dataview fields
       "dataviewInlineFields", // Inline dataview fields
-      // Kanban plugin modules
-      "kanban",
     ];
     return validTypes.includes(type as ModuleType);
   };
@@ -137,7 +134,7 @@ export const useTemplateStore = defineStore("template", () => {
    * Validates if a plugin type is one of the allowed PluginType values
    */
   const isValidPluginType = (type: any): type is PluginType => {
-    const validTypes: PluginType[] = [null, "templater", "dataview", "kanban"];
+    const validTypes: PluginType[] = [null, "templater", "dataview"];
     return validTypes.includes(type as PluginType);
   };
 

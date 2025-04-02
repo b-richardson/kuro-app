@@ -6,7 +6,7 @@ import { loadTemplateById } from '@/services/templates';
 export type TemplateCategory = 'journaling' | 'productivity' | 'wellness' | 'goal' | 'all';
 
 // Template compatibility type
-export type TemplateCompatibility = 'core' | 'dataview' | 'tasks' | 'kanban';
+export type TemplateCompatibility = 'core' | 'dataview' | 'tasks';
 
 // Template interface
 export interface Template {
@@ -146,8 +146,7 @@ export const useFrameworksStore = defineStore('frameworks', () => {
   const compatibilityOptions = ref([
     { id: 'core', name: 'Core Obsidian' },
     { id: 'dataview', name: 'Dataview' },
-    { id: 'tasks', name: 'Tasks' },
-    { id: 'kanban', name: 'Kanban' },
+    { id: 'tasks', name: 'Tasks' }
   ]);
 
   // Computed

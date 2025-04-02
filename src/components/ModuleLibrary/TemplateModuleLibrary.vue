@@ -33,8 +33,7 @@
             <span>Show Plugin Modules</span>
           </label>
           <small class="setting-description"
-            >Display modules for Obsidian plugins like Templater, Dataview, and
-            Kanban</small
+            >Display modules for Obsidian plugins like Templater and Dataview</small
           >
         </div>
 
@@ -68,6 +67,7 @@
       <PluginModules
         v-if="showPluginModules"
         @add-module="handleAddModule"
+        @show-plugin-help="showPluginHelpModal"
         :show-descriptions="showModuleDescriptions"
       />
     </div>
@@ -103,7 +103,7 @@ const props = defineProps({
 });
 
 // Define emits
-const emit = defineEmits(["add-module"]);
+const emit = defineEmits(["add-module", "show-dialog"]);
 
 // Handle module addition (emitted from child components)
 const handleAddModule = (moduleData: TemplateModule) => {
@@ -114,6 +114,31 @@ const handleAddModule = (moduleData: TemplateModule) => {
   if (showSettings.value) {
     showSettings.value = false;
   }
+};
+
+// Show plugin help modal
+const showPluginHelpModal = () => {
+  emit("show-dialog", {
+    title: "About Plugin Modules",
+    content: `
+      <div>
+        <p>Plugin modules require specific plugins to be installed in your Obsidian vault:</p>
+        
+        <h4>Templater</h4>
+        <p>Adds JavaScript-powered templating to Obsidian. You can use variables, functions, and conditional logic in your templates.</p>
+        <p><a href="https://github.com/SilentVoid13/Templater" target="_blank">Installation Guide</a></p>
+        
+        <h4>Dataview</h4>
+        <p>Treats your Obsidian vault as a database, allowing you to query and display information from across your notes.</p>
+        <p><a href="https://github.com/blacksmithgu/obsidian-dataview" target="_blank">Installation Guide</a></p>
+        
+        <div class="info-note">
+          <p><strong>Note:</strong> If you don't have these plugins installed, the generated template will still contain the correct syntax, but it won't function until the plugin is installed.</p>
+        </div>
+      </div>
+    `,
+    type: "info"
+  });
 };
 </script>
 

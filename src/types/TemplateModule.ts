@@ -28,15 +28,12 @@ export type ModuleType =
   | "dataviewListQuery" // List query
   | "dataviewTaskQuery" // Task query
   | "dataviewCalendarQuery" // Calendar query
-  | "dataviewFields" // Inline dataview fields
-  | "dataviewInlineFields" // Inline dataview fields
-  // Kanban plugin modules
-  | "kanban";
+  | "dataviewInlineFields"; // Inline dataview fields
 
 /**
  * Obsidian plugin types supported by the template creator
  */
-export type PluginType = null | "templater" | "dataview" | "kanban";
+export type PluginType = null | "templater" | "dataview";
 
 /**
  * Generic metadata object type for plugin-specific configuration

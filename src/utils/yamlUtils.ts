@@ -122,15 +122,6 @@ export const pluginYamlFields: YamlFieldMetadata[] = [
     pluginName: 'dataview'
   },
   
-  // Kanban
-  {
-    key: 'kanban-plugin',
-    label: 'Kanban',
-    description: 'Enable Kanban board in this note',
-    type: 'boolean',
-    isPluginSpecific: true,
-    pluginName: 'kanban'
-  },
   
   // Obsidian Publish
   {
