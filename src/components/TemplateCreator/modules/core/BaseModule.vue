@@ -231,6 +231,7 @@ const moduleTypeLabel = computed(() => {
     table: "Table",
     text: "Text",
     divider: "Divider",
+    codeBlock: "Code Block",
     yaml: "YAML Frontmatter",
     templaterField: "Templater Field",
     dataviewQuery: "Dataview Query",
@@ -436,7 +437,6 @@ defineExpose({
   color: #059669;
 }
 
-
 .template-module-editor-actions {
   margin-left: auto;
   display: flex;
@@ -580,6 +580,10 @@ button[title]:hover::after {
   border-top: 3px solid #64748b;
 }
 
+.template-module-editor--code-block {
+  border-top: 3px solid #3b82f6;
+}
+
 /* Hide the add-line button for divider modules */
 .template-module-editor--divider
   .template-module-editor-action[title="Add line"] {
@@ -597,5 +601,4 @@ button[title]:hover::after {
 .template-module-editor--dataviewQuery {
   border-top: 3px solid #059669;
 }
-
 </style>

@@ -24,6 +24,7 @@ import HeaderModule from "@/components/TemplateCreator/modules/content/HeaderMod
 import ChecklistModule from "@/components/TemplateCreator/modules/content/ChecklistModule.vue";
 import TableModule from "@/components/TemplateCreator/modules/content/TableModule.vue";
 import TextModule from "@/components/TemplateCreator/modules/content/TextModule.vue";
+import CodeBlockModule from "@/components/TemplateCreator/modules/content/CodeBlockModule.vue";
 import DividerModule from "@/components/TemplateCreator/modules/content/DividerModule.vue";
 import YamlModule from "@/components/TemplateCreator/modules/plugins/yaml/YamlModule.vue";
 // Templater modules
@@ -73,6 +74,8 @@ const moduleComponent = computed(() => {
       return TextModule;
     case "divider":
       return DividerModule;
+    case "codeBlock":
+      return CodeBlockModule;
     case "yaml":
       return YamlModule;
     // Templater modules

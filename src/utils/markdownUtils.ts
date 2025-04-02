@@ -47,6 +47,12 @@ function processModule(module: TemplateModule): string {
     return module.content.join(module.type === "text" ? "\n\n" : "\n");
   }
 
+  // Handle code block module
+  if (module.type === "codeBlock") {
+    const language = module.metadata?.language || "plaintext";
+    return `\`\`\`${language}\n${module.content.join("\n")}\n\`\`\``;
+  }
+
   // Handle divider modules
   if (module.type === "divider") {
     return "---";

@@ -81,9 +81,8 @@ export function useModuleOperations() {
       id: uuidv4(),
     };
 
-    const insertAtIndex = insertAfterIndex !== undefined 
-      ? insertAfterIndex + 1 
-      : -1;
+    const insertAtIndex =
+      insertAfterIndex !== undefined ? insertAfterIndex + 1 : -1;
 
     return { module: duplicatedModule, insertAtIndex };
   };
@@ -97,11 +96,13 @@ export function useModuleOperations() {
     direction: "up" | "down"
   ): TemplateModule[] => {
     const moduleIndex = modules.findIndex((m) => m.id === moduleId);
-    
+
     // Guard against invalid operations
-    if (moduleIndex === -1 || 
+    if (
+      moduleIndex === -1 ||
       (direction === "up" && moduleIndex === 0) ||
-      (direction === "down" && moduleIndex === modules.length - 1)) {
+      (direction === "down" && moduleIndex === modules.length - 1)
+    ) {
       return modules;
     }
 
@@ -131,7 +132,7 @@ export function useModuleOperations() {
     newContent: string[]
   ): TemplateModule[] => {
     const moduleIndex = modules.findIndex((m) => m.id === moduleId);
-    
+
     if (moduleIndex === -1) return modules;
 
     // Create a new array with the updated module

@@ -24,7 +24,6 @@ import {
   getModuleIcon,
 } from "@/utils/pluginTemplatesUtils";
 import { v4 as uuidv4 } from "uuid";
-import { TemplateModule } from "@/types/TemplateModule";
 
 // Define props
 const props = defineProps({
@@ -65,6 +64,12 @@ const basicModules = [
     type: "divider",
     title: "Divider",
     description: "Add a horizontal line to separate content",
+    priority: "high",
+  },
+  {
+    type: "codeBlock",
+    title: "Code Block",
+    description: "Insert a block of code with syntax highlighting",
     priority: "high",
   },
 ];

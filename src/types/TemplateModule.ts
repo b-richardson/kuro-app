@@ -12,6 +12,7 @@ export type ModuleType =
   | "table"
   | "text"
   | "divider"
+  | "codeBlock"
   // Plugin-specific module types
   | "yaml"
   // Templater plugin modules

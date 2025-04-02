@@ -1,5 +1,6 @@
 import { PluginType, ModuleType } from "@/types/TemplateModule";
 
+// WE DO NOT NEED TO BE IMPLIMENTING DEFAUKT CONTENT FOR MODULES ANYMORE! THIS SHOULD ALL BE HANDLED IN WHATEVER WAY THE MODULES NEED TO INDIVIDUALLIY INSIDE THE MODULES
 /**
  * Basic default content for modules - used primarily for UI previews
  * Note: Consider migrating this to specific module components in the future
@@ -13,9 +14,9 @@ export function generateDefaultContent(
     case "header":
       return ["# New Header"];
     case "checklist":
-      return [""];  // Now self-contained in ChecklistModule.vue
+      return [""]; // Now self-contained in ChecklistModule.vue
     case "table":
-      return [""];  // Now self-contained in TableModule.vue
+      return [""]; // Now self-contained in TableModule.vue
     case "text":
       return ["Enter your text here..."];
     case "divider":
@@ -28,7 +29,7 @@ export function generateDefaultContent(
         "tags: []",
         "---",
       ];
-      
+
     // Templater plugin modules
     case "templaterField":
       return ["<% tp.date.now() %>"];
@@ -39,26 +40,36 @@ export function generateDefaultContent(
     case "templaterUserInput":
       return ['Enter your name: <% tp.system.prompt("Name") %>'];
     case "templaterConditionalContent":
-      return ['<% if (condition) { %> Content when true <% } %>'];
+      return ["<% if (condition) { %> Content when true <% } %>"];
     case "templaterValueTransformation":
       return ['<% tp.system.prompt("Value").toUpperCase() %>'];
     case "templaterTemplateVariables":
       return ['<% tp.file.include("Template Name") %>'];
-      
+
     // Dataview plugin modules
     case "dataviewQuery":
       return ["```dataview", "LIST", 'FROM ""', "```"];
     case "dataviewListQuery":
       return ["```dataview", "LIST", "FROM #tag", "```"];
     case "dataviewTableQuery":
-      return ["```dataview", "TABLE file.ctime, file.mtime", 'FROM "folder"', "```"];
+      return [
+        "```dataview",
+        "TABLE file.ctime, file.mtime",
+        'FROM "folder"',
+        "```",
+      ];
     case "dataviewTaskQuery":
       return ["```dataview", "TASK", "FROM #project", "```"];
     case "dataviewCalendarQuery":
-      return ["```dataview", "CALENDAR file.ctime", 'FROM "Daily Notes"', "```"];
+      return [
+        "```dataview",
+        "CALENDAR file.ctime",
+        'FROM "Daily Notes"',
+        "```",
+      ];
     case "dataviewInlineFields":
       return ["Due:: 2023-12-31", "Status:: #in-progress", "Priority:: High"];
-      
+
     default:
       return [""];
   }
@@ -169,6 +180,7 @@ export function isValidModuleType(type: any): type is ModuleType {
     "table",
     "text",
     "divider",
+    "codeBlock",
     "yaml",
 
     // Templater plugin modules
@@ -200,10 +212,14 @@ export function validatePluginSyntax(
   moduleType?: ModuleType
 ): { isValid: boolean; error?: string } {
   // Basic empty content check only
-  if (!content || content.length === 0 || (content.length === 1 && content[0] === "")) {
+  if (
+    !content ||
+    content.length === 0 ||
+    (content.length === 1 && content[0] === "")
+  ) {
     return { isValid: false, error: "Content cannot be empty" };
   }
-  
+
   // Always return valid since we're using the ObsidianEditor component now
   return { isValid: true };
 }

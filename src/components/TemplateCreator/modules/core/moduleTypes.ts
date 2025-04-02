@@ -8,6 +8,7 @@ export type ModuleType =
   | "checklist"
   | "table"
   | "divider"
+  | "codeBlock"
   | "yaml"
   // Templater plugin modules
   | "templaterField"
