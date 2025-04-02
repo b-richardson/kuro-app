@@ -70,6 +70,9 @@ const showExportDialog = ref(false);
 const isDarkTheme = ref(true);
 const appInitialized = ref(false);
 
+// Provide theme to all components
+provide("theme", isDarkTheme);
+
 const authStore = useAuthStore();
 const uiStore = useUIStore();
 const preferencesStore = usePreferencesStore();

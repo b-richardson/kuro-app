@@ -21,14 +21,18 @@
 
       <!-- Rendered view with Obsidian Editor -->
       <div v-else class="markdown-preview__rendered">
-        <ObsidianEditor :content="markdownText" :read-only="true" />
+        <ObsidianEditor 
+          :content="markdownText" 
+          :read-only="true"
+          :key="markdownText"
+        />
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch, inject } from "vue";
+import { computed, ref, watch, inject, provide } from "vue";
 import { TemplateModule } from "@/types/TemplateModule";
 import { ViewMode } from "@/types/Editor";
 import { generateMarkdown } from "@/utils/markdownUtils";
@@ -54,6 +58,9 @@ const emit = defineEmits([
 
 // Get theme from parent component (injected)
 const isDarkTheme = inject("theme", ref(true));
+
+// Make theme available to child components
+provide("theme", isDarkTheme);
 
 // View state variables
 const isGenerating = ref(false);
@@ -101,6 +108,8 @@ watch(
 generateMarkdownContent();
 </script>
 
+<!-- Obsidian theme is imported in main.ts and doesn't need to be imported here -->
+
 <style scoped>
 .markdown-preview {
   height: 100%;
@@ -138,18 +147,30 @@ generateMarkdownContent();
 
 .markdown-preview__rendered {
   height: 100%;
+  width: 100%;
+  position: relative;
 }
 
-/* Theme classes */
+.markdown-preview__rendered .obsidian-editor {
+  width: 100%;
+  height: 100%;
+}
+
+/* Theme classes - just container styling, actual content styling is in obsidian-theme.css */
 .dark-content {
   /* Dark theme styling */
-  background-color: var(--color-bg);
-  color: var(--color-text);
+  background-color: var(--obsidian-background, var(--color-bg));
+  color: var(--obsidian-text-normal, var(--color-text));
 }
 
 .light-content {
   /* Light theme styling */
-  background-color: #f5f5f5;
-  color: #333333;
+  background-color: var(--obsidian-background, #f5f5f5);
+  color: var(--obsidian-text-normal, #333333);
+}
+
+/* Add margin around editor content in preview */
+.markdown-preview .obsidian-editor .ProseMirror {
+  padding: 20px 30px;
 }
 </style>
