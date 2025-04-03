@@ -18,7 +18,7 @@
       </div>
     </div>
 
-    <!-- Template Library -->
+    <!-- My Templates -->
     <div v-else class="library-view__content">
       <div class="library-header glass-card">
         <h1 class="library-header__title">Your Templates</h1>
@@ -54,6 +54,7 @@
         </div>
       </div>
 
+      <!-- Create Grid Of Template Cards is here -->
       <div v-else class="template-grid">
         <div
           v-for="template in templateStore.templates"
@@ -89,6 +90,7 @@
             </div>
           </div>
 
+          <!-- Duplicate template button -->
           <div class="template-card__actions">
             <button
               class="template-card__action"
@@ -97,6 +99,7 @@
             >
               <i class="fas fa-copy"></i>
             </button>
+            <!-- Delete Template Button -->
             <button
               class="template-card__action"
               @click.stop="confirmDeleteTemplate(template.id)"
@@ -165,22 +168,28 @@ const formatDate = (timestamp: number | null) => {
   });
 };
 
-const handleTemplateDelete = (id: string) => {
-  templateStore.deleteTemplate(id);
-};
+// const handleTemplateDelete = (id: string) => {
+//   templateStore.deleteTemplate(id);
+// };
+
+// const confirmDeleteTemplate = (id: string) => {
+//   console.log("Confirm delete template:", id);
+//   const template = templateStore.templates.find((t) => t.id === id);
+//   if (template) {
+//     uiStore.showConfirmationDialog(
+//       "Delete Template",
+//       `Are you sure you want to delete "${template.name}"? This action cannot be undone.`,
+//       "Delete",
+//       "Cancel",
+//       () => handleTemplateDelete(id),
+//       () => {}
+//     );
+//   }
+// };
 
 const confirmDeleteTemplate = (id: string) => {
-  const template = templateStore.templates.find((t) => t.id === id);
-  if (template) {
-    uiStore.showConfirmationDialog(
-      "Delete Template",
-      `Are you sure you want to delete "${template.name}"? This action cannot be undone.`,
-      "Delete",
-      "Cancel",
-      () => handleTemplateDelete(id),
-      () => {}
-    );
-  }
+  console.log("Deleting template:", id);
+  templateStore.deleteTemplate(id);
 };
 
 const handleTemplateDuplicate = (id: string) => {

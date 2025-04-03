@@ -3,7 +3,6 @@ import {
   createWebHistory,
   RouteLocationNormalized,
 } from "vue-router";
-import { useAuthStore } from "@/stores/auth";
 
 /**
  * Router Configuration
@@ -16,7 +15,7 @@ import { useAuthStore } from "@/stores/auth";
 import LandingPage from "../views/LandingPage.vue";
 import LoginView from "../views/LoginView.vue";
 import DashboardView from "../views/DashboardView.vue";
-import LibraryView from "../views/LibraryView.vue";
+import MyTemplatesView from "../views/MyTemplatesView.vue";
 import EditorView from "../views/EditorView.vue";
 import SettingsView from "../views/SettingsView.vue";
 import DesignView from "../views/DesignView.vue";
@@ -71,9 +70,9 @@ const routes = [
     component: DashboardView,
   },
   {
-    path: "/library",
-    name: "library",
-    component: LibraryView,
+    path: "/my-templates",
+    name: "my-templates",
+    component: MyTemplatesView,
   },
 
   {
