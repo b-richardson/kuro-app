@@ -286,8 +286,22 @@ export const useTemplateStore = defineStore("template", () => {
 
   /**
    * Creates a new template with default content
+   * Self-protective against duplicate creation
    */
   const createNewTemplate = () => {
+    // If we already have a current template that hasn't been modified,
+    // just return it instead of creating a new one
+    if (
+      currentTemplate.value && 
+      currentTemplate.value.name === "Untitled Template" && 
+      currentTemplate.value.modules.length <= 1 &&
+      currentTemplate.value.modules[0]?.content?.join('') === "# Untitled Template"
+    ) {
+      // Return the ID of the existing fresh template
+      return currentTemplate.value.id;
+    }
+    
+    // Otherwise create a new template
     const newTemplate: Template = {
       id: uuidv4(),
       name: "Untitled Template",

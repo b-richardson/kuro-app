@@ -261,6 +261,7 @@ import { useRouter } from 'vue-router';
 import { useObsidianStore } from '@/stores/obsidian';
 import { useTemplateStore } from '@/stores/template';
 import { useUIStore } from '@/stores/ui';
+import { v4 as uuidv4 } from 'uuid';
 import { format } from 'date-fns';
 import MarkdownIt from 'markdown-it';
 import FolderTree from '@/components/obsidian/FolderTree.vue';
@@ -413,12 +414,31 @@ const createTemplateFromNote = async (filePath: string) => {
     }
     
     // Create a template draft in the template store
-    const templateId = await templateStore.createNewTemplate({
-      name: fileInfo.name.replace(/\.md$/, ''),
-      content: noteContent,
-      frontmatter: noteMetadata.frontmatter,
-      tags: noteMetadata.tags
-    });
+    const templateId = templateStore.createTemplate(
+      fileInfo.name.replace(/\.md$/, ''),  // name
+      '' // description
+    );
+    
+    // After creating the template, update it with the note content
+    if (templateStore.currentTemplate.value) {
+      // Convert note content to module
+      templateStore.currentTemplate.value.modules = [
+        {
+          id: uuidv4(),
+          type: "text",
+          content: [noteContent],
+          pluginType: null
+        }
+      ];
+      
+      // Add tags if available
+      if (noteMetadata.tags && noteMetadata.tags.length > 0) {
+        templateStore.currentTemplate.value.tags = [...noteMetadata.tags];
+      }
+      
+      // Save the updated template
+      templateStore.updateTemplate(templateStore.currentTemplate.value);
+    }
     
     // Navigate to the template editor with the new template
     router.push({
@@ -460,10 +480,26 @@ const analyzeSelectedNotes = async () => {
       selectedNotesData.map(note => `- [[${note.name}]]\n`).join('')
     }\n\n`;
     
-    const templateId = await templateStore.createNewTemplate({
-      name: `Combined Template (${selectedNotesData.length} notes)`,
-      content: templateContent
-    });
+    const templateId = templateStore.createTemplate(
+      `Combined Template (${selectedNotesData.length} notes)`,
+      ''
+    );
+    
+    // After creating the template, update it with the template content
+    if (templateStore.currentTemplate.value) {
+      // Convert content to module
+      templateStore.currentTemplate.value.modules = [
+        {
+          id: uuidv4(),
+          type: "text",
+          content: [templateContent],
+          pluginType: null
+        }
+      ];
+      
+      // Save the updated template
+      templateStore.updateTemplate(templateStore.currentTemplate.value);
+    }
     
     // Navigate to the template editor
     router.push({
