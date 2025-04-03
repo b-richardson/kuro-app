@@ -488,7 +488,11 @@ const exportTemplate = () => {
 /**
  * Show an information dialog
  */
-const showInfoDialog = (dialogData: { title: string; content: string; type: string }) => {
+const showInfoDialog = (dialogData: {
+  title: string;
+  content: string;
+  type: string;
+}) => {
   uiStore.setConfirmDialog({
     title: dialogData.title,
     message: dialogData.content,
@@ -502,7 +506,7 @@ const showInfoDialog = (dialogData: { title: string; content: string; type: stri
     },
     onCancel: () => {
       // No action needed
-    }
+    },
   });
 };
 

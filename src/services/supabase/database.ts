@@ -1,5 +1,6 @@
 import { supabase } from "./index";
 import { encryptData, decryptData } from "@/utils/encryptionUtils";
+import type { Template } from "@/stores/template";
 
 /** Save Obsidian Integration to Supabase */
 export async function saveObsidianIntegration(
@@ -67,4 +68,220 @@ export async function deleteObsidianIntegration(userId: string) {
     .delete()
     .eq("user_id", userId);
   return { success: !error, error };
+}
+
+/**
+ * Sync template with Supabase
+ * This function handles adding or updating a template in Supabase
+ */
+export async function syncTemplateWithSupabase(
+  template: Template,
+  userId: string
+) {
+  if (!userId) {
+    console.warn("Cannot sync template without userId");
+    return { success: false, error: "No userId provided" };
+  }
+
+  try {
+    // First, save the template itself
+    const { data: templateData, error: templateError } = await supabase
+      .from("templates")
+      .upsert(
+        {
+          id: template.id,
+          user_id: userId,
+          name: template.name,
+          description: template.description,
+          created_at: new Date(template.createdAt).toISOString(),
+          last_modified: new Date(template.lastModified).toISOString(),
+          is_public: template.isPublic,
+        },
+        { onConflict: "id" }
+      )
+      .select("id");
+
+    if (templateError) {
+      console.error("Error syncing template:", templateError);
+      return { success: false, error: templateError };
+    }
+
+    // Delete existing modules for this template to avoid orphaned modules
+    const { error: deleteError } = await supabase
+      .from("template_modules")
+      .delete()
+      .eq("template_id", template.id);
+
+    if (deleteError) {
+      console.error("Error removing existing modules:", deleteError);
+      return { success: false, error: deleteError };
+    }
+
+    // Then insert all modules with their current order
+    const moduleInserts = template.modules.map((module, index) => ({
+      id: module.id,
+      template_id: template.id,
+      type: module.type,
+      plugin_type: module.pluginType,
+      content: module.content,
+      metadata: module.metadata || null,
+      order: index,
+      created_at: new Date().toISOString(),
+      last_modified: new Date().toISOString(),
+    }));
+
+    const { error: modulesError } = await supabase
+      .from("template_modules")
+      .upsert(moduleInserts);
+
+    if (modulesError) {
+      console.error("Error syncing modules:", modulesError);
+      return { success: false, error: modulesError };
+    }
+
+    // Now handle tags - first remove existing tags
+    const { error: deleteTagsError } = await supabase
+      .from("template_tags")
+      .delete()
+      .eq("template_id", template.id);
+
+    if (deleteTagsError) {
+      console.error("Error removing existing tags:", deleteTagsError);
+      return { success: false, error: deleteTagsError };
+    }
+
+    // Then insert all current tags
+    if (template.tags && template.tags.length > 0) {
+      const tagInserts = template.tags.map((tag) => ({
+        template_id: template.id,
+        tag: tag,
+      }));
+
+      const { error: tagsError } = await supabase
+        .from("template_tags")
+        .upsert(tagInserts);
+
+      if (tagsError) {
+        console.error("Error syncing tags:", tagsError);
+        return { success: false, error: tagsError };
+      }
+    }
+
+    return { success: true, data: templateData };
+  } catch (error) {
+    console.error("Error in syncTemplateWithSupabase:", error);
+    return { success: false, error };
+  }
+}
+
+/**
+ * Load all templates for a user from Supabase
+ */
+export async function loadTemplatesFromSupabase(userId: string) {
+  if (!userId) {
+    return { data: [], error: "No userId provided" };
+  }
+
+  try {
+    // Fetch templates
+    const { data: templateData, error: templateError } = await supabase
+      .from("templates")
+      .select("*")
+      .eq("user_id", userId);
+
+    if (templateError) {
+      return { data: [], error: templateError };
+    }
+
+    const templates: Template[] = [];
+
+    // For each template, fetch its modules and tags
+    for (const template of templateData) {
+      // Fetch modules
+      const { data: moduleData, error: moduleError } = await supabase
+        .from("template_modules")
+        .select("*")
+        .eq("template_id", template.id)
+        .order("order", { ascending: true });
+
+      if (moduleError) {
+        console.error(
+          `Error fetching modules for template ${template.id}:`,
+          moduleError
+        );
+        continue;
+      }
+
+      // Fetch tags
+      const { data: tagData, error: tagError } = await supabase
+        .from("template_tags")
+        .select("tag")
+        .eq("template_id", template.id);
+
+      if (tagError) {
+        console.error(
+          `Error fetching tags for template ${template.id}:`,
+          tagError
+        );
+        continue;
+      }
+
+      // Convert to our app's Template format
+      const formattedTemplate: Template = {
+        id: template.id,
+        name: template.name,
+        description: template.description || "",
+        modules: moduleData.map((module) => ({
+          id: module.id,
+          type: module.type as any,
+          content: Array.isArray(module.content) ? module.content : [],
+          pluginType: module.plugin_type as any,
+          metadata: module.metadata || undefined,
+        })),
+        tags: tagData.map((t) => t.tag),
+        lastModified: new Date(template.last_modified).getTime(),
+        createdAt: new Date(template.created_at).getTime(),
+        isPublic: template.is_public || false,
+        userId: template.user_id,
+      };
+
+      templates.push(formattedTemplate);
+    }
+
+    return { data: templates, error: null };
+  } catch (error) {
+    console.error("Error in loadTemplatesFromSupabase:", error);
+    return { data: [], error };
+  }
+}
+
+/**
+ * Delete a template and all its related data from Supabase
+ */
+export async function deleteTemplateFromSupabase(
+  templateId: string,
+  userId: string
+) {
+  if (!userId || !templateId) {
+    return { success: false, error: "Missing templateId or userId" };
+  }
+
+  try {
+    // Delete template (cascading foreign key constraints should handle modules and tags)
+    const { error } = await supabase
+      .from("templates")
+      .delete()
+      .eq("id", templateId)
+      .eq("user_id", userId); // Ensure user owns this template
+
+    if (error) {
+      console.error("Error deleting template:", error);
+      return { success: false, error };
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error("Error in deleteTemplateFromSupabase:", error);
+    return { success: false, error };
+  }
 }

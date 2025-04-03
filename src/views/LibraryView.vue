@@ -146,11 +146,6 @@ onMounted(async () => {
   }
 });
 
-const exportProfile = computed(() => {
-  const profileId = preferencesStore.activeExportProfileId;
-  return (profileId || "full") as any;
-});
-
 const goToNewTemplate = () => {
   router.push("/editor");
 };
@@ -196,8 +191,8 @@ const handleTemplateDuplicate = (id: string) => {
     );
     const newTemplate = templateStore.templates.find((t) => t.id === newId);
     if (newTemplate) {
-      newTemplate.sections = JSON.parse(
-        JSON.stringify(templateToDuplicate.sections)
+      newTemplate.modules = JSON.parse(
+        JSON.stringify(templateToDuplicate.modules)
       );
       templateStore.saveTemplates();
     }

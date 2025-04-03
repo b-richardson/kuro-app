@@ -1,144 +1,192 @@
 <template>
-  <div class="global-sidebar glass-card">
-    <!-- App logo and title -->
+  <div class="global-sidebar" :class="{ show: uiStore.isSidebarOpen }">
+    <!-- App header with logo -->
     <div class="sidebar-header">
-      <div class="app-logo">
-        <i class="fas fa-file-alt"></i>
+      <div class="app-logo-container">
+        <div class="app-logo">
+          <i class="fas fa-file-alt"></i>
+        </div>
+        <h1 class="app-title">Template Builder</h1>
       </div>
-      <h1 class="app-title">Template Builder</h1>
 
-      <!-- Obsidian connection status -->
-      <ObsidianStatusIndicator />
-    </div>
-
-    <!-- User profile section -->
-    <div class="user-profile" v-if="authStore.user">
-      <div class="user-avatar">
-        {{ getInitials(authStore.user.name) }}
-      </div>
-      <div class="user-info">
-        <div class="user-name">{{ authStore.user.name }}</div>
+      <div class="connection-indicator">
+        <ObsidianStatusIndicator />
       </div>
     </div>
 
-    <!-- Main navigation -->
-    <div class="sidebar-nav">
-      <router-link
-        to="/dashboard"
-        class="nav-item"
-        exact
-        :class="{ active: currentRoute === 'dashboard' }"
-      >
-        <i class="fas fa-home"></i>
-        <span>Dashboard</span>
-      </router-link>
+    <!-- Main navigation with sections -->
+    <nav class="sidebar-nav">
+      <!-- Workspace section -->
+      <div class="nav-section">
+        <div class="nav-section-header">
+          <i class="fas fa-cog"></i>
+          <span>Workspace</span>
+        </div>
 
-      <router-link
-        to="/library"
-        class="nav-item"
-        :class="{ active: currentRoute === 'library' }"
-      >
-        <i class="fas fa-folder"></i>
-        <span>My Templates</span>
-      </router-link>
+        <div class="nav-section-items">
+          <router-link
+            to="/dashboard"
+            class="nav-item"
+            exact
+            :class="{ active: currentRoute === 'dashboard' }"
+          >
+            <i class="fas fa-home"></i>
+            <span>Dashboard</span>
+          </router-link>
 
-      <router-link
-        to="/frameworks"
-        class="nav-item"
-        :class="{ active: currentRoute === 'frameworks' }"
-      >
-        <i class="fas fa-puzzle-piece"></i>
-        <span>Frameworks</span>
-      </router-link>
+          <router-link
+            to="/library"
+            class="nav-item"
+            :class="{ active: currentRoute === 'library' }"
+          >
+            <i class="fas fa-folder"></i>
+            <span>My Templates</span>
+          </router-link>
 
-      <router-link
-        to="/obsidian-explorer"
-        class="nav-item"
-        :class="{ active: currentRoute === 'obsidian-explorer' }"
-        v-if="obsidianStore.isConnected"
-      >
-        <i class="fas fa-mountain"></i>
-        <span>Obsidian Explorer</span>
-      </router-link>
+          <router-link
+            to="/frameworks"
+            class="nav-item"
+            :class="{ active: currentRoute === 'frameworks' }"
+          >
+            <i class="fas fa-puzzle-piece"></i>
+            <span>Frameworks</span>
+          </router-link>
+        </div>
+      </div>
 
-      <router-link
-        to="/settings"
-        class="nav-item"
-        :class="{ active: currentRoute === 'settings' }"
-      >
-        <i class="fas fa-cog"></i>
-        <span>Settings</span>
-      </router-link>
-    </div>
+      <!-- Obsidian section (only if connected) -->
+      <div class="nav-section" v-if="obsidianStore.isConnected">
+        <div class="nav-section-header">
+          <i class="fas fa-link"></i>
+          <span>Obsidian</span>
+        </div>
 
-    <!-- Divider -->
-    <div class="sidebar-divider"></div>
+        <div class="nav-section-items">
+          <router-link
+            to="/obsidian-explorer"
+            class="nav-item"
+            :class="{ active: currentRoute === 'obsidian-explorer' }"
+          >
+            <i class="fas fa-mountain"></i>
+            <span>Obsidian Explorer</span>
+          </router-link>
+        </div>
+      </div>
 
-    <!-- Context-sensitive content based on current route -->
-    <div class="sidebar-context">
-      <!-- Show template filters when in library view -->
-      <div v-if="currentRoute === 'library'" class="template-filters">
-        <h2 class="sidebar-section-title">Filters</h2>
-        <!-- Filter options will go here -->
-        <div class="filter-group">
-          <label class="filter-label">Sort By</label>
-          <select class="filter-select">
-            <option value="name">Name</option>
-            <option value="date">Date Modified</option>
-          </select>
+      <!-- Settings has been removed from navigation and moved to user profile -->
+    </nav>
+
+    <!-- Contextual content area -->
+    <div class="sidebar-context" v-if="showContextSection">
+      <!-- Template filters when in library view -->
+      <div v-if="currentRoute === 'library'" class="context-section">
+        <div class="section-header">
+          <h2 class="section-title">Filters</h2>
+        </div>
+
+        <div class="filter-options">
+          <div class="filter-group">
+            <label class="filter-label">Sort By</label>
+            <div class="select-wrapper">
+              <select class="filter-select">
+                <option value="name">Name</option>
+                <option value="date">Date Modified</option>
+                <option value="created">Date Created</option>
+              </select>
+              <i class="fas fa-chevron-down select-icon"></i>
+            </div>
+          </div>
+
+          <div class="filter-group">
+            <label class="filter-label">View</label>
+            <div class="view-toggle">
+              <button class="view-toggle-btn active">
+                <i class="fas fa-th-large"></i>
+              </button>
+              <button class="view-toggle-btn">
+                <i class="fas fa-list"></i>
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </div>
 
-    <!-- Bottom actions -->
-    <div class="sidebar-footer">
-      <div v-if="currentRoute === 'editor'" class="editor-actions">
-        <button
-          class="action-button primary-button"
-          @click="$emit('save-template')"
-          :disabled="!isModified"
-        >
-          <i class="fas fa-save"></i>
-          <span>Save</span>
-        </button>
-
-        <button
-          class="action-button secondary-button"
-          @click="$emit('export-template')"
-        >
-          <i class="fas fa-download"></i>
-          <span>Export</span>
-        </button>
-      </div>
-
+    <!-- Primary action button -->
+    <div class="sidebar-actions" v-if="showActionSection">
       <button
-        v-else-if="currentRoute === 'dashboard' || currentRoute === 'library'"
-        class="action-button primary-button"
+        v-if="currentRoute === 'dashboard' || currentRoute === 'library'"
+        class="action-button"
         @click="$emit('new-template')"
       >
         <i class="fas fa-plus"></i>
         <span>New Template</span>
       </button>
+    </div>
 
-      <!-- Theme toggle button -->
-      <div class="footer-actions">
-        <button class="theme-toggle" @click="toggleTheme">
+    <!-- User section (moved to bottom) -->
+    <div class="user-section" v-if="authStore.user">
+      <div class="user-section-header">
+        <i class="fas fa-user"></i>
+        <span>User</span>
+      </div>
+
+      <div
+        class="user-profile"
+        @click="navigateToSettings"
+        role="button"
+        tabindex="0"
+        :class="{ active: currentRoute === 'settings' }"
+      >
+        <div class="user-avatar">
+          {{ getInitials(authStore.user.name) }}
+        </div>
+        <div class="user-info">
+          <div class="user-name">{{ authStore.user.name }}</div>
+          <div class="user-action">
+            <span>Account Settings</span>
+            <i class="fas fa-chevron-right"></i>
+          </div>
+        </div>
+      </div>
+
+      <!-- Utility controls -->
+      <div class="user-controls">
+        <button
+          class="control-button"
+          @click="toggleTheme"
+          aria-label="Toggle theme"
+        >
           <i class="fas" :class="isDarkTheme ? 'fa-sun' : 'fa-moon'"></i>
+          <span>{{ isDarkTheme ? "Light Mode" : "Dark Mode" }}</span>
         </button>
 
-        <button class="logout-button" @click="logout">
+        <button
+          class="control-button logout-button"
+          @click="logout"
+          aria-label="Logout"
+        >
           <i class="fas fa-sign-out-alt"></i>
           <span>Logout</span>
         </button>
       </div>
     </div>
+
+    <!-- Mobile close button (only shows on small screens) -->
+    <button
+      class="mobile-close-button"
+      v-if="uiStore.isMobile"
+      @click="uiStore.toggleSidebar"
+      aria-label="Close sidebar"
+    >
+      <i class="fas fa-times"></i>
+    </button>
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed, ref, onMounted } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import SectionLibrary from "@/components/TemplateCreator/TemplateModuleLibrary.vue";
 import ObsidianStatusIndicator from "@/components/Layout/ObsidianStatusIndicator.vue";
 import { useUIStore, usePreferencesStore, useObsidianStore } from "@/stores";
 import { useAuthStore } from "@/stores/auth";
@@ -153,7 +201,6 @@ const props = defineProps({
 
 // Emits
 const emit = defineEmits([
-  "add-section",
   "save-template",
   "export-template",
   "new-template",
@@ -182,6 +229,15 @@ const currentRoute = computed(() => {
   return "";
 });
 
+// Conditionally show different sections
+const showContextSection = computed(() => {
+  return ["library"].includes(currentRoute.value);
+});
+
+const showActionSection = computed(() => {
+  return ["editor", "dashboard", "library"].includes(currentRoute.value);
+});
+
 // User profile methods
 const getInitials = (name: string) => {
   if (!name) return "";
@@ -192,26 +248,17 @@ const getInitials = (name: string) => {
     .toUpperCase();
 };
 
-const getPlanLabel = (plan: string) => {
-  switch (plan) {
-    case "free":
-      return "Free Plan";
-    case "premium":
-      return "Premium Plan";
-    case "pro":
-      return "Pro Plan";
-    default:
-      return "Free Plan";
-  }
-};
-
 const logout = () => {
   authStore.logout();
   router.push({ name: "login" });
 };
 
+const navigateToSettings = () => {
+  router.push({ path: "/settings" });
+};
+
 // Theme toggle
-const isDarkTheme = ref(true); // Default to dark theme
+const isDarkTheme = ref(true);
 
 onMounted(() => {
   // Initialize theme based on stored preference
@@ -243,29 +290,35 @@ const toggleTheme = () => {
 .global-sidebar {
   display: flex;
   flex-direction: column;
-  width: 200px;
+  width: 260px;
   height: 100vh;
-  background: rgba(30, 30, 46, 0.8);
+  background: rgba(33, 34, 44, 0.95);
   border-right: 1px solid var(--glass-border);
-  border-radius: 0;
   box-shadow: 4px 0 20px rgba(0, 0, 0, 0.1);
-  transition: transform 0.3s ease, width 0.3s ease;
   overflow: hidden;
   z-index: 100;
+  position: relative;
 }
 
+/* App header */
 .sidebar-header {
   display: flex;
   align-items: center;
-  flex-wrap: wrap;
-  padding: var(--spacing-md) var(--spacing-lg); /* Reduced from var(--spacing-lg) */
-  gap: var(--spacing-md);
+  padding: var(--spacing-md) var(--spacing-lg);
   justify-content: space-between;
+  border-bottom: 1px solid var(--glass-border);
+  height: 70px; /* Fixed height for consistency */
+}
+
+.app-logo-container {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
 }
 
 .app-logo {
-  width: 36px; /* Was 40px */
-  height: 36px; /* Was 40px */
+  width: 36px;
+  height: 36px;
   background: linear-gradient(
     135deg,
     var(--color-primary),
@@ -275,12 +328,20 @@ const toggleTheme = () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.125rem; /* Was 1.25rem */
+  font-size: 1.125rem;
   color: white;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  transition: transform var(--transition-fast),
+    box-shadow var(--transition-fast);
+}
+
+.app-logo:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(var(--color-primary-rgb), 0.3);
 }
 
 .app-title {
-  font-size: 1.125rem; /* Was 1.25rem */
+  font-size: 1.125rem;
   font-weight: 600;
   margin: 0;
   background: linear-gradient(
@@ -291,75 +352,135 @@ const toggleTheme = () => {
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
+  white-space: nowrap;
 }
 
+.connection-indicator {
+  display: flex;
+  align-items: center;
+}
+
+/* Main navigation */
 .sidebar-nav {
   display: flex;
   flex-direction: column;
-  padding: 0 var(--spacing-md);
+  padding: var(--spacing-lg) 0;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.nav-section {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: var(--spacing-xl);
+}
+
+.nav-section-header {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: 0 var(--spacing-lg);
+  margin-bottom: var(--spacing-md);
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+}
+
+.nav-section-header i {
+  font-size: 0.8rem;
+  color: var(--color-primary-light);
+}
+
+.nav-section-items {
+  display: flex;
+  flex-direction: column;
 }
 
 .nav-item {
   display: flex;
   align-items: center;
   gap: var(--spacing-md);
-  padding: var(--spacing-sm) var(--spacing-md); /* Reduced from var(--spacing-md) */
-  border-radius: var(--radius-md);
+  padding: var(--spacing-sm) var(--spacing-lg);
   color: var(--color-text);
   text-decoration: none;
   font-weight: 500;
-  transition: all var(--transition-fast);
-  margin-bottom: 2px; /* Was var(--spacing-xs) */
+  transition: all var(--transition-standard);
+  position: relative;
+  border-left: 3px solid transparent;
+  border-radius: 0;
 }
 
 .nav-item:hover {
-  background: rgba(255, 255, 255, 0.1);
-}
-
-.nav-item.active {
-  background: rgba(var(--color-primary-rgb), 0.2);
+  background: rgba(255, 255, 255, 0.05);
   color: var(--color-primary-light);
 }
 
+.nav-item.active {
+  background: rgba(var(--color-primary-rgb), 0.1);
+  color: var(--color-primary-light);
+  border-left: 3px solid var(--color-primary);
+}
+
+.nav-item.active::after {
+  content: "";
+  position: absolute;
+  right: var(--spacing-lg);
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: var(--color-primary);
+}
+
 .nav-item i {
-  font-size: 1.1rem;
-  width: 24px;
+  font-size: 1rem;
+  width: 20px;
   text-align: center;
+  transition: transform var(--transition-fast);
 }
 
-.sidebar-divider {
-  height: 1px;
-  background: var(--glass-border);
-  margin: var(--spacing-md) var(--spacing-lg);
+.nav-item:hover i {
+  transform: translateX(2px);
 }
 
+/* Contextual content */
 .sidebar-context {
-  flex: 1;
+  padding: 0 var(--spacing-lg) var(--spacing-lg);
+  max-height: 30vh;
   overflow-y: auto;
-  padding: 0 var(--spacing-sm); /* Was 0 var(--spacing-md) */
 }
 
-.sidebar-section-title {
-  font-size: 0.8rem; /* Was 0.9rem */
+.context-section {
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-md);
+  border: 1px solid var(--glass-border);
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-md);
+}
+
+.section-title {
+  font-size: 0.85rem;
   font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.03em;
   color: var(--color-text-secondary);
-  margin: var(--spacing-sm) var(--spacing-md); /* Was var(--spacing-md) var(--spacing-md) */
+  margin: 0;
 }
 
-.section-library-container {
+.filter-options {
   display: flex;
   flex-direction: column;
-  height: 100%;
-}
-
-.template-filters {
-  padding: 0 var(--spacing-sm) var(--spacing-md);
+  gap: var(--spacing-md);
 }
 
 .filter-group {
-  margin-bottom: var(--spacing-md);
+  margin-bottom: var(--spacing-sm);
 }
 
 .filter-label {
@@ -369,44 +490,77 @@ const toggleTheme = () => {
   margin-bottom: var(--spacing-xs);
 }
 
+.select-wrapper {
+  position: relative;
+  width: 100%;
+}
+
 .filter-select {
   width: 100%;
-  padding: var(--spacing-sm);
-  background: rgba(255, 255, 255, 0.1);
+  padding: var(--spacing-sm) var(--spacing-md);
+  background: rgba(255, 255, 255, 0.05);
   border: 1px solid var(--glass-border);
   border-radius: var(--radius-sm);
   color: var(--color-text);
   font-size: 0.875rem;
+  appearance: none;
+  padding-right: 30px; /* Space for the icon */
 }
 
-.sidebar-footer {
-  padding: var(--spacing-sm) var(--spacing-md); /* Was var(--spacing-md) */
+.select-icon {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--color-text-tertiary);
+  pointer-events: none;
+  font-size: 0.75rem;
+}
+
+.view-toggle {
+  display: flex;
+  gap: var(--spacing-xs);
+}
+
+.view-toggle-btn {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-secondary);
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.view-toggle-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--color-text);
+}
+
+.view-toggle-btn.active {
+  background: rgba(var(--color-primary-rgb), 0.2);
+  color: var(--color-primary-light);
+  border-color: var(--color-primary-dark);
+}
+
+/* Action button */
+.sidebar-actions {
+  padding: var(--spacing-md) var(--spacing-lg);
   border-top: 1px solid var(--glass-border);
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-sm);
-}
-
-.editor-actions {
-  display: flex;
-  gap: var(--spacing-sm);
+  border-bottom: 1px solid var(--glass-border);
 }
 
 .action-button {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: var(--spacing-sm);
-  padding: var(--spacing-xs) var(--spacing-sm); /* Reduced from var(--spacing-sm) var(--spacing-md) */
-  border-radius: var(--radius-md);
-  font-weight: 500;
-  font-size: 0.9rem; /* Added to reduce text size */
-  cursor: pointer;
-  transition: all var(--transition-fast);
-  flex: 1;
-}
-
-.primary-button {
+  gap: var(--spacing-md);
+  width: 100%;
+  padding: var(--spacing-md);
   background: linear-gradient(
     135deg,
     var(--color-primary-light),
@@ -414,82 +568,89 @@ const toggleTheme = () => {
   );
   color: white;
   border: none;
-  box-shadow: 0 2px 4px rgba(255, 171, 88, 0.2);
+  border-radius: var(--radius-md);
+  font-weight: 500;
+  font-size: 0.95rem;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(var(--color-primary-rgb), 0.3);
+  transition: all var(--transition-standard);
 }
 
-.primary-button:hover:not(:disabled) {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 8px rgba(255, 171, 88, 0.3);
+.action-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(var(--color-primary-rgb), 0.4);
 }
 
-.primary-button:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
+.action-button:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 4px rgba(var(--color-primary-rgb), 0.3);
 }
 
-.secondary-button {
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid var(--glass-border);
-  color: var(--color-text);
+.action-button i {
+  font-size: 0.9rem;
 }
 
-.secondary-button:hover {
-  background: rgba(255, 255, 255, 0.15);
+/* User section (new) */
+.user-section {
+  padding: var(--spacing-lg) var(--spacing-lg);
+  border-top: 1px solid var(--glass-border);
+  margin-top: auto; /* Push to bottom */
 }
 
-.footer-actions {
+.user-section-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  margin-top: var(--spacing-sm);
-}
-
-.theme-toggle {
-  background: transparent;
-  border: none;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-md);
   color: var(--color-text-secondary);
-  font-size: 1.2rem;
-  cursor: pointer;
-  transition: all var(--transition-fast);
-  padding: var(--spacing-sm);
-  border-radius: var(--radius-sm);
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
 }
 
-.theme-toggle:hover {
-  color: var(--color-primary);
-  background: rgba(255, 255, 255, 0.05);
+.user-section-header i {
+  font-size: 0.8rem;
+  color: var(--color-primary-light);
 }
 
-/* Custom scrollbar for sidebar content */
-.sidebar-context::-webkit-scrollbar {
-  width: 3px; /* Was 4px */
-}
-
-.sidebar-context::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.sidebar-context::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.08); /* Lighter, more subtle */
-  border-radius: 1.5px;
-}
-
-.sidebar-context::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.15);
-}
-
-/* User profile styles */
 .user-profile {
   display: flex;
   align-items: center;
-  padding: var(--spacing-md) var(--spacing-lg);
   gap: var(--spacing-md);
-  border-bottom: 1px solid var(--glass-border);
+  padding: var(--spacing-md);
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--glass-border);
+  margin-bottom: var(--spacing-lg);
+  cursor: pointer;
+  transition: all var(--transition-standard);
+  position: relative;
+}
+
+.user-profile:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(var(--color-primary-rgb), 0.3);
+  transform: translateY(-1px);
+}
+
+.user-profile:active {
+  transform: translateY(0);
+}
+
+.user-profile.active {
+  background: rgba(var(--color-primary-rgb), 0.08);
+  border-color: rgba(var(--color-primary-rgb), 0.4);
+}
+
+.user-profile:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(var(--color-primary-rgb), 0.3);
 }
 
 .user-avatar {
-  width: 36px;
-  height: 36px;
+  width: 38px;
+  height: 38px;
   border-radius: var(--radius-full);
   background: linear-gradient(
     135deg,
@@ -502,49 +663,144 @@ const toggleTheme = () => {
   color: white;
   font-weight: 500;
   font-size: 0.875rem;
+  box-shadow: 0 2px 8px rgba(var(--color-primary-rgb), 0.3);
 }
 
 .user-info {
   display: flex;
   flex-direction: column;
+  flex: 1;
+}
+
+.user-action {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.75rem;
+  color: var(--color-text-secondary);
+  margin-top: 2px;
+}
+
+.user-action i {
+  font-size: 0.7rem;
+  transition: transform var(--transition-fast);
+}
+
+.user-profile:hover .user-action i {
+  transform: translateX(2px);
 }
 
 .user-name {
   font-weight: 500;
-  font-size: 0.9rem;
+  font-size: 0.95rem;
 }
 
-.user-plan {
-  font-size: 0.75rem;
-  color: var(--color-primary);
+/* User controls */
+.user-controls {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.control-button {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  padding: var(--spacing-sm) var(--spacing-md);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  color: var(--color-text);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  font-size: 0.875rem;
+  text-align: left;
+}
+
+.control-button:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(var(--color-primary-rgb), 0.3);
+}
+
+.control-button i {
+  font-size: 1rem;
+  width: 20px;
+  text-align: center;
 }
 
 .logout-button {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-xs);
-  background: transparent;
-  border: none;
-  color: var(--color-text-secondary);
-  cursor: pointer;
-  padding: var(--spacing-xs) var(--spacing-sm);
-  border-radius: var(--radius-sm);
-  font-size: 0.875rem;
-  transition: all var(--transition-fast);
+  color: var(--color-error);
+  border-color: rgba(248, 113, 113, 0.2);
 }
 
 .logout-button:hover {
-  color: var(--color-text);
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(248, 113, 113, 0.1);
+  border-color: rgba(248, 113, 113, 0.4);
 }
 
+/* Mobile close button */
+.mobile-close-button {
+  display: none;
+  position: absolute;
+  top: var(--spacing-md);
+  right: var(--spacing-md);
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--glass-border);
+  color: var(--color-text);
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 101;
+}
+
+/* Custom scrollbar */
+.sidebar-nav::-webkit-scrollbar,
+.sidebar-context::-webkit-scrollbar {
+  width: 4px;
+}
+
+.sidebar-nav::-webkit-scrollbar-track,
+.sidebar-context::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.sidebar-nav::-webkit-scrollbar-thumb,
+.sidebar-context::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 2px;
+}
+
+.sidebar-nav::-webkit-scrollbar-thumb:hover,
+.sidebar-context::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+/* Responsive */
 @media (max-width: 768px) {
   .global-sidebar {
-    width: 240px;
-    position: absolute;
-    top: 0;
+    position: fixed;
     left: 0;
-    box-shadow: 0 0 25px rgba(0, 0, 0, 0.2);
+    top: 0;
+    transform: translateX(-100%);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    width: 280px; /* Slightly wider on mobile */
+    box-shadow: 0 0 25px rgba(0, 0, 0, 0.5);
+  }
+
+  .global-sidebar.show {
+    transform: translateX(0);
+  }
+
+  .mobile-close-button {
+    display: flex;
+  }
+
+  /* Ensure the logo is visible on mobile */
+  .app-logo-container {
+    margin-right: 40px; /* Space for close button */
   }
 }
 </style>

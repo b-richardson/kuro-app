@@ -1,9 +1,4 @@
 import { createClient } from "@supabase/supabase-js";
-import {
-  saveObsidianIntegration,
-  getObsidianIntegration,
-  deleteObsidianIntegration,
-} from "./database";
 
 /**
  * Supabase Client Configuration
@@ -93,8 +88,5 @@ try {
   console.error("Error checking for pending auth state:", e);
 }
 
-export {
-  saveObsidianIntegration,
-  getObsidianIntegration,
-  deleteObsidianIntegration,
-};
+export * from "./database";
+export * from "./types";

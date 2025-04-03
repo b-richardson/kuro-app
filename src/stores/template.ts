@@ -3,6 +3,7 @@ import { ref, computed } from "vue";
 import { v4 as uuidv4 } from "uuid";
 import { useUIStore } from "./ui";
 import { useActivityStore } from "./activity";
+import { useAuthStore } from "./auth";
 
 // Import the types directly from the type definitions file
 import {
@@ -138,15 +139,17 @@ export const useTemplateStore = defineStore("template", () => {
   };
 
   /**
-   * Loads templates from localStorage
+   * Loads templates from localStorage and Supabase if user is authenticated
    */
-  const loadTemplates = async () => {
+  const loadTemplates = async (forceSupabaseSync = false) => {
     isLoading.value = true;
     error.value = null;
 
     try {
-      // Check localStorage for any saved templates
+      // Check localStorage for any saved templates first
+      let localTemplatesLoaded = false;
       const savedTemplates = localStorage.getItem("templates");
+
       if (savedTemplates) {
         const parsed = JSON.parse(savedTemplates);
 
@@ -157,6 +160,84 @@ export const useTemplateStore = defineStore("template", () => {
             ? template.modules.map(normalizemodule)
             : [],
         }));
+
+        localTemplatesLoaded = true;
+      }
+
+      // Check if user is authenticated to potentially load from Supabase
+      const authStore = useAuthStore();
+      if (authStore.isAuthenticated && authStore.userId) {
+        try {
+          // Import loadTemplatesFromSupabase dynamically to prevent circular dependency
+          const { loadTemplatesFromSupabase } = await import(
+            "@/services/supabase"
+          );
+          const { data: supabaseTemplates, error: supabaseError } =
+            await loadTemplatesFromSupabase(authStore.userId);
+
+          if (supabaseError) {
+            console.error(
+              "Error loading templates from Supabase:",
+              supabaseError
+            );
+
+            // If local templates were loaded, just show a warning but continue
+            if (localTemplatesLoaded) {
+              console.warn(
+                "Using local templates instead of Supabase templates due to error"
+              );
+              uiStore.showToast(
+                "Using local templates - couldn't connect to cloud",
+                "info"
+              );
+            } else {
+              throw new Error("Failed to load templates from Supabase");
+            }
+          } else if (supabaseTemplates.length > 0 || forceSupabaseSync) {
+            // If we got templates from Supabase or force sync is enabled, use them
+            // If forceSupabaseSync is true, we prefer server templates even if empty
+
+            // Merge local and remote templates by ID, preferring remote (newer) versions
+            const mergedTemplates = new Map();
+
+            // First add all local templates
+            templates.value.forEach((template) => {
+              // Only add local templates if they belong to this user
+              if (template.userId === authStore.userId) {
+                mergedTemplates.set(template.id, template);
+              }
+            });
+
+            // Then add or overwrite with Supabase templates
+            supabaseTemplates.forEach((template) => {
+              mergedTemplates.set(template.id, template);
+            });
+
+            // Convert map back to array
+            templates.value = Array.from(mergedTemplates.values());
+
+            // Save the merged templates back to localStorage
+            saveTemplates();
+
+            console.log(
+              `Loaded ${supabaseTemplates.length} templates from Supabase`
+            );
+          } else if (!localTemplatesLoaded) {
+            // If we didn't get templates from Supabase and didn't have local templates
+            templates.value = [];
+          }
+        } catch (err) {
+          console.error(
+            "Error importing or using loadTemplatesFromSupabase:",
+            err
+          );
+
+          // If we don't have local templates, show an error
+          if (!localTemplatesLoaded) {
+            uiStore.showToast("Failed to load templates", "error");
+            throw err;
+          }
+        }
       }
 
       return true;
@@ -388,6 +469,50 @@ export const useTemplateStore = defineStore("template", () => {
       activityStore.addActivity("delete", id, templateName, templateUserId);
 
       saveTemplates();
+
+      // Sync deletion with Supabase if user is authenticated
+      const authStore = useAuthStore();
+      if (authStore.isAuthenticated && authStore.userId) {
+        try {
+          // Import deleteTemplateFromSupabase dynamically to prevent circular dependency
+          import("@/services/supabase")
+            .then(({ deleteTemplateFromSupabase }) => {
+              // Make sure userId is a string (not null) before passing it
+              const userId = authStore.userId;
+              if (userId) {
+                deleteTemplateFromSupabase(id, userId)
+                  .then((result) => {
+                    if (!result.success) {
+                      console.error(
+                        "Error deleting template from Supabase:",
+                        result.error
+                      );
+                    }
+                  })
+                  .catch((err) => {
+                    console.error(
+                      "Exception deleting template from Supabase:",
+                      err
+                    );
+                  });
+              } else {
+                console.error(
+                  "User ID is null, cannot delete template from Supabase"
+                );
+              }
+            })
+            .catch((err) => {
+              console.error("Error importing deleteTemplateFromSupabase:", err);
+            });
+        } catch (err) {
+          // Don't let Supabase sync errors prevent local deletion
+          console.error(
+            "Error synchronizing template deletion with Supabase:",
+            err
+          );
+        }
+      }
+
       return true;
     }
 
@@ -591,6 +716,41 @@ export const useTemplateStore = defineStore("template", () => {
       // Return early if the update fails
       if (!updateTemplate(currentTemplate.value)) {
         throw new Error("Failed to update template");
+      }
+
+      // Sync with Supabase if user is authenticated
+      const authStore = useAuthStore();
+      if (
+        authStore.isAuthenticated &&
+        authStore.userId &&
+        currentTemplate.value
+      ) {
+        try {
+          // Import here to avoid circular dependency
+          const { syncTemplateWithSupabase } = await import(
+            "@/services/supabase"
+          );
+
+          // Use a non-blocking promise
+          syncTemplateWithSupabase(currentTemplate.value, authStore.userId)
+            .then((result) => {
+              if (!result.success) {
+                console.error(
+                  "Error syncing template with Supabase:",
+                  result.error
+                );
+              }
+            })
+            .catch((err) => {
+              console.error("Exception syncing template with Supabase:", err);
+            });
+        } catch (err) {
+          // Don't let Supabase sync errors prevent local save
+          console.error(
+            "Error importing or calling syncTemplateWithSupabase:",
+            err
+          );
+        }
       }
 
       return currentTemplate.value.id;
