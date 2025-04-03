@@ -8,7 +8,6 @@ This directory contains components related to the template module library shown 
 - `ModuleCard.vue` - Card displaying a module that can be added to the template
 - `BasicModules.vue` - Basic markdown modules (text, header, etc.)
 - `PluginModules.vue` - Plugin-specific modules (Dataview, Templater, etc.)
-- `YamlPresetModules.vue` - YAML frontmatter preset modules
 
 ## Purpose
 

@@ -21,14 +21,6 @@ export function generateDefaultContent(
       return ["Enter your text here..."];
     case "divider":
       return ["---"];
-    case "yaml":
-      return [
-        "---",
-        "title: Untitled Note",
-        "created: " + new Date().toISOString().split("T")[0],
-        "tags: []",
-        "---",
-      ];
 
     // Templater plugin modules
     case "templaterField":
@@ -109,7 +101,7 @@ export function getModuleIcon(moduleType: ModuleType): string {
       return "fas fa-align-left";
     case "divider":
       return "fas fa-minus";
-    case "yaml":
+    case "codeBlock":
       return "fas fa-code";
 
     // Templater plugin modules
@@ -181,7 +173,6 @@ export function isValidModuleType(type: any): type is ModuleType {
     "text",
     "divider",
     "codeBlock",
-    "yaml",
 
     // Templater plugin modules
     "templaterField",

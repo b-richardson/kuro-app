@@ -26,7 +26,6 @@ import TableModule from "@/components/TemplateCreator/modules/content/TableModul
 import TextModule from "@/components/TemplateCreator/modules/content/TextModule.vue";
 import CodeBlockModule from "@/components/TemplateCreator/modules/content/CodeBlockModule.vue";
 import DividerModule from "@/components/TemplateCreator/modules/content/DividerModule.vue";
-import YamlModule from "@/components/TemplateCreator/modules/plugins/yaml/YamlModule.vue";
 // Templater modules
 import TemplaterModule from "@/components/TemplateCreator/modules/plugins/templater/TemplaterModule.vue";
 import TemplaterDateAndTimeModule from "@/components/TemplateCreator/modules/plugins/templater/TemplaterDateAndTimeModule.vue";
@@ -76,8 +75,6 @@ const moduleComponent = computed(() => {
       return DividerModule;
     case "codeBlock":
       return CodeBlockModule;
-    case "yaml":
-      return YamlModule;
     // Templater modules
     case "templaterField":
       return TemplaterModule;

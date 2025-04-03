@@ -9,7 +9,6 @@ export type ModuleType =
   | "table"
   | "divider"
   | "codeBlock"
-  | "yaml"
   // Templater plugin modules
   | "templaterField"
   | "templaterDateAndTime"
@@ -26,7 +25,7 @@ export type ModuleType =
   | "dataviewCalendarQuery"
   | "dataviewInlineFields";
 
-export type PluginType = "templater" | "dataview" | "yaml" | null;
+export type PluginType = "templater" | "dataview" | null;
 
 export interface ModuleMetadata {
   level?: number;

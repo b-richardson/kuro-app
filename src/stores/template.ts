@@ -110,8 +110,6 @@ export const useTemplateStore = defineStore("template", () => {
       "text",
       "divider",
       "codeBlock",
-      // Plugin-specific module types
-      "yaml",
       // Templater plugin modules
       "templaterField",
       "templaterDateAndTime",

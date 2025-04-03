@@ -33,7 +33,8 @@
             <span>Show Plugin Modules</span>
           </label>
           <small class="setting-description"
-            >Display modules for Obsidian plugins like Templater and Dataview</small
+            >Display modules for Obsidian plugins like Templater and
+            Dataview</small
           >
         </div>
 
@@ -57,12 +58,6 @@
         :show-descriptions="showModuleDescriptions"
       />
 
-      <!-- YAML Preset Modules -->
-      <YamlPresetModules
-        @add-module="handleAddModule"
-        :show-descriptions="showModuleDescriptions"
-      />
-
       <!-- Plugin-aware Modules -->
       <PluginModules
         v-if="showPluginModules"
@@ -76,9 +71,8 @@
 
 <script setup lang="ts">
 import { ref, computed } from "vue";
-import BasicModules from "./BasicModules.vue";
-import YamlPresetModules from "./YamlPresetModules.vue";
-import PluginModules from "./PluginModules.vue";
+import BasicModules from "@/components/ModuleLibrary/BasicModules.vue";
+import PluginModules from "@/components/ModuleLibrary/PluginModules.vue";
 import { TemplateModule } from "@/types/TemplateModule";
 import { usePreferencesStore } from "@/stores/preferences";
 
@@ -137,7 +131,7 @@ const showPluginHelpModal = () => {
         </div>
       </div>
     `,
-    type: "info"
+    type: "info",
   });
 };
 </script>

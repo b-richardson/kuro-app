@@ -32,7 +32,10 @@
             </div>
             <div class="description-text">
               <h4>Templater Modules</h4>
-              <p>Add dynamic content with Templater's JavaScript-powered templates</p>
+              <p>
+                Add dynamic content with Templater's JavaScript-powered
+                templates
+              </p>
             </div>
           </div>
 
@@ -53,7 +56,13 @@
 
           <!-- Advanced Templater Modules -->
           <transition name="expand">
-            <div v-if="showSecondaryModules && secondaryPriorityTemplaterModules.length > 0" class="advanced-modules">
+            <div
+              v-if="
+                showSecondaryModules &&
+                secondaryPriorityTemplaterModules.length > 0
+              "
+              class="advanced-modules"
+            >
               <div class="advanced-heading">
                 <div class="icon-badge">
                   <i class="fas fa-angle-double-up"></i>
@@ -89,7 +98,9 @@
             </div>
             <div class="description-text">
               <h4>Dataview Modules</h4>
-              <p>Create dynamic queries that display data from across your vault</p>
+              <p>
+                Create dynamic queries that display data from across your vault
+              </p>
             </div>
           </div>
 
@@ -110,14 +121,22 @@
 
           <!-- Advanced Dataview Modules -->
           <transition name="expand">
-            <div v-if="showSecondaryModules && secondaryPriorityDataviewModules.length > 0" class="advanced-modules">
+            <div
+              v-if="
+                showSecondaryModules &&
+                secondaryPriorityDataviewModules.length > 0
+              "
+              class="advanced-modules"
+            >
               <div class="advanced-heading">
                 <div class="icon-badge">
                   <i class="fas fa-angle-double-up"></i>
                 </div>
                 <div>
                   <h4>Advanced Dataview Modules</h4>
-                  <p>More powerful queries and advanced data processing options</p>
+                  <p>
+                    More powerful queries and advanced data processing options
+                  </p>
                 </div>
               </div>
 
@@ -146,15 +165,22 @@
       class="toggle-advanced-btn"
       @click="toggleSecondaryModules"
     >
-      <span>{{ showSecondaryModules ? "Hide advanced modules" : "Show advanced modules" }}</span>
-      <i :class="showSecondaryModules ? 'fas fa-chevron-up' : 'fas fa-chevron-down'"></i>
+      <span>{{
+        showSecondaryModules ? "Hide advanced modules" : "Show advanced modules"
+      }}</span>
+      <i
+        :class="
+          showSecondaryModules ? 'fas fa-chevron-up' : 'fas fa-chevron-down'
+        "
+      ></i>
     </button>
 
     <!-- Plugin Requirements Notice -->
     <div class="plugin-requirements">
       <i class="fas fa-info-circle"></i>
       <p>
-        These modules require the respective plugins to be installed in your Obsidian vault.
+        These modules require the respective plugins to be installed in your
+        Obsidian vault.
         <a href="#" @click.prevent="emit('show-plugin-help')">Learn more</a>
       </p>
     </div>
@@ -187,8 +213,16 @@ const showSecondaryModules = ref(false);
 
 // Plugin definitions with descriptions
 const plugins = [
-  { type: "templater", name: "Templater", description: "JavaScript-powered dynamic templates" },
-  { type: "dataview", name: "Dataview", description: "Query and display data from your vault" },
+  {
+    type: "templater",
+    name: "Templater",
+    description: "JavaScript-powered dynamic templates",
+  },
+  {
+    type: "dataview",
+    name: "Dataview",
+    description: "Query and display data from your vault",
+  },
 ];
 
 // Get high priority modules
@@ -261,7 +295,11 @@ function resolvePluginIcon(type: string | null): string {
 
 <style scoped>
 .plugin-modules-container {
-  background: linear-gradient(to bottom, var(--color-background-darker) 0%, transparent 100%);
+  background: linear-gradient(
+    to bottom,
+    var(--color-background-darker) 0%,
+    transparent 100%
+  );
   border-radius: var(--radius-lg);
   padding: var(--spacing-md);
   margin-bottom: var(--spacing-lg);
@@ -365,8 +403,7 @@ function resolvePluginIcon(type: string | null): string {
 
 .module-collection {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: var(--spacing-md);
+  gap: var(--spacing-sm);
   margin-bottom: var(--spacing-lg);
 }
 
@@ -507,12 +544,12 @@ function resolvePluginIcon(type: string | null): string {
   .module-collection {
     grid-template-columns: 1fr;
   }
-  
+
   .section-description {
     flex-direction: column;
     text-align: center;
   }
-  
+
   .icon-wrapper {
     margin-bottom: var(--spacing-xs);
   }

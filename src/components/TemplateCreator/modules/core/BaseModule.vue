@@ -91,6 +91,38 @@
         {{ toastMessage }}
       </div>
     </Transition>
+
+    <Transition name="modal">
+      <div
+        v-if="showDeleteConfirm"
+        class="delete-confirm-overlay"
+        @click.self="cancelDelete"
+      >
+        <div class="delete-confirm-modal">
+          <div class="delete-confirm-header">
+            <i class="fas fa-trash delete-confirm-icon"></i>
+            <h3>Delete Module</h3>
+          </div>
+          <div class="delete-confirm-content">
+            Are you sure you want to delete this module?
+          </div>
+          <div class="delete-confirm-actions">
+            <button
+              class="delete-confirm-button delete-confirm-cancel"
+              @click="cancelDelete"
+            >
+              Cancel
+            </button>
+            <button
+              class="delete-confirm-button delete-confirm-delete"
+              @click="confirmDelete"
+            >
+              Delete
+            </button>
+          </div>
+        </div>
+      </div>
+    </Transition>
   </div>
 </template>
 
@@ -145,6 +177,8 @@ const setInputRef = (el: HTMLElement | null) => {
     firstInputRef.value = el;
   }
 };
+
+const showDeleteConfirm = ref(false);
 
 // Initialize the module on mount
 onMounted(() => {
@@ -218,9 +252,16 @@ const toastIcon = computed(() => {
 
 // Confirm module deletion
 const confirmDeleteModule = () => {
-  if (confirm("Are you sure you want to delete this module?")) {
-    emit("delete");
-  }
+  showDeleteConfirm.value = true;
+};
+
+const cancelDelete = () => {
+  showDeleteConfirm.value = false;
+};
+
+const confirmDelete = () => {
+  showDeleteConfirm.value = false;
+  emit("delete");
 };
 
 // Get module type label
@@ -600,5 +641,121 @@ button[title]:hover::after {
 
 .template-module-editor--dataviewQuery {
   border-top: 3px solid #059669;
+}
+
+/* delete modal */
+.delete-confirm-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  backdrop-filter: blur(3px);
+  border-radius: var(--radius-md);
+}
+
+.delete-confirm-modal {
+  background: rgba(30, 30, 46, 0.95);
+  border: 1px solid var(--glass-border);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
+  border-radius: var(--radius-md);
+  width: 90%;
+  max-width: 300px;
+  overflow: hidden;
+}
+
+.delete-confirm-header {
+  padding: var(--spacing-md);
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.delete-confirm-icon {
+  color: #ef4444;
+  font-size: 1.2rem;
+}
+
+.delete-confirm-header h3 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 500;
+  color: var(--color-text);
+}
+
+.delete-confirm-content {
+  padding: var(--spacing-md);
+  color: var(--color-text-secondary);
+  font-size: 0.9375rem;
+}
+
+.delete-confirm-actions {
+  padding: var(--spacing-sm) var(--spacing-md);
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--spacing-sm);
+  background: rgba(0, 0, 0, 0.2);
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.delete-confirm-button {
+  padding: var(--spacing-xs) var(--spacing-md);
+  border-radius: var(--radius-sm);
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: none;
+}
+
+.delete-confirm-cancel {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--color-text-secondary);
+}
+
+.delete-confirm-cancel:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.delete-confirm-delete {
+  background: rgba(239, 68, 68, 0.2);
+  color: #ef4444;
+}
+
+.delete-confirm-delete:hover {
+  background: rgba(239, 68, 68, 0.3);
+}
+
+/* Modal animation */
+.modal-enter-active,
+.modal-leave-active {
+  transition: opacity 0.3s;
+}
+
+.modal-enter-active .delete-confirm-modal {
+  transition: transform 0.3s;
+}
+
+.modal-leave-active .delete-confirm-modal {
+  transition: transform 0.2s;
+}
+
+.modal-enter-from,
+.modal-leave-to {
+  opacity: 0;
+}
+
+.modal-enter-from .delete-confirm-modal {
+  transform: scale(0.9);
+}
+
+.modal-leave-to .delete-confirm-modal {
+  transform: scale(0.95);
 }
 </style>

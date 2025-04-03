@@ -17,27 +17,27 @@
 defineProps({
   title: {
     type: String,
-    required: true
+    required: true,
   },
   description: {
     type: String,
-    required: true
+    required: true,
   },
   icon: {
     type: String,
-    required: true
+    required: true,
   },
   pluginIcon: {
     type: String,
-    default: null
+    default: null,
   },
   showDescription: {
     type: Boolean,
-    default: true
-  }
+    default: true,
+  },
 });
 
-defineEmits(['click']);
+defineEmits(["click"]);
 </script>
 
 <style scoped>
@@ -70,7 +70,7 @@ defineEmits(['click']);
   border-radius: var(--radius-sm);
   color: white;
   font-size: 0.9rem;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
   flex-shrink: 0;
   position: relative;
 }
@@ -112,17 +112,17 @@ defineEmits(['click']);
   .module-card {
     padding: var(--spacing-xs);
   }
-  
+
   .module-icon {
     width: 28px;
     height: 28px;
     font-size: 0.8rem;
   }
-  
+
   .module-title {
     font-size: 0.85rem;
   }
-  
+
   .module-description {
     font-size: 0.7rem;
   }
