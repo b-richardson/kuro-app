@@ -35,9 +35,9 @@
           </router-link>
 
           <router-link
-            to="/library"
+            to="/my-templates"
             class="nav-item"
-            :class="{ active: currentRoute === 'library' }"
+            :class="{ active: currentRoute === 'my-templates' }"
           >
             <i class="fas fa-folder"></i>
             <span>My Templates</span>
@@ -78,8 +78,8 @@
 
     <!-- Contextual content area -->
     <div class="sidebar-context" v-if="showContextSection">
-      <!-- Template filters when in library view -->
-      <div v-if="currentRoute === 'library'" class="context-section">
+      <!-- Template filters when in my templates view -->
+      <div v-if="currentRoute === 'my-templates'" class="context-section">
         <div class="section-header">
           <h2 class="section-title">Filters</h2>
         </div>
@@ -115,7 +115,7 @@
     <!-- Primary action button -->
     <div class="sidebar-actions" v-if="showActionSection">
       <button
-        v-if="currentRoute === 'dashboard' || currentRoute === 'library'"
+        v-if="currentRoute === 'dashboard' || currentRoute === 'my-templates'"
         class="action-button"
         @click="$emit('new-template')"
       >
@@ -218,10 +218,8 @@ const router = useRouter();
 const route = useRoute();
 const currentRoute = computed(() => {
   if (route.path === "/dashboard") return "dashboard";
-  if (route.path.includes("/editor") && !route.path.includes("/editor-test"))
-    return "editor";
-  if (route.path === "/editor-test") return "editor-test";
-  if (route.path === "/library") return "library";
+  if (route.path === "/editor") return "editor";
+  if (route.path === "/my-templates") return "my-templates";
   if (route.path === "/template-library") return "templateLibrary";
   if (route.path === "/settings") return "settings";
   if (route.path === "/obsidian-explorer") return "obsidian-explorer";

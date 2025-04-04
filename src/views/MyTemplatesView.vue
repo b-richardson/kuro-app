@@ -192,19 +192,14 @@ const confirmDeleteTemplate = (id: string) => {
   templateStore.deleteTemplate(id);
 };
 
-const handleTemplateDuplicate = (id: string) => {
-  const templateToDuplicate = templateStore.templates.find((t) => t.id === id);
-  if (templateToDuplicate) {
-    const newId = templateStore.createTemplate(
-      templateToDuplicate.name + " (Copy)"
-    );
-    const newTemplate = templateStore.templates.find((t) => t.id === newId);
-    if (newTemplate) {
-      newTemplate.modules = JSON.parse(
-        JSON.stringify(templateToDuplicate.modules)
-      );
-      templateStore.saveTemplates();
-    }
+const handleTemplateDuplicate = async (id: string) => {
+  try {
+    const newId = await templateStore.duplicateTemplate(id);
+    uiStore.showToast("Template duplicated successfully", "success");
+    return newId;
+  } catch (error) {
+    console.error("Error duplicating template:", error);
+    uiStore.showToast("Failed to duplicate template", "error");
   }
 };
 
