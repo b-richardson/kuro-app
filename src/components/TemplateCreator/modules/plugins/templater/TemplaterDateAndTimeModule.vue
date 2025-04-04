@@ -13,22 +13,22 @@
     @module-change="$emit('module-change')"
     ref="baseModuleRef"
   >
-    <div class="smart-date">
+    <div class="date-module">
       <!-- Module Header -->
-      <div class="smart-date__header">
-        <div class="smart-date__header-icon">
+      <div class="date-module__header">
+        <div class="date-module__header-icon">
           <i class="fas fa-calendar-alt"></i>
         </div>
-        <div class="smart-date__header-title">Smart Date</div>
+        <div class="date-module__header-title">Date & Time</div>
       </div>
 
       <!-- Tab Navigation -->
-      <div class="smart-date__tabs">
+      <div class="date-module__tabs">
         <button
           v-for="tab in tabs"
           :key="tab.id"
-          class="smart-date__tab"
-          :class="{ 'smart-date__tab--active': activeTab === tab.id }"
+          class="date-module__tab"
+          :class="{ 'date-module__tab--active': activeTab === tab.id }"
           @click="setActiveTab(tab.id)"
         >
           <i :class="tab.icon"></i>
@@ -37,71 +37,76 @@
       </div>
 
       <!-- Tab Content -->
-      <div class="smart-date__content">
+      <div class="date-module__content">
         <!-- Today Tab -->
-        <div v-if="activeTab === 'today'" class="smart-date__panel">
-          <div class="smart-date__format-buttons">
+        <div v-if="activeTab === 'today'" class="date-module__panel">
+          <div class="date-module__format-grid">
             <button
               v-for="format in dateFormats"
               :key="format.id"
-              class="smart-date__format-button"
+              class="date-module__format-button"
               :class="{
-                'smart-date__format-button--active':
+                'date-module__format-button--active':
                   selectedFormat === format.id,
               }"
               @click="selectFormat(format.id)"
             >
-              {{ format.name }}
+              <div class="date-module__format-name">{{ format.name }}</div>
+              <div class="date-module__format-example">
+                {{ format.example }}
+              </div>
             </button>
           </div>
 
-          <div class="smart-date__time-toggle">
-            <label class="smart-date__toggle">
+          <div class="date-module__time-toggle">
+            <label class="date-module__toggle">
               <input
                 type="checkbox"
                 v-model="includeTime"
                 @change="generateDateCode"
               />
-              <span class="smart-date__toggle-slider"></span>
-              <span class="smart-date__toggle-label">Include time</span>
+              <span class="date-module__toggle-slider"></span>
+              <span class="date-module__toggle-label">Include time</span>
             </label>
           </div>
         </div>
 
         <!-- Calendar Tab -->
-        <div v-if="activeTab === 'calendar'" class="smart-date__panel">
-          <div class="smart-date__calendar">
-            <div class="smart-date__calendar-header">
-              <button @click="previousMonth" class="smart-date__calendar-nav">
+        <div v-if="activeTab === 'calendar'" class="date-module__panel">
+          <div class="date-module__calendar">
+            <div class="date-module__calendar-header">
+              <button @click="previousMonth" class="date-module__calendar-nav">
                 <i class="fas fa-chevron-left"></i>
               </button>
-              <div class="smart-date__calendar-title">
+              <div class="date-module__calendar-title">
                 {{ currentMonthName }} {{ currentYear }}
               </div>
-              <button @click="nextMonth" class="smart-date__calendar-nav">
+              <button @click="nextMonth" class="date-module__calendar-nav">
                 <i class="fas fa-chevron-right"></i>
               </button>
             </div>
 
-            <div class="smart-date__calendar-weekdays">
+            <div class="date-module__calendar-weekdays">
               <div
                 v-for="day in weekDays"
                 :key="day"
-                class="smart-date__calendar-weekday"
+                class="date-module__calendar-weekday"
               >
                 {{ day }}
               </div>
             </div>
 
-            <div class="smart-date__calendar-days">
+            <div class="date-module__calendar-days">
               <button
                 v-for="(day, index) in calendarDays"
                 :key="index"
-                class="smart-date__calendar-day"
+                class="date-module__calendar-day"
                 :class="{
-                  'smart-date__calendar-day--other-month': !day.currentMonth,
-                  'smart-date__calendar-day--selected': isSelectedDay(day.date),
-                  'smart-date__calendar-day--today': isToday(day.date),
+                  'date-module__calendar-day--other-month': !day.currentMonth,
+                  'date-module__calendar-day--selected': isSelectedDay(
+                    day.date
+                  ),
+                  'date-module__calendar-day--today': isToday(day.date),
                 }"
                 @click="selectDay(day.date)"
               >
@@ -110,19 +115,19 @@
             </div>
           </div>
 
-          <div class="smart-date__calendar-offset">
-            <div class="smart-date__offset-label">Adjust date:</div>
-            <div class="smart-date__offset-controls">
+          <div class="date-module__calendar-offset">
+            <div class="date-module__offset-label">Adjust date:</div>
+            <div class="date-module__offset-controls">
               <button
                 @click="adjustOffset(-1)"
-                class="smart-date__offset-button"
+                class="date-module__offset-button"
               >
                 <i class="fas fa-minus"></i>
               </button>
               <input
                 type="number"
                 v-model.number="offsetAmount"
-                class="smart-date__offset-input"
+                class="date-module__offset-input"
                 min="0"
                 max="999"
                 @change="generateDateCode"
@@ -130,7 +135,7 @@
               <select
                 v-model="offsetUnit"
                 @change="generateDateCode"
-                class="smart-date__offset-select"
+                class="date-module__offset-select"
               >
                 <option value="day">day(s)</option>
                 <option value="week">week(s)</option>
@@ -138,59 +143,20 @@
               </select>
               <button
                 @click="adjustOffset(1)"
-                class="smart-date__offset-button"
+                class="date-module__offset-button"
               >
                 <i class="fas fa-plus"></i>
               </button>
             </div>
           </div>
 
-          <div class="smart-date__format-buttons">
+          <div class="date-module__format-buttons">
             <button
               v-for="format in dateFormats"
               :key="format.id"
-              class="smart-date__format-button"
+              class="date-module__format-button"
               :class="{
-                'smart-date__format-button--active':
-                  selectedFormat === format.id,
-              }"
-              @click="selectFormat(format.id)"
-            >
-              {{ format.name }}
-            </button>
-          </div>
-        </div>
-
-        <!-- Smart Tab -->
-        <div v-if="activeTab === 'smart'" class="smart-date__panel">
-          <div class="smart-date__smart-input-container">
-            <input
-              type="text"
-              v-model="smartDateInput"
-              @input="parseSmartDate"
-              class="smart-date__smart-input"
-              placeholder="tomorrow, next Friday, in 2 weeks..."
-            />
-          </div>
-
-          <div class="smart-date__smart-suggestions">
-            <button
-              v-for="suggestion in smartSuggestions"
-              :key="suggestion.text"
-              class="smart-date__smart-suggestion"
-              @click="applySmartSuggestion(suggestion.text)"
-            >
-              {{ suggestion.text }}
-            </button>
-          </div>
-
-          <div class="smart-date__format-buttons">
-            <button
-              v-for="format in dateFormats"
-              :key="format.id"
-              class="smart-date__format-button"
-              :class="{
-                'smart-date__format-button--active':
+                'date-module__format-button--active':
                   selectedFormat === format.id,
               }"
               @click="selectFormat(format.id)"
@@ -201,10 +167,22 @@
         </div>
       </div>
 
+      <!-- Input Label Field -->
+      <div class="date-module__label-field">
+        <div class="date-module__label-heading">Label (optional)</div>
+        <input
+          type="text"
+          v-model="dateLabel"
+          @input="generateDateCode"
+          class="date-module__label-input"
+          placeholder="e.g., Created: "
+        />
+      </div>
+
       <!-- Advanced Options (expandable) -->
-      <div class="smart-date__advanced">
+      <div class="date-module__advanced">
         <button
-          class="smart-date__advanced-toggle"
+          class="date-module__advanced-toggle"
           @click="showAdvancedOptions = !showAdvancedOptions"
         >
           <span>{{
@@ -219,16 +197,17 @@
           ></i>
         </button>
 
-        <div v-if="showAdvancedOptions" class="smart-date__advanced-panel">
-          <div class="smart-date__advanced-section">
-            <div class="smart-date__advanced-title">Date Source</div>
-            <div class="smart-date__source-options">
+        <div v-if="showAdvancedOptions" class="date-module__advanced-panel">
+          <div class="date-module__advanced-section">
+            <div class="date-module__advanced-title">Date Source</div>
+            <div class="date-module__source-options">
               <button
                 v-for="source in dateSources"
                 :key="source.id"
-                class="smart-date__source-option"
+                class="date-module__source-option"
                 :class="{
-                  'smart-date__source-option--active': dateSource === source.id,
+                  'date-module__source-option--active':
+                    dateSource === source.id,
                 }"
                 @click="setDateSource(source.id)"
               >
@@ -237,19 +216,19 @@
             </div>
           </div>
 
-          <div class="smart-date__advanced-section">
-            <div class="smart-date__advanced-title">Custom Format</div>
-            <div class="smart-date__custom-format">
-              <div class="smart-date__custom-format-input">
+          <div class="date-module__advanced-section">
+            <div class="date-module__advanced-title">Custom Format</div>
+            <div class="date-module__custom-format">
+              <div class="date-module__custom-format-input">
                 <input
                   type="text"
                   v-model="customFormat"
                   @input="applyCustomFormat"
-                  class="smart-date__input"
+                  class="date-module__input"
                   placeholder="e.g., YYYY-MM-DD HH:mm"
                 />
                 <button
-                  class="smart-date__help-btn"
+                  class="date-module__help-btn"
                   @click="showFormatHelp = !showFormatHelp"
                   title="Format help"
                 >
@@ -257,20 +236,20 @@
                 </button>
               </div>
 
-              <div v-if="showFormatHelp" class="smart-date__format-help">
-                <div class="smart-date__format-tokens">
+              <div v-if="showFormatHelp" class="date-module__format-help">
+                <div class="date-module__format-tokens">
                   <div
                     v-for="token in formatTokens"
                     :key="token.token"
-                    class="smart-date__format-token"
+                    class="date-module__format-token"
                   >
                     <div
-                      class="smart-date__token-name"
+                      class="date-module__token-name"
                       @click="insertToken(token.token)"
                     >
                       {{ token.token }}
                     </div>
-                    <div class="smart-date__token-desc">
+                    <div class="date-module__token-desc">
                       {{ token.description }}
                     </div>
                   </div>
@@ -291,13 +270,11 @@ import { TemplateModule } from "@/types/TemplateModule";
 import dayjs from "dayjs";
 import weekday from "dayjs/plugin/weekday";
 import advancedFormat from "dayjs/plugin/advancedFormat";
-import relativeTime from "dayjs/plugin/relativeTime";
 import customParseFormat from "dayjs/plugin/customParseFormat";
 
 // Initialize dayjs plugins
 dayjs.extend(weekday);
 dayjs.extend(advancedFormat);
-dayjs.extend(relativeTime);
 dayjs.extend(customParseFormat);
 
 // Define props
@@ -337,21 +314,30 @@ const includeTime = ref(false);
 const selectedFormat = ref("simple");
 const customFormat = ref("");
 const dateSource = ref("now");
-const smartDateInput = ref("");
+const dateLabel = ref("");
 
 // Tabs configuration
 const tabs = [
   { id: "today", label: "Today", icon: "fas fa-clock" },
   { id: "calendar", label: "Calendar", icon: "fas fa-calendar" },
-  { id: "smart", label: "Smart", icon: "fas fa-magic" },
 ];
 
 // Date formats
 const dateFormats = [
-  { id: "simple", name: "Simple", format: "MMM D, YYYY" },
-  { id: "short", name: "Short", format: "MM/DD/YYYY" },
-  { id: "full", name: "Full", format: "dddd, MMMM D, YYYY" },
-  { id: "iso", name: "ISO", format: "YYYY-MM-DD" },
+  {
+    id: "simple",
+    name: "Simple",
+    format: "MMM D, YYYY",
+    example: "Apr 3, 2025",
+  },
+  { id: "short", name: "Short", format: "MM/DD/YYYY", example: "04/03/2025" },
+  {
+    id: "full",
+    name: "Full",
+    format: "dddd, MMMM D, YYYY",
+    example: "Thursday, April 3, 2025",
+  },
+  { id: "iso", name: "ISO", format: "YYYY-MM-DD", example: "2025-04-03" },
 ];
 
 // Date sources
@@ -375,15 +361,6 @@ const formatTokens = [
   { token: "mm", description: "Minutes (00-59)" },
   { token: "ss", description: "Seconds (00-59)" },
   { token: "A", description: "AM/PM" },
-];
-
-// Smart date suggestions
-const smartSuggestions = [
-  { text: "tomorrow" },
-  { text: "next Monday" },
-  { text: "yesterday" },
-  { text: "in 2 weeks" },
-  { text: "last Friday" },
 ];
 
 // Calendar computed properties
@@ -534,71 +511,6 @@ function adjustOffset(amount: number) {
   generateDateCode();
 }
 
-// Smart date parsing
-function parseSmartDate() {
-  try {
-    // Add basic natural language parsing here
-    // This is a simplified version - you would need a more robust parser in production
-    const input = smartDateInput.value.toLowerCase();
-
-    if (input === "tomorrow") {
-      selectedDate.value = dayjs().add(1, "day");
-    } else if (input === "yesterday") {
-      selectedDate.value = dayjs().subtract(1, "day");
-    } else if (input.startsWith("next ")) {
-      const day = input.replace("next ", "");
-      const dayMap: Record<string, number> = {
-        sunday: 0,
-        monday: 1,
-        tuesday: 2,
-        wednesday: 3,
-        thursday: 4,
-        friday: 5,
-        saturday: 6,
-      };
-
-      if (dayMap[day] !== undefined) {
-        selectedDate.value = dayjs().day(dayMap[day] + 7);
-      }
-    } else if (input.startsWith("last ")) {
-      const day = input.replace("last ", "");
-      const dayMap: Record<string, number> = {
-        sunday: 0,
-        monday: 1,
-        tuesday: 2,
-        wednesday: 3,
-        thursday: 4,
-        friday: 5,
-        saturday: 6,
-      };
-
-      if (dayMap[day] !== undefined) {
-        selectedDate.value = dayjs().day(dayMap[day] - 7);
-      }
-    } else if (input.startsWith("in ")) {
-      // Parse "in X days/weeks/months"
-      const parts = input.replace("in ", "").split(" ");
-      if (parts.length >= 2) {
-        const amount = parseInt(parts[0]);
-        const unit = parts[1].replace(/s$/, ""); // Remove plural 's'
-
-        if (!isNaN(amount) && ["day", "week", "month", "year"].includes(unit)) {
-          selectedDate.value = dayjs().add(amount, unit as any);
-        }
-      }
-    }
-
-    generateDateCode();
-  } catch (error) {
-    console.error("Error parsing smart date:", error);
-  }
-}
-
-function applySmartSuggestion(text: string) {
-  smartDateInput.value = text;
-  parseSmartDate();
-}
-
 // Custom format handling
 function applyCustomFormat() {
   generateDateCode();
@@ -611,7 +523,18 @@ function insertToken(token: string) {
 
 // Generate the Templater code
 function generateDateCode() {
-  let code = "<% tp.";
+  let code = "";
+
+  console.log("Calendar date selected:", {
+    selectedDate: selectedDate.value.format("YYYY-MM-DD"),
+    today: dayjs().format("YYYY-MM-DD"),
+    offset: selectedDate.value.diff(dayjs(), "day"),
+    activeTab: activeTab.value,
+    offsetAmount: offsetAmount.value,
+  });
+
+  // Start with the Templater code
+  let templaterCode = "<% tp.";
   let format = activeFormatString.value;
   let dateToUse = selectedDate.value;
 
@@ -624,26 +547,46 @@ function generateDateCode() {
   switch (dateSource.value) {
     case "now":
       if (activeTab.value === "today") {
-        code += `date.now("${format}") %>`;
-      } else if (activeTab.value === "smart" && smartDateInput.value) {
-        code += `date.now("${format}") %>`;
+        templaterCode += `date.now("${format}") %>`;
       } else {
-        // For calendar or other tabs, use the selected date
-        const offset = dateToUse.diff(dayjs(), "day");
+        // REPLACE THIS SECTION WITH THE FIX:
+        // For calendar tab, use the selected date
+        // Get start-of-day versions of both dates to avoid time component issues
+        const todayStart = dayjs().startOf("day");
+        const selectedStart = dateToUse.startOf("day");
+
+        // Calculate offset properly using full days
+        const offset = selectedStart.diff(todayStart, "day");
+
+        console.log("Calendar offset calculation:", {
+          selectedDate: selectedStart.format("YYYY-MM-DD"),
+          today: todayStart.format("YYYY-MM-DD"),
+          calculatedOffset: offset,
+          selectedTimestamp: selectedStart.valueOf(),
+          todayTimestamp: todayStart.valueOf(),
+        });
+
         if (offset === 0) {
-          code += `date.now("${format}") %>`;
+          templaterCode += `date.now("${format}") %>`;
         } else {
           const sign = offset > 0 ? "+" : "";
-          code += `date.now(${sign}${offset}days, "${format}") %>`;
+          templaterCode += `date.now(${sign}${offset}days, "${format}") %>`;
         }
       }
       break;
     case "creation":
-      code += `file.creation_date("${format}") %>`;
+      templaterCode += `file.creation_date("${format}") %>`;
       break;
     case "modified":
-      code += `file.last_modified_date("${format}") %>`;
+      templaterCode += `file.last_modified_date("${format}") %>`;
       break;
+  }
+
+  // Add label only if it exists
+  if (dateLabel.value.trim()) {
+    code = dateLabel.value.trim() + " " + templaterCode;
+  } else {
+    code = templaterCode;
   }
 
   updateContent([code]);
@@ -725,6 +668,11 @@ function updateContent(content: string[]) {
   emit("update:content", content);
 }
 
+function formatDateExample(formatString: string) {
+  // Using the currently selected date to show the example
+  return selectedDate.value.format(formatString);
+}
+
 // Watch for changes to update the code
 watch(
   [
@@ -745,7 +693,7 @@ watch(
 </script>
 
 <style scoped>
-.smart-date {
+.date-module {
   width: 100%;
   color: #e2e8f0;
   display: flex;
@@ -754,7 +702,7 @@ watch(
 }
 
 /* Header styles */
-.smart-date__header {
+.date-module__header {
   display: flex;
   align-items: center;
   gap: 10px;
@@ -762,24 +710,24 @@ watch(
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-.smart-date__header-icon {
+.date-module__header-icon {
   color: #60a5fa;
   font-size: 18px;
 }
 
-.smart-date__header-title {
+.date-module__header-title {
   font-size: 16px;
   font-weight: 500;
 }
 
 /* Tab navigation */
-.smart-date__tabs {
+.date-module__tabs {
   display: flex;
   gap: 4px;
   margin-bottom: 4px;
 }
 
-.smart-date__tab {
+.date-module__tab {
   flex: 1;
   display: flex;
   align-items: center;
@@ -795,36 +743,60 @@ watch(
   cursor: pointer;
 }
 
-.smart-date__tab:hover {
+.date-module__tab:hover {
   background: rgba(255, 255, 255, 0.1);
 }
 
-.smart-date__tab--active {
+.date-module__tab--active {
   background: rgba(59, 130, 246, 0.2);
   border-color: rgba(59, 130, 246, 0.5);
   color: #fff;
 }
 
 /* Tab content panels */
-.smart-date__content {
+.date-module__content {
   min-height: 240px;
 }
 
-.smart-date__panel {
+.date-module__panel {
   display: flex;
   flex-direction: column;
   gap: 16px;
 }
 
+.date-module__format-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr); /* 2x2 grid */
+  gap: 8px;
+  width: 100%;
+}
+
+.date-module__format-name {
+  font-weight: 500;
+  margin-bottom: 4px;
+}
+
+.date-module__format-example {
+  font-size: 12px;
+  color: #94a3b8; /* Lighter color for the example */
+  white-space: nowrap; /* Prevent wrapping */
+  overflow: hidden;
+  text-overflow: ellipsis; /* Add ellipsis if text is too long */
+  max-width: 100%;
+}
+
 /* Format buttons */
-.smart-date__format-buttons {
+.date-module__format-buttons {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 8px;
 }
 
-.smart-date__format-button {
-  padding: 8px 12px;
+.date-module__format-button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 8px;
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 6px;
@@ -834,30 +806,41 @@ watch(
   cursor: pointer;
 }
 
-.smart-date__format-button:hover {
+.date-module__format-button:hover {
   background: rgba(255, 255, 255, 0.1);
 }
 
-.smart-date__format-button--active {
+.date-module__format-button--active {
   background: rgba(59, 130, 246, 0.2);
   border-color: rgba(59, 130, 246, 0.5);
   color: #fff;
 }
 
+.date-module__format-name {
+  font-weight: 500;
+  margin-bottom: 4px;
+}
+
+.date-module__format-example {
+  font-size: 12px;
+  color: #94a3b8;
+  text-align: center;
+}
+
 /* Time toggle */
-.smart-date__time-toggle {
+.date-module__time-toggle {
   display: flex;
   align-items: center;
 }
 
-.smart-date__toggle {
+.date-module__toggle {
   display: flex;
   align-items: center;
   gap: 10px;
   cursor: pointer;
 }
 
-.smart-date__toggle-slider {
+.date-module__toggle-slider {
   position: relative;
   display: inline-block;
   width: 36px;
@@ -867,7 +850,7 @@ watch(
   transition: 0.2s;
 }
 
-.smart-date__toggle-slider:before {
+.date-module__toggle-slider:before {
   position: absolute;
   content: "";
   height: 16px;
@@ -879,34 +862,34 @@ watch(
   transition: 0.2s;
 }
 
-.smart-date__toggle input {
+.date-module__toggle input {
   opacity: 0;
   width: 0;
   height: 0;
 }
 
-.smart-date__toggle input:checked + .smart-date__toggle-slider {
+.date-module__toggle input:checked + .date-module__toggle-slider {
   background: rgba(59, 130, 246, 0.5);
 }
 
-.smart-date__toggle input:checked + .smart-date__toggle-slider:before {
+.date-module__toggle input:checked + .date-module__toggle-slider:before {
   transform: translateX(16px);
   background: #60a5fa;
 }
 
-.smart-date__toggle-label {
+.date-module__toggle-label {
   font-size: 14px;
   color: #cbd5e1;
 }
 
 /* Calendar */
-.smart-date__calendar {
+.date-module__calendar {
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 6px;
   overflow: hidden;
 }
 
-.smart-date__calendar-header {
+.date-module__calendar-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -914,12 +897,12 @@ watch(
   background: rgba(255, 255, 255, 0.05);
 }
 
-.smart-date__calendar-title {
+.date-module__calendar-title {
   font-weight: 500;
   font-size: 14px;
 }
 
-.smart-date__calendar-nav {
+.date-module__calendar-nav {
   width: 28px;
   height: 28px;
   display: flex;
@@ -933,31 +916,31 @@ watch(
   transition: all 0.2s;
 }
 
-.smart-date__calendar-nav:hover {
+.date-module__calendar-nav:hover {
   background: rgba(255, 255, 255, 0.2);
 }
 
-.smart-date__calendar-weekdays {
+.date-module__calendar-weekdays {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
   background: rgba(0, 0, 0, 0.2);
 }
 
-.smart-date__calendar-weekday {
+.date-module__calendar-weekday {
   padding: 6px;
   text-align: center;
   font-size: 12px;
   color: #94a3b8;
 }
 
-.smart-date__calendar-days {
+.date-module__calendar-days {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
   background: rgba(0, 0, 0, 0.1);
   gap: 1px;
 }
 
-.smart-date__calendar-day {
+.date-module__calendar-day {
   aspect-ratio: 1;
   display: flex;
   align-items: center;
@@ -970,44 +953,44 @@ watch(
   transition: all 0.15s;
 }
 
-.smart-date__calendar-day:hover {
+.date-module__calendar-day:hover {
   background: rgba(59, 130, 246, 0.15);
 }
 
-.smart-date__calendar-day--other-month {
+.date-module__calendar-day--other-month {
   color: #64748b;
 }
 
-.smart-date__calendar-day--today {
+.date-module__calendar-day--today {
   box-shadow: inset 0 0 0 1px rgba(59, 130, 246, 0.5);
   font-weight: 500;
 }
 
-.smart-date__calendar-day--selected {
+.date-module__calendar-day--selected {
   background: rgba(59, 130, 246, 0.25);
   color: #fff;
   font-weight: 500;
 }
 
 /* Calendar offset */
-.smart-date__calendar-offset {
+.date-module__calendar-offset {
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
 
-.smart-date__offset-label {
+.date-module__offset-label {
   font-size: 14px;
   color: #94a3b8;
 }
 
-.smart-date__offset-controls {
+.date-module__offset-controls {
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
-.smart-date__offset-button {
+.date-module__offset-button {
   width: 32px;
   height: 32px;
   display: flex;
@@ -1021,11 +1004,11 @@ watch(
   transition: all 0.2s;
 }
 
-.smart-date__offset-button:hover {
+.date-module__offset-button:hover {
   background: rgba(255, 255, 255, 0.15);
 }
 
-.smart-date__offset-input {
+.date-module__offset-input {
   width: 60px;
   padding: 6px 8px;
   background: rgba(255, 255, 255, 0.05);
@@ -1036,7 +1019,7 @@ watch(
   text-align: center;
 }
 
-.smart-date__offset-select {
+.date-module__offset-select {
   padding: 6px 8px;
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.1);
@@ -1051,58 +1034,14 @@ watch(
   padding-right: 24px;
 }
 
-/* Smart input */
-.smart-date__smart-input-container {
-  position: relative;
-}
-
-.smart-date__smart-input {
-  width: 100%;
-  padding: 10px 12px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 6px;
-  font-size: 14px;
-  color: #e2e8f0;
-}
-
-.smart-date__smart-input:focus {
-  outline: none;
-  border-color: rgba(59, 130, 246, 0.5);
-  box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.25);
-}
-
-.smart-date__smart-suggestions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-top: 8px;
-}
-
-.smart-date__smart-suggestion {
-  padding: 6px 12px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 16px;
-  font-size: 13px;
-  color: #94a3b8;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.smart-date__smart-suggestion:hover {
-  background: rgba(255, 255, 255, 0.1);
-  color: #e2e8f0;
-}
-
 /* Advanced options */
-.smart-date__advanced {
+.date-module__advanced {
   margin-top: 8px;
   border-top: 1px solid rgba(255, 255, 255, 0.1);
   padding-top: 16px;
 }
 
-.smart-date__advanced-toggle {
+.date-module__advanced-toggle {
   width: 100%;
   display: flex;
   align-items: center;
@@ -1116,11 +1055,11 @@ watch(
   transition: all 0.2s;
 }
 
-.smart-date__advanced-toggle:hover {
+.date-module__advanced-toggle:hover {
   color: #e2e8f0;
 }
 
-.smart-date__advanced-panel {
+.date-module__advanced-panel {
   margin-top: 16px;
   display: flex;
   flex-direction: column;
@@ -1139,25 +1078,25 @@ watch(
   }
 }
 
-.smart-date__advanced-section {
+.date-module__advanced-section {
   display: flex;
   flex-direction: column;
   gap: 12px;
 }
 
-.smart-date__advanced-title {
+.date-module__advanced-title {
   font-size: 14px;
   font-weight: 500;
   color: #e2e8f0;
 }
 
-.smart-date__source-options {
+.date-module__source-options {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 8px;
 }
 
-.smart-date__source-option {
+.date-module__source-option {
   padding: 8px 12px;
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.1);
@@ -1169,29 +1108,29 @@ watch(
   text-align: center;
 }
 
-.smart-date__source-option:hover {
+.date-module__source-option:hover {
   background: rgba(255, 255, 255, 0.1);
 }
 
-.smart-date__source-option--active {
+.date-module__source-option--active {
   background: rgba(59, 130, 246, 0.2);
   border-color: rgba(59, 130, 246, 0.5);
   color: #fff;
 }
 
 /* Custom format */
-.smart-date__custom-format {
+.date-module__custom-format {
   display: flex;
   flex-direction: column;
   gap: 12px;
 }
 
-.smart-date__custom-format-input {
+.date-module__custom-format-input {
   display: flex;
   gap: 8px;
 }
 
-.smart-date__input {
+.date-module__input {
   flex: 1;
   padding: 8px 12px;
   background: rgba(255, 255, 255, 0.05);
@@ -1201,12 +1140,12 @@ watch(
   color: #e2e8f0;
 }
 
-.smart-date__input:focus {
+.date-module__input:focus {
   outline: none;
   border-color: rgba(59, 130, 246, 0.5);
 }
 
-.smart-date__help-btn {
+.date-module__help-btn {
   width: 36px;
   height: 36px;
   display: flex;
@@ -1221,12 +1160,12 @@ watch(
   flex-shrink: 0;
 }
 
-.smart-date__help-btn:hover {
+.date-module__help-btn:hover {
   background: rgba(255, 255, 255, 0.1);
   color: #e2e8f0;
 }
 
-.smart-date__format-help {
+.date-module__format-help {
   padding: 12px;
   background: rgba(0, 0, 0, 0.2);
   border-radius: 6px;
@@ -1234,18 +1173,18 @@ watch(
   animation: fadeIn 0.2s ease-in-out;
 }
 
-.smart-date__format-tokens {
+.date-module__format-tokens {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 8px;
 }
 
-.smart-date__format-token {
+.date-module__format-token {
   display: flex;
   font-size: 13px;
 }
 
-.smart-date__token-name {
+.date-module__token-name {
   width: 50px;
   padding: 2px 6px;
   background: rgba(59, 130, 246, 0.2);
@@ -1256,31 +1195,88 @@ watch(
   transition: all 0.15s;
 }
 
-.smart-date__token-name:hover {
+.date-module__token-name:hover {
   background: rgba(59, 130, 246, 0.3);
 }
 
-.smart-date__token-desc {
+.date-module__token-desc {
   margin-left: 8px;
   color: #94a3b8;
 }
 
+/* Label Field Styles */
+.date-module__label-field {
+  margin-top: 16px;
+  margin-bottom: 12px;
+}
+
+.date-module__label-heading {
+  font-size: 14px;
+  color: #94a3b8;
+  margin-bottom: 6px;
+}
+
+.date-module__label-input-container {
+  position: relative;
+  display: flex;
+}
+
+.date-module__label-input {
+  width: 100%;
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  font-size: 14px;
+  color: #e2e8f0;
+}
+
+.date-module__label-input:focus {
+  outline: none;
+  border-color: rgba(59, 130, 246, 0.5);
+  box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.25);
+}
+
+.date-module__label-clear {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.3);
+  border: none;
+  border-radius: 50%;
+  color: #94a3b8;
+  font-size: 10px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.date-module__label-clear:hover {
+  background: rgba(0, 0, 0, 0.5);
+  color: #e2e8f0;
+}
+
 /* Responsive adjustments */
 @media (max-width: 768px) {
-  .smart-date__format-buttons,
-  .smart-date__source-options {
+  .date-module__format-buttons,
+  .date-module__source-options {
     grid-template-columns: repeat(2, 1fr);
   }
 
-  .smart-date__format-tokens {
+  .date-module__format-tokens {
     grid-template-columns: 1fr;
   }
 
-  .smart-date__calendar-offset {
+  .date-module__calendar-offset {
     flex-direction: column;
   }
 
-  .smart-date__offset-controls {
+  .date-module__offset-controls {
     flex-wrap: wrap;
   }
 }

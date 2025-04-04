@@ -1,9 +1,9 @@
 import { Node, mergeAttributes } from "@tiptap/core";
 import { VueNodeViewRenderer } from "@tiptap/vue-3";
-import RenderDataviewBlock from "./RenderDataviewList.vue";
+import RenderDataviewList from "./RenderDataviewList.vue";
 
-export const ObsidianDataview = Node.create({
-  name: "obsidianDataview",
+export const ObsidianDataviewList = Node.create({
+  name: "obsidianDataviewList",
 
   group: "block",
   content: "text*",
@@ -34,7 +34,13 @@ export const ObsidianDataview = Node.create({
           if (
             typeof node === "object" &&
             node !== null &&
-            (node as HTMLElement).getAttribute("data-language") === "dataview"
+            (node as HTMLElement).getAttribute("data-language") ===
+              "dataview" &&
+            // Explicitly check that this is NOT a TABLE query
+            !(node as HTMLElement).textContent
+              ?.trim()
+              .toUpperCase()
+              .startsWith("TABLE ")
           ) {
             return { language: "dataview" };
           }
@@ -42,7 +48,7 @@ export const ObsidianDataview = Node.create({
         },
       },
       {
-        tag: "div.dataview-block-container",
+        tag: "div.dataview-list-container", // Changed class name
       },
     ];
   },
@@ -50,13 +56,13 @@ export const ObsidianDataview = Node.create({
   renderHTML({ HTMLAttributes }) {
     return [
       "div",
-      { class: "dataview-block-container" },
+      { class: "dataview-list-container" }, // Changed class name
       ["pre", { "data-language": "dataview" }, ["code", {}, 0]],
     ];
   },
 
   addNodeView() {
-    return VueNodeViewRenderer(RenderDataviewBlock);
+    return VueNodeViewRenderer(RenderDataviewList);
   },
 
   // Custom markdown serialization

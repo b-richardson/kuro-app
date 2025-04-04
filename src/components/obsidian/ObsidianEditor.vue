@@ -35,7 +35,10 @@ import TableHeader from "@tiptap/extension-table-header";
 import { common, createLowlight } from "lowlight";
 import { ObsidianCallout } from "./custom-extensions/obsidianCallout";
 import { ObsidianLink } from "./custom-extensions/obsidianInternalLink";
-import { ObsidianDataview } from "./custom-extensions/obsidianDataview";
+import { ObsidianDataviewList } from "./custom-extensions/obsidianDataviewList";
+import { ObsidianDataviewTable } from "./custom-extensions/obsidianDataviewTable";
+import { ObsidianTemplaterDate } from "./custom-extensions/obsidianTemplaterDate";
+import { ObsidianTemplaterFile } from "./custom-extensions/obsidianTemplaterFile";
 import { ObsidianFrontmatter } from "./custom-extensions/obsidianFrontmatter";
 import { ObsidianTemplateVars } from "./custom-extensions/obsidianTemplateVars";
 import { Markdown } from "tiptap-markdown";
@@ -253,6 +256,41 @@ const preprocessContent = (content: string): string => {
     '<hr class="obsidian-hr" />'
   );
 
+  // Preprocess templater date patterns
+  processedContent = processedContent.replace(
+    /(<%(.*?)tp\.date\.now(\(.*?\))?(.*?)%>|<%(.*?)tp\.file\.(creation|last_modified)_date(\(.*?\))?(.*?)%>)/g,
+    (match) => {
+      return `<span class="templater-date" data-code="${match.replace(
+        /"/g,
+        "&quot;"
+      )}">${match}</span>`;
+    }
+  );
+
+  // Preprocess templater file properties
+  processedContent = processedContent.replace(
+    /(<%(.*?)tp\.file\.(title|folder|path|creation_date|last_modified_date|content|size)(\(.*?\))?(.*?)%>)/g,
+    (match) => {
+      // Extract property type
+      let propertyType = "title";
+
+      if (match.includes("tp.file.title")) propertyType = "title";
+      else if (match.includes("tp.file.folder")) propertyType = "folder";
+      else if (match.includes("tp.file.path")) propertyType = "path";
+      else if (match.includes("tp.file.creation_date"))
+        propertyType = "creation";
+      else if (match.includes("tp.file.last_modified_date"))
+        propertyType = "modified";
+      else if (match.includes("tp.file.content")) propertyType = "content";
+      else if (match.includes("tp.file.size")) propertyType = "size";
+
+      return `<span class="templater-file" data-code="${match.replace(
+        /"/g,
+        "&quot;"
+      )}" data-property-type="${propertyType}">${match}</span>`;
+    }
+  );
+
   return processedContent;
 };
 
@@ -261,7 +299,10 @@ onMounted(() => {
   editor.value = new Editor({
     extensions: [
       // Add ObsidianDataview first to give it priority
-      ObsidianDataview,
+      ObsidianDataviewTable,
+      ObsidianDataviewList,
+      ObsidianTemplaterDate,
+      ObsidianTemplaterFile,
 
       // Configure StarterKit without code block
       StarterKit.configure({
@@ -748,5 +789,65 @@ watch(
     display: block;
     overflow-x: auto;
   }
+}
+
+/* Templater syntax related css below */
+
+/* Base styles for all Templater blocks */
+.obsidian-templater {
+  border-radius: 3px;
+  padding: 0 4px;
+  font-family: "JetBrains Mono", monospace, "Courier New", Courier;
+  font-size: 0.85em;
+  cursor: pointer;
+}
+
+/* Styles for different types of Templater syntax */
+.obsidian-templater-output {
+  background-color: rgba(128, 203, 196, 0.15);
+  color: var(--obsidian-templater-output-color, #80cbc4);
+  border: 1px dashed var(--obsidian-templater-output-border, #80cbc4);
+}
+
+.obsidian-templater-exec {
+  background-color: rgba(179, 157, 219, 0.15);
+  color: var(--obsidian-templater-exec-color, #b39ddb);
+  border: 1px dashed var(--obsidian-templater-exec-border, #b39ddb);
+}
+
+.obsidian-templater-user-input {
+  background-color: rgba(255, 213, 79, 0.15);
+  color: var(--obsidian-templater-user-input-color, #ffd54f);
+  border: 1px dashed var(--obsidian-templater-user-input-border, #ffd54f);
+}
+
+.obsidian-templater-condition-start,
+.obsidian-templater-condition-end {
+  background-color: rgba(244, 143, 177, 0.15);
+  color: var(--obsidian-templater-condition-color, #f48fb1);
+  border: 1px dashed var(--obsidian-templater-condition-border, #f48fb1);
+}
+
+.obsidian-templater-date {
+  background-color: rgba(129, 199, 132, 0.15);
+  color: var(--obsidian-templater-date-color, #81c784);
+  border: 1px dashed var(--obsidian-templater-date-border, #81c784);
+}
+
+.obsidian-templater-file {
+  background-color: rgba(144, 202, 249, 0.15);
+  color: var(--obsidian-templater-file-color, #90caf9);
+  border: 1px dashed var(--obsidian-templater-file-border, #90caf9);
+}
+
+/* Dark mode adjustments */
+.obsidian-dark-theme .obsidian-templater {
+  opacity: 0.9;
+}
+
+/* Hover effects */
+.obsidian-templater:hover {
+  opacity: 1;
+  filter: brightness(1.1);
 }
 </style>
