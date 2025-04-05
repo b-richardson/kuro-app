@@ -6,6 +6,8 @@
  * Available module types in the template
  */
 export type ModuleType =
+  // Frontmatter
+  | "frontmatter"
   // Basic module types
   | "header"
   | "checklist"

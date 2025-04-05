@@ -70,11 +70,17 @@ export function useModuleOperations() {
 
   /**
    * Creates a duplicated module with a new ID
+   * Prevents duplication of frontmatter modules
    */
   const duplicateModule = (
     module: TemplateModule,
     insertAfterIndex?: number
-  ): { module: TemplateModule; insertAtIndex: number } => {
+  ): { module: TemplateModule; insertAtIndex: number } | null => {
+    // Prevent duplication of frontmatter modules
+    if (module.type === "frontmatter") {
+      return null; // Return null to indicate duplication should not proceed
+    }
+
     // Create a deep copy with a new ID
     const duplicatedModule: TemplateModule = {
       ...JSON.parse(JSON.stringify(module)),
@@ -89,6 +95,7 @@ export function useModuleOperations() {
 
   /**
    * Moves a module up or down in the array
+   * Prevents moving frontmatter modules
    */
   const moveModule = (
     modules: TemplateModule[],
@@ -106,11 +113,19 @@ export function useModuleOperations() {
       return modules;
     }
 
+    // Prevent moving frontmatter modules
+    if (modules[moduleIndex].type === "frontmatter") {
+      return modules;
+    }
+
+    // Check if we're trying to move something to the position of a frontmatter module
+    const newIndex = direction === "up" ? moduleIndex - 1 : moduleIndex + 1;
+    if (modules[newIndex].type === "frontmatter") {
+      return modules; // Don't allow swapping with frontmatter
+    }
+
     // Create a fresh copy of the modules array
     const updatedModules = [...modules];
-
-    // Calculate the new index
-    const newIndex = direction === "up" ? moduleIndex - 1 : moduleIndex + 1;
 
     // Store references to the modules we're swapping
     const moduleA = updatedModules[moduleIndex];
@@ -147,6 +162,7 @@ export function useModuleOperations() {
 
   /**
    * Deletes a module from the array
+   * Frontmatter modules remain deletable as specified
    */
   const deleteModule = (
     modules: TemplateModule[],

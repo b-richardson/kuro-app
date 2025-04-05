@@ -50,8 +50,15 @@
       </div>
     </div>
 
+    <!-- Settings Panel End -->
+
     <!-- Module Categories -->
     <div class="module-categories">
+      <!-- Frontmatter Module -->
+      <FrontmatterModule
+        @add-module="handleAddModule"
+        :show-descriptions="showModuleDescriptions"
+      />
       <!-- Basic Modules -->
       <BasicModules
         @add-module="handleAddModule"
@@ -71,6 +78,7 @@
 
 <script setup lang="ts">
 import { ref, computed } from "vue";
+import FrontmatterModule from "@/components/ModuleLibrary/FrontmatterModules.vue";
 import BasicModules from "@/components/ModuleLibrary/BasicModules.vue";
 import PluginModules from "@/components/ModuleLibrary/PluginModules.vue";
 import { TemplateModule } from "@/types/TemplateModule";

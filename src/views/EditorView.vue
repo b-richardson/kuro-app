@@ -330,17 +330,46 @@ const togglePreviewFocus = () => {
 // Module management methods
 const addModuleToCanvas = (module: TemplateModule) => {
   console.log("Adding module to canvas:", module);
-  templateStore.addModule(module);
+
+  if (module.type === "frontmatter") {
+    // Check if frontmatter already exists
+    const existingFrontmatter = templateStore.currentModules.find(
+      (m) => m.type === "frontmatter"
+    );
+
+    if (existingFrontmatter) {
+      // Show warning if frontmatter already exists
+      uiStore.showToast(
+        "Only one frontmatter module allowed per template",
+        "error"
+      );
+      return;
+    }
+
+    // For frontmatter, explicitly create a new array with frontmatter at the start
+    const updatedModules = [module, ...templateStore.currentModules];
+    templateStore.updateModules(updatedModules);
+  } else {
+    // Regular add for other modules
+    templateStore.addModule(module);
+  }
+
   console.log("Current modules after add:", templateStore.currentModules);
   markAsModified();
 
-  // Scroll to the new module after it's added
+  // Scroll to the appropriate location
   setTimeout(() => {
     if (moduleCanvasRef.value) {
       const container =
         moduleCanvasRef.value.$el.querySelector(".modules-list");
       if (container) {
-        container.scrollTop = container.scrollHeight;
+        if (module.type === "frontmatter") {
+          // For frontmatter, scroll to top
+          container.scrollTop = 0;
+        } else {
+          // For other modules, scroll to bottom
+          container.scrollTop = container.scrollHeight;
+        }
       }
     }
   }, 100);

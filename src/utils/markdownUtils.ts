@@ -58,8 +58,8 @@ function processModule(module: TemplateModule): string {
     return "---";
   }
 
-  // Special handling for YAML
-  if (module.type === "yaml") {
+  // Special handling for YAML or Frontmatter module
+  if (module.type === "yaml" || module.type === "frontmatter") {
     const content = [...module.content];
 
     // Make sure the content starts and ends with ---

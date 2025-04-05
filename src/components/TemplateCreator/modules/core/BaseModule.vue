@@ -8,6 +8,7 @@
         : '',
       { 'template-module-editor--selected': isSelected },
       { 'template-module-editor--editing': isEditing },
+      { 'template-module-editor--frontmatter': isFrontmatter },
     ]"
     @click="handleModuleClick"
     tabindex="0"
@@ -16,22 +17,33 @@
     <!-- Module header with arrow controls and actions -->
     <div class="template-module-editor-header">
       <div class="module-controls">
-        <button
-          class="module-move-button"
-          @click.stop="moveModule('up')"
-          :disabled="index === 0"
-          title="Move module up"
+        <!-- Hide move buttons for frontmatter modules -->
+        <template v-if="!isFrontmatter">
+          <button
+            class="module-move-button"
+            @click.stop="moveModule('up')"
+            :disabled="index === 0"
+            title="Move module up"
+          >
+            <i class="fas fa-arrow-up"></i>
+          </button>
+          <button
+            class="module-move-button"
+            @click.stop="moveModule('down')"
+            :disabled="index === modules.length - 1"
+            title="Move module down"
+          >
+            <i class="fas fa-arrow-down"></i>
+          </button>
+        </template>
+        <!-- Visual indicator for frontmatter placement -->
+        <div
+          v-else
+          class="frontmatter-position-indicator"
+          title="Frontmatter must be at the top"
         >
-          <i class="fas fa-arrow-up"></i>
-        </button>
-        <button
-          class="module-move-button"
-          @click.stop="moveModule('down')"
-          :disabled="index === modules.length - 1"
-          title="Move module down"
-        >
-          <i class="fas fa-arrow-down"></i>
-        </button>
+          <i class="fas fa-lock"></i>
+        </div>
       </div>
       <div class="template-module-editor-type">
         <i :class="moduleIcon"></i>
@@ -43,6 +55,10 @@
           <i :class="pluginIcon"></i>
           {{ pluginTypeLabel }}
         </span>
+        <!-- Special indicator for frontmatter -->
+        <span v-if="isFrontmatter" class="frontmatter-badge">
+          Always at top
+        </span>
       </div>
       <div class="template-module-editor-actions">
         <button
@@ -52,7 +68,9 @@
         >
           <i class="fas fa-plus"></i>
         </button>
+        <!-- Hide duplicate button for frontmatter -->
         <button
+          v-if="!isFrontmatter"
           class="template-module-editor-action template-module-editor-action--duplicate"
           title="Duplicate module"
           @click.stop="$emit('duplicate')"
@@ -69,6 +87,7 @@
       </div>
     </div>
 
+    <!-- Rest of the component remains unchanged -->
     <!-- Validation error alert -->
     <div v-if="validationError" class="template-module-editor-validation-error">
       <i class="fas fa-exclamation-triangle"></i>
@@ -157,6 +176,9 @@ const emit = defineEmits<{
   (e: "add-line"): void;
 }>();
 
+// Check if module is frontmatter
+const isFrontmatter = computed(() => props.module.type === "frontmatter");
+
 // Component state
 const isEditing = ref(false);
 const moduleRef = ref<HTMLElement | null>(null);
@@ -191,6 +213,14 @@ onMounted(() => {
 
   // Add event handler for outside clicks to deselect
   document.addEventListener("click", handleOutsideClick);
+});
+
+// Clean up event listeners
+onUnmounted(() => {
+  document.removeEventListener("click", handleOutsideClick);
+  if (toastTimeout.value) {
+    clearTimeout(toastTimeout.value);
+  }
 });
 
 // Handle module selection
@@ -267,13 +297,13 @@ const confirmDelete = () => {
 // Get module type label
 const moduleTypeLabel = computed(() => {
   const labels = {
+    frontmatter: "Frontmatter",
     header: "Header",
     checklist: "Checklist",
     table: "Table",
     text: "Text",
     divider: "Divider",
     codeBlock: "Code Block",
-    yaml: "YAML Frontmatter",
     templaterField: "Templater Field",
     dataviewQuery: "Dataview Query",
   };
@@ -318,6 +348,11 @@ watch(
  * @param direction 'up' or 'down'
  */
 const moveModule = (direction: "up" | "down") => {
+  // Don't allow moving frontmatter modules
+  if (isFrontmatter.value) {
+    return;
+  }
+
   // Guard against invalid operations
   if (
     (direction === "up" && props.index === 0) ||
@@ -332,6 +367,11 @@ const moveModule = (direction: "up" | "down") => {
 
     // Calculate the new index
     const newIndex = direction === "up" ? props.index - 1 : props.index + 1;
+
+    // Don't allow swapping with frontmatter
+    if (updatedModules[newIndex].type === "frontmatter") {
+      return;
+    }
 
     // Store references to the modules we're swapping
     const moduleA = updatedModules[props.index];
@@ -757,5 +797,42 @@ button[title]:hover::after {
 
 .modal-leave-to .delete-confirm-modal {
   transform: scale(0.95);
+}
+
+/* Frontmatter-specific styles */
+.template-module-editor--frontmatter {
+  border-top: 3px solid #9333ea; /* Purple for frontmatter */
+  /* Special shadow for frontmatter to indicate importance */
+  box-shadow: 0 0 0 1px rgba(147, 51, 234, 0.1), 0 4px 10px rgba(0, 0, 0, 0.05);
+}
+
+.template-module-editor--frontmatter:hover {
+  box-shadow: 0 0 0 1px rgba(147, 51, 234, 0.15), 0 6px 15px rgba(0, 0, 0, 0.07);
+}
+
+.template-module-editor--frontmatter.template-module-editor--selected {
+  border-color: #9333ea;
+  box-shadow: 0 0 0 1px rgba(147, 51, 234, 0.2), 0 5px 15px rgba(0, 0, 0, 0.07);
+}
+
+.frontmatter-position-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 60px;
+  color: #9333ea;
+  font-size: 0.9rem;
+}
+
+.frontmatter-badge {
+  font-size: 0.7rem;
+  background-color: rgba(147, 51, 234, 0.1);
+  color: #9333ea;
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  margin-left: var(--spacing-xs);
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 </style>

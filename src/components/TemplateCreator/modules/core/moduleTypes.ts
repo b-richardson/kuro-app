@@ -3,6 +3,9 @@
  */
 
 export type ModuleType =
+  // Frontmatter
+  | "frontmatter"
+  // Basic module types
   | "text"
   | "header"
   | "checklist"

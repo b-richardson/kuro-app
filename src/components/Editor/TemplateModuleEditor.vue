@@ -20,6 +20,9 @@ import { computed } from "vue";
 import { TemplateModule } from "@/types/TemplateModule";
 
 // Import module components
+// Frontmatter module
+import FrontmatterModule from "@/components/TemplateCreator/modules/frontmatter/FrontmatterModule.vue";
+// Basic modules
 import HeaderModule from "@/components/TemplateCreator/modules/content/HeaderModule.vue";
 import ChecklistModule from "@/components/TemplateCreator/modules/content/ChecklistModule.vue";
 import TableModule from "@/components/TemplateCreator/modules/content/TableModule.vue";
@@ -63,6 +66,10 @@ const emit = defineEmits<{
 // Determine which module component to use based on module type
 const moduleComponent = computed(() => {
   switch (props.module.type) {
+    // Frontmatter module
+    case "frontmatter":
+      return FrontmatterModule;
+    // Basic modules
     case "header":
       return HeaderModule;
     case "checklist":

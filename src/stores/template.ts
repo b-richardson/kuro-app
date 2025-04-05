@@ -111,6 +111,8 @@ export const useTemplateStore = defineStore("template", () => {
    */
   const isValidModuleType = (type: any): type is ModuleType => {
     const validTypes: ModuleType[] = [
+      // Frontmatter Module
+      "frontmatter",
       // Basic module types
       "header",
       "checklist",
@@ -527,6 +529,7 @@ export const useTemplateStore = defineStore("template", () => {
 
   /**
    * Duplicates a template
+   * Ensures frontmatter module stays at the top
    */
   const duplicateTemplate = async (id: string) => {
     const template = templateById.value(id);
@@ -558,6 +561,16 @@ export const useTemplateStore = defineStore("template", () => {
         // Create a fresh copy of metadata if it exists
         metadata: module.metadata ? { ...module.metadata } : undefined,
       }));
+
+      // Ensure frontmatter module stays at the top
+      if (newTemplate.modules.some((m) => m.type === "frontmatter")) {
+        // Sort modules to ensure frontmatter is at the top
+        newTemplate.modules.sort((a, b) => {
+          if (a.type === "frontmatter") return -1;
+          if (b.type === "frontmatter") return 1;
+          return 0;
+        });
+      }
 
       // Update local state
       templates.value.push(newTemplate);
@@ -652,11 +665,12 @@ export const useTemplateStore = defineStore("template", () => {
 
   /**
    * Updates all modules in the current template
+   * Ensures frontmatter module remains at the top
    */
-  const updateModules = (newmodules: Partial<TemplateModule>[]) => {
+  const updateModules = (newModules: Partial<TemplateModule>[]) => {
     if (currentTemplate.value) {
       // Create normalized modules with proper reactivity
-      const normalizedmodules = newmodules.map((module) => {
+      const normalizedModules = newModules.map((module) => {
         const normalized = normalizemodule(module);
         // Ensure content array is properly copied for reactivity
         return {
@@ -668,8 +682,24 @@ export const useTemplateStore = defineStore("template", () => {
         };
       });
 
+      // Special handling to ensure frontmatter module stays at the top
+      const frontmatterIndex = normalizedModules.findIndex(
+        (m) => m.type === "frontmatter"
+      );
+
+      // If frontmatter exists and is not at the top, move it to the top
+      if (frontmatterIndex > 0) {
+        // Remove frontmatter from its current position
+        const frontmatterModule = normalizedModules.splice(
+          frontmatterIndex,
+          1
+        )[0];
+        // Insert it at the beginning
+        normalizedModules.unshift(frontmatterModule);
+      }
+
       // Update the modules array with the normalized modules
-      currentTemplate.value.modules = normalizedmodules;
+      currentTemplate.value.modules = normalizedModules;
       currentTemplate.value.lastModified = Date.now();
 
       // Update the template in the templates array
@@ -681,7 +711,7 @@ export const useTemplateStore = defineStore("template", () => {
         templates.value[index] = {
           ...currentTemplate.value,
           // Ensure modules array is properly copied
-          modules: normalizedmodules.map((module) => ({
+          modules: normalizedModules.map((module) => ({
             ...module,
             content: [...module.content],
             metadata: module.metadata ? { ...module.metadata } : undefined,

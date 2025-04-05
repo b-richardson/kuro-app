@@ -80,6 +80,9 @@ export function getPluginDisplayName(pluginType: PluginType): string {
  */
 export function getModuleIcon(moduleType: ModuleType): string {
   switch (moduleType) {
+    // Frontmatter
+    case "frontmatter":
+      return "fas fa-file-yml";
     // Basic module types
     case "header":
       return "fas fa-heading";
@@ -156,6 +159,8 @@ export function isValidPluginType(type: any): type is PluginType {
  */
 export function isValidModuleType(type: any): type is ModuleType {
   return [
+    // Frontmatter
+    "frontmatter",
     // Basic module types
     "header",
     "checklist",
