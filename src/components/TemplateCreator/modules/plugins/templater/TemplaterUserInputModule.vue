@@ -22,60 +22,111 @@
         <div class="user-input__header-title">User Input</div>
       </div>
 
-      <!-- Input Type Selection -->
-      <div class="user-input__type-selector">
-        <button
-          v-for="type in inputTypes"
-          :key="type.id"
-          class="user-input__type-button"
-          :class="{ 'user-input__type-button--active': inputType === type.id }"
-          @click="setInputType(type.id)"
-        >
-          <i :class="type.icon"></i>
-          <span>{{ type.label }}</span>
-        </button>
+      <!-- Prompt Type Selection -->
+      <div class="user-input__prompt-type">
+        <label class="user-input__label">What would you like to prompt?</label>
+        <div class="user-input__prompt-type-options">
+          <button
+            v-for="type in promptTypes"
+            :key="type.id"
+            class="user-input__prompt-type-button"
+            :class="{
+              'user-input__prompt-type-button--active': promptType === type.id,
+            }"
+            @click="setPromptType(type.id)"
+          >
+            <i :class="type.icon"></i>
+            <span>{{ type.label }}</span>
+          </button>
+        </div>
       </div>
 
-      <!-- Configuration Panel -->
-      <div class="user-input__config">
-        <!-- Common fields across all input types -->
-        <div class="user-input__field-group">
-          <label class="user-input__label">Prompt Text</label>
+      <!-- Prompt Configuration - Only show after prompt type is selected -->
+      <div v-if="promptType" class="user-input__field-group">
+        <label class="user-input__label">
+          {{ promptLabelText }}
+        </label>
+        <input
+          type="text"
+          class="user-input__text-input"
+          v-model="prompt"
+          @input="generateCode"
+          :placeholder="promptPlaceholder"
+        />
+        <div class="user-input__field-tip">
+          {{ promptTipText }}
+        </div>
+      </div>
+
+      <!-- Show Question/Instruction in Note Toggle -->
+      <div
+        v-if="promptType && promptType !== 'label'"
+        class="user-input__field-group"
+      >
+        <div class="user-input__checkbox">
           <input
-            type="text"
-            class="user-input__text-input"
-            v-model="prompt"
-            @input="generateCode"
-            placeholder="e.g., What is the project name?"
+            type="checkbox"
+            id="showInNote"
+            v-model="showInNote"
+            @change="generateCode"
           />
-          <div class="user-input__field-tip">
-            This text will be shown to the user when creating a note
-          </div>
+          <label for="showInNote">
+            {{
+              promptType === "question"
+                ? "Show question in note"
+                : "Show instruction in note"
+            }}
+          </label>
         </div>
+        <div class="user-input__field-tip">
+          {{
+            promptType === "question"
+              ? "Question will appear before the answer in the note"
+              : "Instruction will appear before the answer in the note"
+          }}
+        </div>
+      </div>
 
+      <!-- Label Input (for Instruction with label enabled) -->
+      <div
+        v-if="promptType === 'instruction' && showInNote"
+        class="user-input__field-group"
+      >
+        <label class="user-input__label">Label (shown in note)</label>
+        <input
+          type="text"
+          class="user-input__text-input"
+          v-model="instructionLabel"
+          @input="generateCode"
+          placeholder="e.g., Project name:"
+        />
+        <div class="user-input__field-tip">
+          This label will appear before the answer in the note
+        </div>
+      </div>
+
+      <!-- Answer Type Selection - Only shown after prompt text is entered -->
+      <div v-if="prompt" class="user-input__answer-type">
+        <label class="user-input__label">How do you want to answer?</label>
+        <div class="user-input__type-selector">
+          <button
+            v-for="type in answerTypes"
+            :key="type.id"
+            class="user-input__type-button"
+            :class="{
+              'user-input__type-button--active': inputType === type.id,
+            }"
+            @click="setInputType(type.id)"
+          >
+            <i :class="type.icon"></i>
+            <span>{{ type.label }}</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Text Input Configuration -->
+      <div v-if="prompt && inputType === 'text'" class="user-input__config">
         <div class="user-input__field-group">
-          <label class="user-input__label">Variable Name</label>
-          <div class="user-input__variable-wrapper">
-            <input
-              type="text"
-              class="user-input__text-input user-input__variable-input"
-              v-model="variableName"
-              @input="sanitizeVariableName"
-              placeholder="e.g., projectName"
-            />
-            <div class="user-input__variable-preview">
-              <code>{{
-                `<%${variableName ? " " + variableName + " " : ""}%>`
-              }}</code>
-            </div>
-          </div>
-          <div class="user-input__field-tip">
-            Use this name to reference this input elsewhere in your template
-          </div>
-        </div>
-
-        <!-- Type-specific configuration -->
-        <div v-if="inputType === 'text'" class="user-input__field-group">
           <label class="user-input__label">Default Value</label>
           <input
             type="text"
@@ -84,39 +135,39 @@
             @input="generateCode"
             placeholder="(Optional)"
           />
-        </div>
-
-        <div v-if="inputType === 'multiline'" class="user-input__field-group">
-          <label class="user-input__label">Default Text</label>
-          <textarea
-            class="user-input__textarea"
-            v-model="multilineOptions.defaultValue"
-            @input="generateCode"
-            placeholder="(Optional)"
-            rows="4"
-          ></textarea>
-
-          <div class="user-input__checkbox">
-            <input
-              type="checkbox"
-              id="placeholder"
-              v-model="multilineOptions.asPlaceholder"
-              @change="generateCode"
-            />
-            <label for="placeholder">Show as placeholder text</label>
+          <div class="user-input__field-tip">
+            This will be pre-filled when using the template
           </div>
         </div>
 
-        <div v-if="inputType === 'select'" class="user-input__field-group">
+        <div class="user-input__field-group">
+          <div class="user-input__checkbox">
+            <input
+              type="checkbox"
+              id="multiline"
+              v-model="textOptions.multiline"
+              @change="generateCode"
+            />
+            <label for="multiline">Allow multiple lines of text</label>
+          </div>
+          <div class="user-input__field-tip">
+            User can enter paragraph text with line breaks
+          </div>
+        </div>
+      </div>
+
+      <!-- Dropdown Choices Configuration -->
+      <div v-if="prompt && inputType === 'select'" class="user-input__config">
+        <div class="user-input__field-group">
           <div class="user-input__options-header">
-            <label class="user-input__label">Options</label>
+            <label class="user-input__label">Choices</label>
             <button
               class="user-input__add-option-button"
               @click="addOption"
               aria-label="Add option"
             >
               <i class="fas fa-plus"></i>
-              <span>Add Option</span>
+              <span>Add Choice</span>
             </button>
           </div>
 
@@ -131,7 +182,7 @@
                 class="user-input__text-input"
                 v-model="selectOptions.options[index]"
                 @input="generateCode"
-                placeholder="Option value"
+                placeholder="Enter choice text"
               />
               <button
                 class="user-input__remove-option"
@@ -142,118 +193,26 @@
               </button>
             </div>
           </div>
-
-          <div class="user-input__display-type">
-            <label class="user-input__radio">
-              <input
-                type="radio"
-                v-model="selectOptions.displayAs"
-                value="dropdown"
-                @change="generateCode"
-              />
-              <span>Dropdown</span>
-            </label>
-            <label class="user-input__radio">
-              <input
-                type="radio"
-                v-model="selectOptions.displayAs"
-                value="radio"
-                @change="generateCode"
-              />
-              <span>Radio Buttons</span>
-            </label>
-          </div>
-
-          <div class="user-input__field-group">
-            <label class="user-input__label">Default Selection</label>
-            <select
-              class="user-input__select"
-              v-model="selectOptions.defaultOption"
-              @change="generateCode"
-            >
-              <option value="">No default</option>
-              <option
-                v-for="(option, index) in selectOptions.options"
-                :key="index"
-                :value="option"
-              >
-                {{ option }}
-              </option>
-            </select>
-          </div>
         </div>
 
-        <!-- Advanced Options (common across types) -->
-        <div class="user-input__divider"></div>
-
-        <div class="user-input__advanced">
-          <button
-            class="user-input__advanced-toggle"
-            @click="showAdvanced = !showAdvanced"
+        <div class="user-input__field-group">
+          <label class="user-input__label">Default Selection</label>
+          <select
+            class="user-input__select"
+            v-model="selectOptions.defaultOption"
+            @change="generateCode"
           >
-            <span>{{
-              showAdvanced ? "Hide advanced options" : "Show advanced options"
-            }}</span>
-            <i
-              :class="
-                showAdvanced ? 'fas fa-chevron-up' : 'fas fa-chevron-down'
-              "
-            ></i>
-          </button>
-
-          <div v-if="showAdvanced" class="user-input__advanced-panel">
-            <div class="user-input__field-group">
-              <div class="user-input__checkbox">
-                <input
-                  type="checkbox"
-                  id="remember"
-                  v-model="advancedOptions.remember"
-                  @change="generateCode"
-                />
-                <label for="remember">Remember last value</label>
-              </div>
-              <div class="user-input__field-tip">
-                Templater will suggest the last value you entered
-              </div>
-            </div>
-
-            <div class="user-input__field-group">
-              <div class="user-input__checkbox">
-                <input
-                  type="checkbox"
-                  id="required"
-                  v-model="advancedOptions.required"
-                  @change="generateCode"
-                />
-                <label for="required">Required field</label>
-              </div>
-              <div class="user-input__field-tip">User must provide a value</div>
-            </div>
-
-            <div class="user-input__field-group">
-              <label class="user-input__label">Tooltip</label>
-              <input
-                type="text"
-                class="user-input__text-input"
-                v-model="advancedOptions.tooltip"
-                @input="generateCode"
-                placeholder="Optional help text"
-              />
-            </div>
-          </div>
-        </div>
-
-        <!-- Helpful usage tips -->
-        <div class="user-input__tips">
-          <div class="user-input__tips-header">
-            <i class="fas fa-lightbulb"></i>
-            <span>Using this input elsewhere</span>
-          </div>
-          <div class="user-input__tips-content">
-            <p>To use this value in other parts of your template, use:</p>
-            <code class="user-input__code">{{
-              `<% ${variableName || "variableName"} %>`
-            }}</code>
+            <option value="">No default</option>
+            <option
+              v-for="(option, index) in selectOptions.options"
+              :key="index"
+              :value="option"
+            >
+              {{ option }}
+            </option>
+          </select>
+          <div class="user-input__field-tip">
+            This choice will be pre-selected when using the template
           </div>
         </div>
       </div>
@@ -262,7 +221,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch } from "vue";
+import { ref, onMounted, watch, computed } from "vue";
 import BaseModule from "@/components/TemplateCreator/modules/core/BaseModule.vue";
 import { TemplateModule } from "@/types/TemplateModule";
 
@@ -288,40 +247,75 @@ const emit = defineEmits<{
 // Reference to the base module component
 const baseModuleRef = ref<InstanceType<typeof BaseModule> | null>(null);
 
-// Input types
-const inputTypes = [
+// Prompt types
+const promptTypes = [
+  { id: "question", label: "Question", icon: "fas fa-question-circle" },
+  { id: "instruction", label: "Instruction", icon: "fas fa-tasks" },
+  { id: "label", label: "Label", icon: "fas fa-tag" },
+];
+
+// Answer types with simplified options
+const answerTypes = [
   { id: "text", label: "Text Input", icon: "fas fa-font" },
-  { id: "multiline", label: "Multi-line Text", icon: "fas fa-align-left" },
-  { id: "select", label: "Selection", icon: "fas fa-list-ul" },
+  { id: "select", label: "Dropdown Choices", icon: "fas fa-list-ul" },
 ];
 
 // State
-const inputType = ref("text");
+const promptType = ref("");
+const inputType = ref("");
 const prompt = ref("");
-const variableName = ref("");
-const showAdvanced = ref(false);
+const showInNote = ref(true); // Default to showing question/instruction in note
+const instructionLabel = ref("");
+
+// Computed properties for prompt text variations
+const promptLabelText = computed(() => {
+  switch (promptType.value) {
+    case "question":
+      return "Question";
+    case "instruction":
+      return "Instruction";
+    case "label":
+      return "Label";
+    default:
+      return "Prompt Text";
+  }
+});
+
+const promptPlaceholder = computed(() => {
+  switch (promptType.value) {
+    case "question":
+      return "e.g., What is the project name?";
+    case "instruction":
+      return "e.g., Enter the project name";
+    case "label":
+      return "e.g., Project name:";
+    default:
+      return "e.g., What is the project name?";
+  }
+});
+
+const promptTipText = computed(() => {
+  switch (promptType.value) {
+    case "question":
+      return "This question will be shown to the user when creating a note";
+    case "instruction":
+      return "This instruction will guide the user when creating a note";
+    case "label":
+      return "This label will appear before the user input in the note";
+    default:
+      return "This text will be shown to the user when creating a note";
+  }
+});
 
 // Type-specific options
 const textOptions = ref({
   defaultValue: "",
-});
-
-const multilineOptions = ref({
-  defaultValue: "",
-  asPlaceholder: false,
+  multiline: false,
 });
 
 const selectOptions = ref({
   options: ["Option 1", "Option 2", "Option 3"],
-  displayAs: "dropdown",
   defaultOption: "",
-});
-
-// Advanced options
-const advancedOptions = ref({
-  remember: false,
-  required: false,
-  tooltip: "",
 });
 
 // Initialize component
@@ -331,24 +325,21 @@ onMounted(() => {
     parseExistingCode(props.module.content[0]);
   } else {
     // Set defaults
+    setPromptType("question");
     setInputType("text");
     generateCode();
   }
 });
 
-// Set input type
-function setInputType(type: string) {
-  inputType.value = type;
+// Set prompt type
+function setPromptType(type: string) {
+  promptType.value = type;
   generateCode();
 }
 
-// Sanitize variable name
-function sanitizeVariableName() {
-  // Replace spaces and special characters with underscores
-  variableName.value = variableName.value
-    .replace(/\s+/g, "_")
-    .replace(/[^\w]/g, "_");
-
+// Set input type
+function setInputType(type: string) {
+  inputType.value = type;
   generateCode();
 }
 
@@ -380,226 +371,125 @@ function removeOption(index: number) {
 function generateCode() {
   let code = "";
 
-  // Start with the variable assignment if name is provided
-  const hasVariable = variableName.value.trim() !== "";
-  if (hasVariable) {
-    code += `<% ${"tp.user." + variableName.value} = `;
+  // Determine the prompt text based on type and settings
+  let promptText = prompt.value;
+
+  // For questions and instructions that should appear in the note
+  if (
+    (promptType.value === "question" || promptType.value === "instruction") &&
+    showInNote.value
+  ) {
+    // Add the prompt/instruction before the variable
+    if (promptType.value === "question") {
+      code += `${promptText} `;
+    } else if (promptType.value === "instruction" && instructionLabel.value) {
+      code += `${instructionLabel.value} `;
+    }
+  }
+
+  // For labels, always show them in the note
+  if (promptType.value === "label") {
+    code += `${promptText} `;
   }
 
   // Build the appropriate Templater input function
   switch (inputType.value) {
     case "text":
-      code += `await tp.system.prompt("${prompt.value}"`;
+      code += `<% await tp.system.prompt("${promptText}"`;
 
       // Add default value if specified
       if (textOptions.value.defaultValue) {
         code += `, "${textOptions.value.defaultValue}"`;
       }
 
-      // Add options object if advanced options are used
-      if (needsOptionsObject()) {
-        code += `, ${buildOptionsObject()}`;
-      }
-
-      code += ")";
-      break;
-
-    case "multiline":
-      code += `await tp.system.prompt("${prompt.value}"`;
-
-      // Handle multiline text
-      if (multilineOptions.value.defaultValue) {
-        if (multilineOptions.value.asPlaceholder) {
-          // If using as placeholder, pass empty string as default
-          code += `, ""`;
-        } else {
-          // Otherwise, use the text as default
-          code += `, \`${multilineOptions.value.defaultValue}\``;
+      // Add multiline parameter if enabled
+      if (textOptions.value.multiline) {
+        if (!textOptions.value.defaultValue) {
+          code += ', ""'; // Add empty default if none provided
         }
+        code += `, {multi: true}`;
       }
 
-      // Build options object
-      const multilineOptions = {
-        ...buildOptionsObjectContent(),
-        multi: true,
-      };
-
-      // Add placeholder if needed
-      if (
-        multilineOptions.value.asPlaceholder &&
-        multilineOptions.value.defaultValue
-      ) {
-        multilineOptions.placeholder = multilineOptions.value.defaultValue;
-      }
-
-      code += `, ${JSON.stringify(multilineOptions)}`;
-      code += ")";
+      code += ") %>";
       break;
 
     case "select":
-      // For select/dropdown inputs
-      if (selectOptions.value.displayAs === "dropdown") {
-        // Use suggest function for dropdown
-        code += `await tp.system.suggester(
-  [${selectOptions.value.options.map((opt) => `"${opt}"`).join(", ")}],
-  [${selectOptions.value.options.map((opt) => `"${opt}"`).join(", ")}],
-  ${hasAdvancedOptions() ? buildOptionsObject() : "false"}`;
-
-        // Add placeholder as prompt if needed
-        if (prompt.value) {
-          code += `, "${prompt.value}"`;
-        }
-
-        code += ")";
-      } else {
-        // Use toggle for radio buttons
-        code += `await tp.system.toggle(
+      // Use suggester function for dropdown
+      code += `<% await tp.system.suggester(
   [${selectOptions.value.options.map((opt) => `"${opt}"`).join(", ")}],
   [${selectOptions.value.options.map((opt) => `"${opt}"`).join(", ")}]`;
 
-        // Add default selection if specified
-        if (selectOptions.value.defaultOption) {
-          const defaultIndex = selectOptions.value.options.indexOf(
-            selectOptions.value.defaultOption
-          );
-          if (defaultIndex >= 0) {
-            code += `, ${defaultIndex}`;
-          }
-        }
-
-        code += ")";
+      // Add prompt text
+      if (promptText) {
+        code += `, false, "${promptText}"`;
       }
-      break;
-  }
 
-  // Close the variable assignment if needed
-  if (hasVariable) {
-    code += ` %>`;
-  } else {
-    code = `<% ${code} %>`;
+      code += ") %>";
+      break;
   }
 
   updateContent([code]);
 }
 
-// Check if advanced options are used
-function hasAdvancedOptions() {
-  return (
-    advancedOptions.value.remember ||
-    advancedOptions.value.required ||
-    advancedOptions.value.tooltip !== ""
-  );
-}
-
-// Check if options object is needed
-function needsOptionsObject() {
-  return inputType.value === "multiline" || hasAdvancedOptions();
-}
-
-// Build options object content
-function buildOptionsObjectContent() {
-  const options: Record<string, any> = {};
-
-  if (advancedOptions.value.remember) {
-    options.remember = true;
-  }
-
-  if (advancedOptions.value.required) {
-    options.required = true;
-  }
-
-  if (advancedOptions.value.tooltip) {
-    options.tooltip = advancedOptions.value.tooltip;
-  }
-
-  return options;
-}
-
-// Build options object string
-function buildOptionsObject() {
-  const options = buildOptionsObjectContent();
-  return Object.keys(options).length > 0 ? JSON.stringify(options) : "{}";
-}
-
 // Parse existing Templater code
 function parseExistingCode(code: string) {
   try {
-    // Remove the Templater tags
-    const cleanCode = code.replace(/<%|%>/g, "").trim();
+    // Try to determine if there's label text before the templater code
+    const labelMatch = code.match(/^(.+?)\s*<%.+%>/);
+    if (labelMatch) {
+      const labelText = labelMatch[1].trim();
+      prompt.value = labelText;
 
-    // Check for variable assignment
-    const variableMatch = cleanCode.match(/tp\.user\.(\w+)\s*=\s*/);
-    if (variableMatch) {
-      variableName.value = variableMatch[1];
+      // Determine prompt type based on the label text
+      if (labelText.endsWith("?")) {
+        promptType.value = "question";
+        showInNote.value = true;
+      } else if (labelText.endsWith(":")) {
+        promptType.value = "label";
+      } else {
+        promptType.value = "instruction";
+        instructionLabel.value = labelText;
+        showInNote.value = true;
+      }
+    } else {
+      // Default to question if no label detected
+      promptType.value = "question";
     }
 
-    // Extract the core function call
-    let functionCall = cleanCode;
-    if (variableMatch) {
-      functionCall = cleanCode.replace(variableMatch[0], "");
-    }
+    // Clean the Templater code for parsing
+    const cleanCode = code.replace(/^.*?<%\s*|\s*%>.*?$/g, "").trim();
 
     // Determine input type and parse options
-    if (functionCall.includes("tp.system.prompt")) {
+    if (cleanCode.includes("tp.system.prompt")) {
       // Parse prompt parameters
-      const promptParamsMatch = functionCall.match(
-        /tp\.system\.prompt\("([^"]+)"(?:,\s*(?:"([^"]+)"|`([^`]+)`))?,?\s*({[^}]+})?\)/
+      const promptParamsMatch = cleanCode.match(
+        /tp\.system\.prompt\("([^"]+)"(?:,\s*(?:"([^"]+)"))?(?:,\s*({[^}]+}))?\)/
       );
 
       if (promptParamsMatch) {
-        prompt.value = promptParamsMatch[1] || "";
+        // Only set prompt if we didn't already find it as a label
+        if (!labelMatch) {
+          prompt.value = promptParamsMatch[1] || "";
+        }
+
+        // Set default value if provided
+        if (promptParamsMatch[2]) {
+          textOptions.value.defaultValue = promptParamsMatch[2];
+        }
 
         // Check if multiline
-        if (promptParamsMatch[4] && promptParamsMatch[4].includes("multi")) {
-          inputType.value = "multiline";
-
-          // Check for default value or placeholder
-          if (promptParamsMatch[2]) {
-            multilineOptions.value.defaultValue = promptParamsMatch[2];
-            multilineOptions.value.asPlaceholder = false;
-          } else if (promptParamsMatch[3]) {
-            multilineOptions.value.defaultValue = promptParamsMatch[3];
-            multilineOptions.value.asPlaceholder = false;
-          }
-
-          // Parse placeholder
-          const placeholderMatch = promptParamsMatch[4].match(
-            /"placeholder"\s*:\s*"([^"]+)"/
-          );
-          if (placeholderMatch) {
-            multilineOptions.value.defaultValue = placeholderMatch[1];
-            multilineOptions.value.asPlaceholder = true;
-          }
-        } else {
-          inputType.value = "text";
-
-          // Get default value
-          if (promptParamsMatch[2]) {
-            textOptions.value.defaultValue = promptParamsMatch[2];
-          }
+        if (promptParamsMatch[3] && promptParamsMatch[3].includes("multi")) {
+          textOptions.value.multiline = true;
         }
 
-        // Parse advanced options
-        if (promptParamsMatch[4]) {
-          const optionsStr = promptParamsMatch[4];
-          parseAdvancedOptions(optionsStr);
-        }
+        // Set input type
+        inputType.value = "text";
       }
-    } else if (
-      functionCall.includes("tp.system.suggester") ||
-      functionCall.includes("tp.system.toggle")
-    ) {
+    } else if (cleanCode.includes("tp.system.suggester")) {
       inputType.value = "select";
 
-      // Determine display type
-      selectOptions.value.displayAs = functionCall.includes(
-        "tp.system.suggester"
-      )
-        ? "dropdown"
-        : "radio";
-
       // Extract options from the arrays
-      const optionsMatch = functionCall.match(/\[\s*((?:"[^"]+",?\s*)+)\]/);
+      const optionsMatch = cleanCode.match(/\[\s*((?:"[^"]+",?\s*)+)\]/);
       if (optionsMatch) {
         const optionsStr = optionsMatch[1];
         const options = optionsStr.match(/"([^"]+)"/g);
@@ -611,58 +501,17 @@ function parseExistingCode(code: string) {
         }
       }
 
-      // Extract default selection
-      if (selectOptions.value.displayAs === "radio") {
-        const defaultMatch = functionCall.match(/,\s*(\d+)\s*\)/);
-        if (defaultMatch) {
-          const defaultIndex = parseInt(defaultMatch[1]);
-          if (
-            defaultIndex >= 0 &&
-            defaultIndex < selectOptions.value.options.length
-          ) {
-            selectOptions.value.defaultOption =
-              selectOptions.value.options[defaultIndex];
-          }
-        }
-      }
-
-      // Extract prompt
-      if (selectOptions.value.displayAs === "dropdown") {
-        const promptMatch = functionCall.match(/,\s*"([^"]+)"\s*\)/);
-        if (promptMatch) {
-          prompt.value = promptMatch[1];
-        }
+      // Extract prompt from the end (if present)
+      const promptMatch = cleanCode.match(/,\s*"([^"]+)"\s*\)/);
+      if (promptMatch && !labelMatch) {
+        prompt.value = promptMatch[1];
       }
     }
   } catch (error) {
     console.error("Error parsing existing code:", error);
     // If parsing fails, just use defaults
+    setPromptType("question");
     setInputType("text");
-  }
-}
-
-// Parse advanced options from options object
-function parseAdvancedOptions(optionsStr: string) {
-  try {
-    // Extract remember option
-    const rememberMatch = optionsStr.match(/"remember"\s*:\s*(true|false)/);
-    if (rememberMatch) {
-      advancedOptions.value.remember = rememberMatch[1] === "true";
-    }
-
-    // Extract required option
-    const requiredMatch = optionsStr.match(/"required"\s*:\s*(true|false)/);
-    if (requiredMatch) {
-      advancedOptions.value.required = requiredMatch[1] === "true";
-    }
-
-    // Extract tooltip
-    const tooltipMatch = optionsStr.match(/"tooltip"\s*:\s*"([^"]+)"/);
-    if (tooltipMatch) {
-      advancedOptions.value.tooltip = tooltipMatch[1];
-    }
-  } catch (error) {
-    console.error("Error parsing advanced options:", error);
   }
 }
 
@@ -674,12 +523,13 @@ function updateContent(content: string[]) {
 // Watch for changes to update the code
 watch(
   [
+    promptType,
     inputType,
     prompt,
+    showInNote,
+    instructionLabel,
     textOptions,
-    multilineOptions,
     selectOptions,
-    advancedOptions,
   ],
   () => {
     generateCode();
@@ -714,6 +564,58 @@ watch(
 .user-input__header-title {
   font-size: 16px;
   font-weight: 500;
+}
+
+/* Prompt Type Selector */
+.user-input__prompt-type {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.user-input__prompt-type-options {
+  display: flex;
+  gap: 12px;
+}
+
+.user-input__prompt-type-button {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  color: #cbd5e1;
+  transition: all 0.2s;
+  cursor: pointer;
+}
+
+.user-input__prompt-type-button:hover {
+  background: rgba(255, 255, 255, 0.1);
+  transform: translateY(-2px);
+}
+
+.user-input__prompt-type-button i {
+  font-size: 22px;
+  margin-bottom: 4px;
+}
+
+.user-input__prompt-type-button span {
+  font-size: 14px;
+}
+
+.user-input__prompt-type-button--active {
+  background: rgba(59, 130, 246, 0.15);
+  border-color: rgba(59, 130, 246, 0.5);
+  color: #fff;
+}
+
+.user-input__prompt-type-button--active i {
+  color: #60a5fa;
 }
 
 /* Type selector */
@@ -964,6 +866,10 @@ watch(
   margin-top: 12px;
 }
 
+.user-input__answer-type {
+  margin-top: 16px;
+}
+
 /* Options for select input */
 .user-input__options-header {
   display: flex;
@@ -1113,7 +1019,8 @@ watch(
 
 /* Responsive adjustments */
 @media (max-width: 768px) {
-  .user-input__type-selector {
+  .user-input__type-selector,
+  .user-input__prompt-type-options {
     flex-direction: column;
   }
 

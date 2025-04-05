@@ -28,12 +28,7 @@ export const usePresetStore = defineStore("presets", () => {
       description: "YAML frontmatter for a daily note",
       priority: ModulePriority.HIGH,
       moduleType: "yaml",
-      content: [
-        "---",
-        'date: <% tp.date.now("YYYY-MM-DD") %>',
-        "tags: daily-note",
-        "---",
-      ],
+      content: [],
     },
     {
       id: "meeting-note",
@@ -41,14 +36,7 @@ export const usePresetStore = defineStore("presets", () => {
       description: "YAML frontmatter for a meeting note",
       priority: ModulePriority.HIGH,
       moduleType: "yaml",
-      content: [
-        "---",
-        'date: <% tp.date.now("YYYY-MM-DD") %>',
-        'time: <% tp.date.now("HH:mm") %>',
-        "attendees: ",
-        "tags: meeting",
-        "---",
-      ],
+      content: [],
     },
     {
       id: "project-note",
@@ -56,14 +44,7 @@ export const usePresetStore = defineStore("presets", () => {
       description: "YAML frontmatter for a project note",
       priority: ModulePriority.SECONDARY,
       moduleType: "yaml",
-      content: [
-        "---",
-        "title: Project Name",
-        'date: <% tp.date.now("YYYY-MM-DD") %>',
-        "status: planning",
-        "tags: [project]",
-        "---",
-      ],
+      content: [],
     },
   ]);
 
@@ -74,7 +55,7 @@ export const usePresetStore = defineStore("presets", () => {
       title: "Date and Time",
       description: "Insert a dynamic date or time",
       priority: ModulePriority.HIGH,
-      content: ['<% tp.date.now("YYYY-MM-DD") %>'],
+      content: [],
     },
     {
       id: "file-property",
@@ -82,7 +63,7 @@ export const usePresetStore = defineStore("presets", () => {
       title: "File Property",
       description: "Insert a file property",
       priority: ModulePriority.HIGH,
-      content: ["<% tp.file.title %>", "<% tp.file.path %>"],
+      content: [],
     },
     {
       id: "user-input",
@@ -90,11 +71,7 @@ export const usePresetStore = defineStore("presets", () => {
       title: "User Input",
       description: "Insert a user input field",
       priority: ModulePriority.HIGH,
-      content: [
-        'Enter your name: <% tp.userInput("Name") %>',
-        'Enter your age: <% tp.userInput("Age") %>',
-        'Enter your email: <% tp.userInput("Email") %>',
-      ],
+      content: [],
     },
     {
       id: "value-transformation",
@@ -102,11 +79,7 @@ export const usePresetStore = defineStore("presets", () => {
       title: "Value Transformation",
       description: "Transform a value using a function",
       priority: ModulePriority.HIGH,
-      content: [
-        'Transform value: <% tp.userInput("Value").toUpperCase() %>',
-        'Square a number: <% tp.userInput("Number") * tp.userInput("Number") %>',
-        'Format date: <% tp.date.now("YYYY-MM-DD") %>',
-      ],
+      content: [],
     },
     {
       id: "conditional-content",
@@ -114,10 +87,7 @@ export const usePresetStore = defineStore("presets", () => {
       title: "Conditional Content",
       description: "Insert content based on conditions",
       priority: ModulePriority.HIGH,
-      content: [
-        'If condition is true: <% if (tp.userInput("Condition")) { %> This is true <% } %>',
-        'If condition is false: <% if (!tp.userInput("Condition")) { %> This is false <% } %>',
-      ],
+      content: [],
     },
     {
       id: "template-variables",
@@ -125,11 +95,7 @@ export const usePresetStore = defineStore("presets", () => {
       title: "Template Variables",
       description: "Insert template variables",
       priority: ModulePriority.HIGH,
-      content: [
-        'Current date: <% tp.date.now("YYYY-MM-DD") %>',
-        'Current time: <% tp.date.now("HH:mm:ss") %>',
-        "Current file path: <% tp.file.path %>",
-      ],
+      content: [],
     },
     {
       id: "date-field",
@@ -137,7 +103,7 @@ export const usePresetStore = defineStore("presets", () => {
       title: "Date Field",
       description: "Insert a dynamic date field",
       priority: ModulePriority.SECONDARY,
-      content: ['<% tp.date.now("YYYY-MM-DD") %>'],
+      content: [],
     },
     {
       id: "file-title",
@@ -145,7 +111,7 @@ export const usePresetStore = defineStore("presets", () => {
       title: "File Title",
       description: "Insert the current file title",
       priority: ModulePriority.SECONDARY,
-      content: ["<% tp.file.title %>"],
+      content: [],
     },
   ]);
 
@@ -157,7 +123,7 @@ export const usePresetStore = defineStore("presets", () => {
       title: "Generic Query",
       description: "Create a custom Dataview query",
       priority: ModulePriority.SECONDARY,
-      content: ["```dataview", "LIST", "FROM #tag", "```"],
+      content: [],
     },
     {
       id: "table-query",
@@ -165,13 +131,7 @@ export const usePresetStore = defineStore("presets", () => {
       title: "Table of Notes",
       description: "Create a table of notes with specific metadata",
       priority: ModulePriority.SECONDARY,
-      content: [
-        "```dataview",
-        "TABLE date, tags",
-        'FROM "folder"',
-        "SORT date DESC",
-        "```",
-      ],
+      content: [],
     },
     // New specialized modules
     {
@@ -180,7 +140,7 @@ export const usePresetStore = defineStore("presets", () => {
       title: "List Query",
       description: "Create a list of notes with filtering",
       priority: ModulePriority.HIGH,
-      content: ["```dataview", "LIST", "FROM #tag", "```"],
+      content: [],
     },
     {
       id: "table-query-module",
@@ -188,13 +148,7 @@ export const usePresetStore = defineStore("presets", () => {
       title: "Table Query",
       description: "Create a table with custom columns",
       priority: ModulePriority.HIGH,
-      content: [
-        "```dataview",
-        "TABLE file.ctime as Created, file.mtime as Modified",
-        'FROM "folder"',
-        "SORT file.mtime DESC",
-        "```",
-      ],
+      content: [],
     },
     {
       id: "task-query",
@@ -202,13 +156,7 @@ export const usePresetStore = defineStore("presets", () => {
       title: "Task Query",
       description: "Create a list of tasks from your notes",
       priority: ModulePriority.HIGH,
-      content: [
-        "```dataview",
-        "TASK",
-        "FROM #project",
-        "WHERE !completed",
-        "```",
-      ],
+      content: [],
     },
     {
       id: "calendar-query",
@@ -216,12 +164,7 @@ export const usePresetStore = defineStore("presets", () => {
       title: "Calendar View",
       description: "Display notes on a calendar by date field",
       priority: ModulePriority.HIGH,
-      content: [
-        "```dataview",
-        "CALENDAR file.ctime",
-        'FROM "Daily Notes"',
-        "```",
-      ],
+      content: [],
     },
     {
       id: "dataview-inline-fields",
@@ -229,7 +172,7 @@ export const usePresetStore = defineStore("presets", () => {
       title: "Inline Fields",
       description: "Add inline Dataview fields to your note",
       priority: ModulePriority.HIGH,
-      content: ["Due:: 2023-12-31", "Status:: #in-progress", "Priority:: High"],
+      content: [],
     },
   ]);
 

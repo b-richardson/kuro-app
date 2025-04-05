@@ -33,14 +33,17 @@ import TableRow from "@tiptap/extension-table-row";
 import TableCell from "@tiptap/extension-table-cell";
 import TableHeader from "@tiptap/extension-table-header";
 import { common, createLowlight } from "lowlight";
+import { preprocessContent } from "./custom-extensions/preprocessors.ts";
 import { ObsidianCallout } from "./custom-extensions/obsidianCallout";
 import { ObsidianLink } from "./custom-extensions/obsidianInternalLink";
 import { ObsidianDataviewList } from "./custom-extensions/obsidianDataviewList";
 import { ObsidianDataviewTable } from "./custom-extensions/obsidianDataviewTable";
 import { ObsidianTemplaterDate } from "./custom-extensions/obsidianTemplaterDate";
 import { ObsidianTemplaterFile } from "./custom-extensions/obsidianTemplaterFile";
+import { ObsidianTemplaterTransform } from "./custom-extensions/obsidianTemplaterTransform";
 import { ObsidianFrontmatter } from "./custom-extensions/obsidianFrontmatter";
 import { ObsidianTemplateVars } from "./custom-extensions/obsidianTemplateVars";
+import { ObsidianTemplaterUserInput } from "./custom-extensions/obsidianTemplaterUserInput";
 import { Markdown } from "tiptap-markdown";
 
 // Get theme from parent component (injected)
@@ -192,108 +195,6 @@ const ObsidianTable = Table.extend({
   },
 });
 
-// Helper function to preprocess markdown content to make it more compatible with Obsidian
-const preprocessContent = (content: string): string => {
-  let processedContent = content;
-
-  // Process bold, italic, and bold-italic
-  // Important: Process bold-italic first because it's a combination
-  processedContent = processedContent.replace(
-    /\*\*\*([^*]+)\*\*\*/g,
-    "<strong><em>$1</em></strong>"
-  );
-  processedContent = processedContent.replace(
-    /\*\*([^*]+)\*\*/g,
-    "<strong>$1</strong>"
-  );
-  processedContent = processedContent.replace(/\*([^*]+)\*/g, "<em>$1</em>");
-
-  // Also handle underscore style italics
-  processedContent = processedContent.replace(/_([^_]+)_/g, "<em>$1</em>");
-
-  // We'll let TipTap handle the list rendering entirely
-  // No custom preprocessing for lists
-
-  // Pre-process task list items to ensure consistent formatting
-  processedContent = processedContent.replace(
-    /^(\s*)- \[([ xX])\]\s+(.+)$/gm,
-    (match, indent, checked, content) => {
-      // This formats task items in a way TipTap can reliably parse
-      return `${indent}- [${checked}] ${content}`;
-    }
-  );
-
-  // Pre-process tables to ensure proper parsing
-  processedContent = processedContent.replace(
-    /^\|(.*)\|$/gm,
-    (match, content) => {
-      return `|${content}|`;
-    }
-  );
-
-  // Preprocess dataview blocks
-  processedContent = processedContent.replace(
-    /```dataview\s+([\s\S]*?)```/g,
-    (match, query) => {
-      // Replace with explicit HTML structure
-      return `<div class="dataview-block-container"><pre data-language="dataview"><code>${query.trim()}</code></pre></div>`;
-    }
-  );
-
-  // Preprocess callouts to make them more compatible with Obsidian
-  processedContent = processedContent.replace(
-    />\s*\[!(\w+)\](?:\s*([^\n]*))?(?:\n>?\s*([^\n]*(?:\n>?\s*[^\n]*)*))?/g,
-    (match, type, title, content) => {
-      const titleAttr = title ? ` data-callout-title="${title.trim()}"` : "";
-      const contentStr = content ? content.replace(/^\s*>\s*/gm, "") : "";
-      return `<div class="obsidian-callout obsidian-callout-${type.toLowerCase()}" data-callout-type="${type.toLowerCase()}"${titleAttr}>${contentStr.trim()}</div>`;
-    }
-  );
-
-  // Enhance horizontal rule rendering
-  processedContent = processedContent.replace(
-    /^(\s*[*\-_]{3,}\s*)$/gm,
-    '<hr class="obsidian-hr" />'
-  );
-
-  // Preprocess templater date patterns
-  processedContent = processedContent.replace(
-    /(<%(.*?)tp\.date\.now(\(.*?\))?(.*?)%>|<%(.*?)tp\.file\.(creation|last_modified)_date(\(.*?\))?(.*?)%>)/g,
-    (match) => {
-      return `<span class="templater-date" data-code="${match.replace(
-        /"/g,
-        "&quot;"
-      )}">${match}</span>`;
-    }
-  );
-
-  // Preprocess templater file properties
-  processedContent = processedContent.replace(
-    /(<%(.*?)tp\.file\.(title|folder|path|creation_date|last_modified_date|content|size)(\(.*?\))?(.*?)%>)/g,
-    (match) => {
-      // Extract property type
-      let propertyType = "title";
-
-      if (match.includes("tp.file.title")) propertyType = "title";
-      else if (match.includes("tp.file.folder")) propertyType = "folder";
-      else if (match.includes("tp.file.path")) propertyType = "path";
-      else if (match.includes("tp.file.creation_date"))
-        propertyType = "creation";
-      else if (match.includes("tp.file.last_modified_date"))
-        propertyType = "modified";
-      else if (match.includes("tp.file.content")) propertyType = "content";
-      else if (match.includes("tp.file.size")) propertyType = "size";
-
-      return `<span class="templater-file" data-code="${match.replace(
-        /"/g,
-        "&quot;"
-      )}" data-property-type="${propertyType}">${match}</span>`;
-    }
-  );
-
-  return processedContent;
-};
-
 // Initialize editor on component mount
 onMounted(() => {
   editor.value = new Editor({
@@ -303,6 +204,8 @@ onMounted(() => {
       ObsidianDataviewList,
       ObsidianTemplaterDate,
       ObsidianTemplaterFile,
+      ObsidianTemplaterUserInput,
+      ObsidianTemplaterTransform,
 
       // Configure StarterKit without code block
       StarterKit.configure({

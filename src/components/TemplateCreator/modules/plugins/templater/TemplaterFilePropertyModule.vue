@@ -22,156 +22,63 @@
         <div class="file-property__header-title">File Property</div>
       </div>
 
-      <!-- Property Selection Cards -->
-      <div class="file-property__cards">
-        <!-- File Name Card -->
-        <div
-          class="file-property__card"
-          :class="{
-            'file-property__card--active': selectedProperty === 'fileName',
-          }"
-          @click="selectProperty('fileName')"
-        >
-          <div class="file-property__card-icon">
-            <i class="fas fa-file-signature"></i>
-          </div>
-          <div class="file-property__card-content">
-            <div class="file-property__card-title">File Name</div>
-            <div class="file-property__card-desc">
-              Insert the name of the current file
-            </div>
-          </div>
-        </div>
-
-        <!-- Folder Path Card -->
-        <div
-          class="file-property__card"
-          :class="{
-            'file-property__card--active': selectedProperty === 'folderPath',
-          }"
-          @click="selectProperty('folderPath')"
-        >
-          <div class="file-property__card-icon">
-            <i class="fas fa-folder"></i>
-          </div>
-          <div class="file-property__card-content">
-            <div class="file-property__card-title">Folder Path</div>
-            <div class="file-property__card-desc">
-              Insert the path to the file's folder
-            </div>
+      <!-- Property Selection UI -->
+      <div class="file-property__selection">
+        <!-- Category Selection Dropdown -->
+        <div class="file-property__field">
+          <label for="property-category">Property Category</label>
+          <div class="file-property__select-wrapper">
+            <select
+              id="property-category"
+              v-model="selectedCategory"
+              class="file-property__select"
+            >
+              <option value="">Select a category</option>
+              <option
+                v-for="category in propertyCategories"
+                :key="category.id"
+                :value="category.id"
+              >
+                {{ category.icon }} {{ category.name }}
+              </option>
+            </select>
           </div>
         </div>
 
-        <!-- File Path Card -->
-        <div
-          class="file-property__card"
-          :class="{
-            'file-property__card--active': selectedProperty === 'filePath',
-          }"
-          @click="selectProperty('filePath')"
-        >
-          <div class="file-property__card-icon">
-            <i class="fas fa-sitemap"></i>
-          </div>
-          <div class="file-property__card-content">
-            <div class="file-property__card-title">Full Path</div>
-            <div class="file-property__card-desc">
-              Insert the complete file path
-            </div>
-          </div>
-        </div>
-
-        <!-- Parent Folder Card -->
-        <div
-          class="file-property__card"
-          :class="{
-            'file-property__card--active': selectedProperty === 'parentFolder',
-          }"
-          @click="selectProperty('parentFolder')"
-        >
-          <div class="file-property__card-icon">
-            <i class="fas fa-level-up-alt"></i>
-          </div>
-          <div class="file-property__card-content">
-            <div class="file-property__card-title">Parent Folder</div>
-            <div class="file-property__card-desc">
-              Insert the name of the parent folder
-            </div>
-          </div>
-        </div>
-
-        <!-- Creation Date Card -->
-        <div
-          class="file-property__card"
-          :class="{
-            'file-property__card--active': selectedProperty === 'creation',
-          }"
-          @click="selectProperty('creation')"
-        >
-          <div class="file-property__card-icon">
-            <i class="fas fa-calendar-plus"></i>
-          </div>
-          <div class="file-property__card-content">
-            <div class="file-property__card-title">Creation Date</div>
-            <div class="file-property__card-desc">
-              Insert when the file was created
-            </div>
-          </div>
-        </div>
-
-        <!-- Modified Date Card -->
-        <div
-          class="file-property__card"
-          :class="{
-            'file-property__card--active': selectedProperty === 'modified',
-          }"
-          @click="selectProperty('modified')"
-        >
-          <div class="file-property__card-icon">
-            <i class="fas fa-calendar-check"></i>
-          </div>
-          <div class="file-property__card-content">
-            <div class="file-property__card-title">Modified Date</div>
-            <div class="file-property__card-desc">
-              Insert when the file was last updated
-            </div>
-          </div>
-        </div>
-
-        <!-- File Stats Card -->
-        <div
-          class="file-property__card"
-          :class="{
-            'file-property__card--active': selectedProperty === 'stats',
-          }"
-          @click="selectProperty('stats')"
-        >
-          <div class="file-property__card-icon">
-            <i class="fas fa-chart-bar"></i>
-          </div>
-          <div class="file-property__card-content">
-            <div class="file-property__card-title">File Stats</div>
-            <div class="file-property__card-desc">
-              Insert file size or word count
-            </div>
+        <!-- Property Selection Dropdown (appears after category selection) -->
+        <div class="file-property__field" v-if="selectedCategory">
+          <label for="property-type">Property Type</label>
+          <div class="file-property__select-wrapper">
+            <select
+              id="property-type"
+              v-model="selectedProperty"
+              class="file-property__select"
+            >
+              <option value="">Select a property</option>
+              <option
+                v-for="property in getCategoryProperties(selectedCategory)"
+                :key="property.id"
+                :value="property.id"
+              >
+                {{ property.name }}
+              </option>
+            </select>
           </div>
         </div>
       </div>
 
-      <!-- Options Panel -->
-      <div v-if="selectedProperty" class="file-property__options">
+      <!-- Format Options (appears after property selection) -->
+      <div class="file-property__format" v-if="selectedProperty">
         <!-- File Name Options -->
         <div
           v-if="selectedProperty === 'fileName'"
-          class="file-property__option-group"
+          class="file-property__options"
         >
-          <div class="file-property__option-title">Options</div>
-          <div class="file-property__checkbox">
+          <div class="file-property__toggle">
             <input
               type="checkbox"
               id="includeExtension"
-              v-model="fileNameOptions.includeExtension"
-              @change="generateCode"
+              v-model="formatOptions.includeExtension"
             />
             <label for="includeExtension">Include file extension (.md)</label>
           </div>
@@ -182,29 +89,26 @@
           v-if="
             selectedProperty === 'folderPath' || selectedProperty === 'filePath'
           "
-          class="file-property__option-group"
+          class="file-property__options"
         >
-          <div class="file-property__option-title">Format</div>
           <div class="file-property__radio-group">
             <div class="file-property__radio">
               <input
                 type="radio"
                 id="fullPath"
                 value="full"
-                v-model="pathOptions.format"
-                @change="generateCode"
+                v-model="formatOptions.pathFormat"
               />
-              <label for="fullPath">Full path (e.g., /Folder/Subfolder)</label>
+              <label for="fullPath">Full path</label>
             </div>
             <div class="file-property__radio">
               <input
                 type="radio"
                 id="relativePath"
                 value="relative"
-                v-model="pathOptions.format"
-                @change="generateCode"
+                v-model="formatOptions.pathFormat"
               />
-              <label for="relativePath">Relative path (from vault root)</label>
+              <label for="relativePath">Relative path</label>
             </div>
           </div>
         </div>
@@ -212,19 +116,19 @@
         <!-- Parent Folder Options -->
         <div
           v-if="selectedProperty === 'parentFolder'"
-          class="file-property__option-group"
+          class="file-property__options"
         >
-          <div class="file-property__option-title">Levels Up</div>
+          <label class="file-property__label">Folder level</label>
           <div class="file-property__level-selector">
             <button
               class="file-property__level-btn"
               @click="decrementLevel"
-              :disabled="parentOptions.level <= 1"
+              :disabled="formatOptions.parentLevel <= 1"
             >
               <i class="fas fa-minus"></i>
             </button>
             <div class="file-property__level-display">
-              {{ parentOptions.level }}
+              {{ formatOptions.parentLevel }}
             </div>
             <button class="file-property__level-btn" @click="incrementLevel">
               <i class="fas fa-plus"></i>
@@ -232,29 +136,29 @@
           </div>
           <div class="file-property__level-label">
             {{
-              parentOptions.level === 1
+              formatOptions.parentLevel === 1
                 ? "Direct parent folder"
-                : `${parentOptions.level} levels up`
+                : `${formatOptions.parentLevel} levels up`
             }}
           </div>
         </div>
 
-        <!-- Date Options -->
+        <!-- Date Format Options -->
         <div
           v-if="
             selectedProperty === 'creation' || selectedProperty === 'modified'
           "
-          class="file-property__option-group"
+          class="file-property__options"
         >
-          <div class="file-property__option-title">Date Format</div>
-          <div class="file-property__format-buttons">
+          <label class="file-property__label">Date Format</label>
+          <div class="file-property__date-formats">
             <button
               v-for="format in dateFormats"
               :key="format.id"
               class="file-property__format-button"
               :class="{
                 'file-property__format-button--active':
-                  dateOptions.format === format.id,
+                  formatOptions.dateFormat === format.id,
               }"
               @click="selectDateFormat(format.id)"
             >
@@ -263,57 +167,47 @@
           </div>
         </div>
 
-        <!-- Stats Options -->
+        <!-- File Size Options -->
         <div
-          v-if="selectedProperty === 'stats'"
-          class="file-property__option-group"
+          v-if="selectedProperty === 'fileSize'"
+          class="file-property__options"
         >
-          <div class="file-property__option-title">Statistics</div>
-          <div class="file-property__radio-group">
-            <div class="file-property__radio">
-              <input
-                type="radio"
-                id="wordCount"
-                value="wordCount"
-                v-model="statsOptions.type"
-                @change="generateCode"
-              />
-              <label for="wordCount">Word count</label>
-            </div>
-            <div class="file-property__radio">
-              <input
-                type="radio"
-                id="charCount"
-                value="charCount"
-                v-model="statsOptions.type"
-                @change="generateCode"
-              />
-              <label for="charCount">Character count</label>
-            </div>
-            <div class="file-property__radio">
-              <input
-                type="radio"
-                id="fileSize"
-                value="fileSize"
-                v-model="statsOptions.type"
-                @change="generateCode"
-              />
-              <label for="fileSize">File size</label>
-            </div>
-          </div>
-
-          <div
-            v-if="statsOptions.type === 'fileSize'"
-            class="file-property__checkbox"
-          >
+          <div class="file-property__toggle">
             <input
               type="checkbox"
               id="humanReadable"
-              v-model="statsOptions.humanReadable"
-              @change="generateCode"
+              v-model="formatOptions.humanReadable"
             />
-            <label for="humanReadable">Human readable (KB, MB)</label>
+            <label for="humanReadable">Human readable format (KB, MB)</label>
           </div>
+        </div>
+
+        <!-- Optional Prefix/Label Field -->
+        <div class="file-property__field file-property__prefix">
+          <label for="prefix-text">Prefix text (optional):</label>
+          <input
+            type="text"
+            id="prefix-text"
+            v-model="prefixText"
+            class="file-property__input"
+            placeholder="e.g., 'Path:', 'Created:'"
+          />
+        </div>
+      </div>
+
+      <!-- Runtime Example Preview -->
+      <div class="file-property__preview" v-if="selectedProperty">
+        <div class="file-property__preview-header">Example output:</div>
+        <div class="file-property__preview-content">
+          <span v-if="prefixText" class="file-property__preview-prefix">{{
+            prefixText
+          }}</span>
+          <span class="file-property__preview-value">{{
+            getExampleOutput()
+          }}</span>
+        </div>
+        <div class="file-property__preview-note">
+          Will be replaced with actual file property at runtime
         </div>
       </div>
     </div>
@@ -321,7 +215,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch } from "vue";
+import { ref, computed, watch, onMounted } from "vue";
 import BaseModule from "@/components/TemplateCreator/modules/core/BaseModule.vue";
 import { TemplateModule } from "@/types/TemplateModule";
 
@@ -347,30 +241,53 @@ const emit = defineEmits<{
 // Reference to the base module component
 const baseModuleRef = ref<InstanceType<typeof BaseModule> | null>(null);
 
-// Property selection state
+// Module state
+const selectedCategory = ref("");
 const selectedProperty = ref("");
+const prefixText = ref("");
 
-// Property-specific options
-const fileNameOptions = ref({
+// Format options for different property types
+const formatOptions = ref({
   includeExtension: false,
-});
-
-const pathOptions = ref({
-  format: "relative",
-});
-
-const parentOptions = ref({
-  level: 1,
-});
-
-const dateOptions = ref({
-  format: "simple",
-});
-
-const statsOptions = ref({
-  type: "wordCount",
+  pathFormat: "relative",
+  parentLevel: 1,
+  dateFormat: "simple",
   humanReadable: true,
 });
+
+// Property categories with their properties
+const propertyCategories = [
+  {
+    id: "fileInfo",
+    name: "File Information",
+    icon: "📄",
+    properties: [
+      { id: "fileName", name: "File Name" },
+      { id: "folderPath", name: "Folder Path" },
+      { id: "filePath", name: "Full Path" },
+      { id: "parentFolder", name: "Parent Folder" },
+    ],
+  },
+  {
+    id: "dateTime",
+    name: "Date & Time",
+    icon: "📅",
+    properties: [
+      { id: "creation", name: "Creation Date" },
+      { id: "modified", name: "Last Modified Date" },
+    ],
+  },
+  {
+    id: "contentStats",
+    name: "Content Statistics",
+    icon: "📊",
+    properties: [
+      { id: "wordCount", name: "Word Count" },
+      { id: "charCount", name: "Character Count" },
+      { id: "fileSize", name: "File Size" },
+    ],
+  },
+];
 
 // Date formats
 const dateFormats = [
@@ -380,109 +297,165 @@ const dateFormats = [
   { id: "iso", name: "ISO", format: "YYYY-MM-DD" },
 ];
 
+// Get properties for selected category
+const getCategoryProperties = (categoryId: string) => {
+  const category = propertyCategories.find((cat) => cat.id === categoryId);
+  return category ? category.properties : [];
+};
+
 // Initialize component
 onMounted(() => {
   // Parse existing content if it exists
   if (props.module.content.length > 0) {
     parseExistingCode(props.module.content[0]);
-  } else {
-    // Set default selection
-    selectProperty("fileName");
   }
 });
 
-// Select a property
-function selectProperty(property: string) {
-  selectedProperty.value = property;
-  generateCode();
+// Select date format
+function selectDateFormat(format: string) {
+  formatOptions.value.dateFormat = format;
 }
 
 // Increment/decrement parent folder level
 function incrementLevel() {
-  parentOptions.value.level++;
-  generateCode();
+  formatOptions.value.parentLevel++;
 }
 
 function decrementLevel() {
-  if (parentOptions.value.level > 1) {
-    parentOptions.value.level--;
-    generateCode();
+  if (formatOptions.value.parentLevel > 1) {
+    formatOptions.value.parentLevel--;
   }
 }
 
-// Select date format
-function selectDateFormat(format: string) {
-  dateOptions.value.format = format;
-  generateCode();
+// Generate example output based on current selections
+function getExampleOutput() {
+  switch (selectedProperty.value) {
+    case "fileName":
+      return formatOptions.value.includeExtension ? "my-note.md" : "my-note";
+
+    case "folderPath":
+      return formatOptions.value.pathFormat === "full"
+        ? "/Vault/Projects/Current"
+        : "Projects/Current";
+
+    case "filePath":
+      return formatOptions.value.pathFormat === "full"
+        ? "/Vault/Projects/Current/my-note.md"
+        : "Projects/Current/my-note.md";
+
+    case "parentFolder":
+      if (formatOptions.value.parentLevel === 1) {
+        return "Current";
+      } else if (formatOptions.value.parentLevel === 2) {
+        return "Projects";
+      } else {
+        return "Vault";
+      }
+
+    case "creation":
+      return getFormattedDateExample(formatOptions.value.dateFormat);
+
+    case "modified":
+      return getFormattedDateExample(formatOptions.value.dateFormat);
+
+    case "wordCount":
+      return "250 words";
+
+    case "charCount":
+      return "1,423 characters";
+
+    case "fileSize":
+      return formatOptions.value.humanReadable ? "24.5 KB" : "25,088 bytes";
+
+    default:
+      return "";
+  }
 }
 
-// Generate the Templater code
+// Get formatted date example based on format
+function getFormattedDateExample(formatId: string) {
+  const today = new Date();
+  switch (formatId) {
+    case "simple":
+      return `Apr 4, 2025`;
+    case "short":
+      return `04/04/2025`;
+    case "full":
+      return `Friday, April 4, 2025`;
+    case "iso":
+      return `2025-04-04`;
+    default:
+      return `Apr 4, 2025`;
+  }
+}
+
+// Generate the Templater code based on selections
 function generateCode() {
-  let code = "<% tp.file.";
+  // If nothing selected, return empty
+  if (!selectedProperty.value) {
+    return "";
+  }
+
+  let prefix = prefixText.value ? `${prefixText.value} ` : "";
+  let code = prefix + "<% tp.file.";
 
   switch (selectedProperty.value) {
     case "fileName":
       code += `title${
-        fileNameOptions.value.includeExtension ? "(true)" : "()"
+        formatOptions.value.includeExtension ? "(true)" : "()"
       } %>`;
       break;
 
     case "folderPath":
       code += `folder(${
-        pathOptions.value.format === "full" ? "true" : "false"
+        formatOptions.value.pathFormat === "full" ? "true" : "false"
       }) %>`;
       break;
 
     case "filePath":
       code += `path(${
-        pathOptions.value.format === "full" ? "true" : "false"
+        formatOptions.value.pathFormat === "full" ? "true" : "false"
       }) %>`;
       break;
 
     case "parentFolder":
-      const level = parentOptions.value.level;
+      const level = formatOptions.value.parentLevel;
       if (level === 1) {
         code += `folder(false) %>`;
       } else {
-        // For multiple levels up, we need to use path manipulation
+        // For multiple levels up, use path manipulation
         code += `path(false).split("/").slice(0, -${level}).join("/") %>`;
       }
       break;
 
     case "creation":
-      const createFormat = getFormatString(dateOptions.value.format);
+      const createFormat = getFormatString(formatOptions.value.dateFormat);
       code += `creation_date("${createFormat}") %>`;
       break;
 
     case "modified":
-      const modifiedFormat = getFormatString(dateOptions.value.format);
+      const modifiedFormat = getFormatString(formatOptions.value.dateFormat);
       code += `last_modified_date("${modifiedFormat}") %>`;
       break;
 
-    case "stats":
-      switch (statsOptions.value.type) {
-        case "wordCount":
-          code += `content.split(/\\s+/).length %>`;
-          break;
+    case "wordCount":
+      code += `content.split(/\\s+/).length %>`;
+      break;
 
-        case "charCount":
-          code += `content.length %>`;
-          break;
+    case "charCount":
+      code += `content.length %>`;
+      break;
 
-        case "fileSize":
-          if (statsOptions.value.humanReadable) {
-            // Formatted file size
-            code += `size(true) %>`;
-          } else {
-            // Raw bytes
-            code += `size(false) %>`;
-          }
-          break;
+    case "fileSize":
+      if (formatOptions.value.humanReadable) {
+        code += `size(true) %>`;
+      } else {
+        code += `size(false) %>`;
       }
       break;
   }
 
-  updateContent([code]);
+  return code;
 }
 
 // Helper to get date format string based on selection
@@ -494,55 +467,64 @@ function getFormatString(formatId: string) {
 // Parse existing Templater code
 function parseExistingCode(code: string) {
   try {
-    // Remove the Templater tags
-    const cleanCode = code.replace(/<%|%>/g, "").trim();
+    // Extract prefix if exists
+    const prefixMatch = code.match(/^(.*?)<% tp\.file\./);
+    if (prefixMatch && prefixMatch[1]) {
+      prefixText.value = prefixMatch[1].trim();
+    }
 
-    // Match different file properties
+    // Remove the prefix and Templater tags
+    const cleanCode = code.replace(/^.*?<% ?|%>/g, "").trim();
+
+    // Set category and property based on the code
     if (cleanCode.includes("tp.file.title")) {
+      selectedCategory.value = "fileInfo";
       selectedProperty.value = "fileName";
-      fileNameOptions.value.includeExtension =
-        cleanCode.includes("title(true)");
+      formatOptions.value.includeExtension = cleanCode.includes("title(true)");
     } else if (cleanCode.includes("tp.file.folder")) {
+      selectedCategory.value = "fileInfo";
+
       if (cleanCode.includes("path(false).split")) {
         // This is a parent folder with level
         selectedProperty.value = "parentFolder";
         const levelMatch = cleanCode.match(/slice\(0, -(\d+)\)/);
         if (levelMatch) {
-          parentOptions.value.level = parseInt(levelMatch[1]);
+          formatOptions.value.parentLevel = parseInt(levelMatch[1]);
         }
       } else {
         selectedProperty.value = "folderPath";
-        pathOptions.value.format = cleanCode.includes("folder(true)")
+        formatOptions.value.pathFormat = cleanCode.includes("folder(true)")
           ? "full"
           : "relative";
       }
     } else if (cleanCode.includes("tp.file.path")) {
+      selectedCategory.value = "fileInfo";
       selectedProperty.value = "filePath";
-      pathOptions.value.format = cleanCode.includes("path(true)")
+      formatOptions.value.pathFormat = cleanCode.includes("path(true)")
         ? "full"
         : "relative";
     } else if (cleanCode.includes("tp.file.creation_date")) {
+      selectedCategory.value = "dateTime";
       selectedProperty.value = "creation";
       parseFormatFromCode(cleanCode, "creation_date");
     } else if (cleanCode.includes("tp.file.last_modified_date")) {
+      selectedCategory.value = "dateTime";
       selectedProperty.value = "modified";
       parseFormatFromCode(cleanCode, "last_modified_date");
-    } else if (cleanCode.includes("tp.file.content")) {
-      selectedProperty.value = "stats";
-      if (cleanCode.includes("split")) {
-        statsOptions.value.type = "wordCount";
-      } else {
-        statsOptions.value.type = "charCount";
-      }
+    } else if (cleanCode.includes("tp.file.content.split")) {
+      selectedCategory.value = "contentStats";
+      selectedProperty.value = "wordCount";
+    } else if (cleanCode.includes("tp.file.content.length")) {
+      selectedCategory.value = "contentStats";
+      selectedProperty.value = "charCount";
     } else if (cleanCode.includes("tp.file.size")) {
-      selectedProperty.value = "stats";
-      statsOptions.value.type = "fileSize";
-      statsOptions.value.humanReadable = cleanCode.includes("size(true)");
+      selectedCategory.value = "contentStats";
+      selectedProperty.value = "fileSize";
+      formatOptions.value.humanReadable = cleanCode.includes("size(true)");
     }
   } catch (error) {
     console.error("Error parsing existing code:", error);
-    // If parsing fails, just use defaults
-    selectProperty("fileName");
+    // If parsing fails, just leave selections empty
   }
 }
 
@@ -555,24 +537,27 @@ function parseFormatFromCode(code: string, funcName: string) {
     // Try to match with predefined formats
     const matchedFormat = dateFormats.find((f) => f.format === extractedFormat);
     if (matchedFormat) {
-      dateOptions.value.format = matchedFormat.id;
+      formatOptions.value.dateFormat = matchedFormat.id;
     } else {
       // Default to simple if no match
-      dateOptions.value.format = "simple";
+      formatOptions.value.dateFormat = "simple";
     }
   }
 }
 
-// Update content in parent component
-function updateContent(content: string[]) {
-  emit("update:content", content);
+// Update content when options change
+function updateContent() {
+  const code = generateCode();
+  emit("update:content", [code]);
 }
 
-// Watch for option changes to update code
+// Watch for changes to update generated code
 watch(
-  [fileNameOptions, pathOptions, parentOptions, dateOptions, statsOptions],
+  [selectedCategory, selectedProperty, formatOptions, prefixText],
   () => {
-    generateCode();
+    if (selectedProperty.value) {
+      updateContent();
+    }
   },
   { deep: true }
 );
@@ -584,7 +569,7 @@ watch(
   color: #e2e8f0;
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 16px;
 }
 
 /* Header styles */
@@ -606,133 +591,123 @@ watch(
   font-weight: 500;
 }
 
-/* Property cards grid */
-.file-property__cards {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: 12px;
-}
-
-/* Property card */
-.file-property__card {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 8px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.file-property__card:hover {
-  background: rgba(255, 255, 255, 0.1);
-  transform: translateY(-2px);
-}
-
-.file-property__card--active {
-  background: rgba(59, 130, 246, 0.15);
-  border-color: rgba(59, 130, 246, 0.5);
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
-}
-
-.file-property__card-icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  background: rgba(59, 130, 246, 0.2);
-  border-radius: 6px;
-  color: #60a5fa;
-  flex-shrink: 0;
-}
-
-.file-property__card--active .file-property__card-icon {
-  background: rgba(59, 130, 246, 0.4);
-  color: #ffffff;
-}
-
-.file-property__card-content {
-  flex: 1;
+/* Selection dropdowns */
+.file-property__selection {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 12px;
 }
 
-.file-property__card-title {
-  font-weight: 500;
+.file-property__field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.file-property__field label {
   font-size: 14px;
-}
-
-.file-property__card-desc {
-  font-size: 12px;
   color: #94a3b8;
 }
 
-.file-property__card--active .file-property__card-desc {
-  color: #cbd5e1;
+.file-property__select-wrapper {
+  position: relative;
 }
 
-/* Options panel */
+.file-property__select {
+  width: 100%;
+  padding: 10px 12px;
+  background: rgba(30, 41, 59, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  color: #e2e8f0;
+  font-size: 14px;
+  appearance: none;
+}
+
+.file-property__select-wrapper::after {
+  content: "▼";
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #94a3b8;
+  font-size: 12px;
+  pointer-events: none;
+}
+
+.file-property__input {
+  width: 100%;
+  padding: 10px 12px;
+  background: rgba(30, 41, 59, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  color: #e2e8f0;
+  font-size: 14px;
+}
+
+/* Format options */
+.file-property__format {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  animation: fadeIn 0.2s ease-in;
+}
+
 .file-property__options {
-  margin-top: 4px;
-  padding: 16px;
-  background: rgba(0, 0, 0, 0.1);
-  border-radius: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  animation: fadeIn 0.2s ease-in-out;
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(-10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.file-property__option-group {
   display: flex;
   flex-direction: column;
   gap: 12px;
+  padding: 12px;
+  background: rgba(15, 23, 42, 0.3);
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
-.file-property__option-title {
+.file-property__label {
   font-size: 14px;
-  font-weight: 500;
   color: #94a3b8;
   margin-bottom: 4px;
 }
 
-/* Checkbox styles */
-.file-property__checkbox {
+/* Toggle and radio styles */
+.file-property__toggle,
+.file-property__radio {
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
-.file-property__checkbox input[type="checkbox"] {
+.file-property__radio-group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.file-property__toggle input[type="checkbox"],
+.file-property__radio input[type="radio"] {
   appearance: none;
   width: 18px;
   height: 18px;
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(30, 41, 59, 0.5);
   border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 4px;
   position: relative;
   cursor: pointer;
 }
 
-.file-property__checkbox input[type="checkbox"]:checked {
-  background: rgba(59, 130, 246, 0.8);
-  border-color: rgba(59, 130, 246, 0.8);
+.file-property__toggle input[type="checkbox"] {
+  border-radius: 4px;
 }
 
-.file-property__checkbox input[type="checkbox"]:checked::after {
+.file-property__radio input[type="radio"] {
+  border-radius: 50%;
+}
+
+.file-property__toggle input[type="checkbox"]:checked {
+  background: #3b82f6;
+  border-color: #3b82f6;
+}
+
+.file-property__toggle input[type="checkbox"]:checked::after {
   content: "✓";
   position: absolute;
   top: 50%;
@@ -742,37 +717,8 @@ watch(
   font-size: 12px;
 }
 
-.file-property__checkbox label {
-  font-size: 14px;
-  cursor: pointer;
-}
-
-/* Radio styles */
-.file-property__radio-group {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.file-property__radio {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.file-property__radio input[type="radio"] {
-  appearance: none;
-  width: 18px;
-  height: 18px;
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 50%;
-  position: relative;
-  cursor: pointer;
-}
-
 .file-property__radio input[type="radio"]:checked {
-  border-color: rgba(59, 130, 246, 0.8);
+  border-color: #3b82f6;
 }
 
 .file-property__radio input[type="radio"]:checked::after {
@@ -783,13 +729,15 @@ watch(
   transform: translate(-50%, -50%);
   width: 10px;
   height: 10px;
-  background: rgba(59, 130, 246, 0.8);
+  background: #3b82f6;
   border-radius: 50%;
 }
 
+.file-property__toggle label,
 .file-property__radio label {
   font-size: 14px;
   cursor: pointer;
+  color: #e2e8f0;
 }
 
 /* Level selector for parent folders */
@@ -805,7 +753,7 @@ watch(
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(30, 41, 59, 0.5);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 4px;
   color: #e2e8f0;
@@ -814,7 +762,7 @@ watch(
 }
 
 .file-property__level-btn:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.15);
+  background: rgba(30, 41, 59, 0.8);
 }
 
 .file-property__level-btn:disabled {
@@ -840,8 +788,8 @@ watch(
   margin-top: 4px;
 }
 
-/* Format buttons for dates */
-.file-property__format-buttons {
+/* Date format buttons */
+.file-property__date-formats {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 8px;
@@ -849,7 +797,7 @@ watch(
 
 .file-property__format-button {
   padding: 8px 12px;
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(30, 41, 59, 0.5);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 6px;
   font-size: 13px;
@@ -859,7 +807,7 @@ watch(
 }
 
 .file-property__format-button:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(30, 41, 59, 0.8);
 }
 
 .file-property__format-button--active {
@@ -868,25 +816,69 @@ watch(
   color: #fff;
 }
 
+/* Prefix field styling */
+.file-property__prefix {
+  margin-top: 4px;
+}
+
+/* Example preview */
+.file-property__preview {
+  margin-top: 8px;
+  padding: 16px;
+  background: rgba(15, 23, 42, 0.3);
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  animation: fadeIn 0.2s ease-in;
+}
+
+.file-property__preview-header {
+  font-size: 14px;
+  font-weight: 500;
+  color: #94a3b8;
+  margin-bottom: 10px;
+}
+
+.file-property__preview-content {
+  padding: 12px;
+  background: rgba(30, 41, 59, 0.4);
+  border-radius: 4px;
+  font-family: "Courier New", monospace;
+  font-size: 14px;
+  color: #f8fafc;
+  word-break: break-all;
+}
+
+.file-property__preview-prefix {
+  color: #94a3b8;
+}
+
+.file-property__preview-value {
+  color: #60a5fa;
+}
+
+.file-property__preview-note {
+  margin-top: 8px;
+  font-size: 12px;
+  color: #64748b;
+  font-style: italic;
+}
+
+/* Animation */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 /* Responsive adjustments */
 @media (max-width: 768px) {
-  .file-property__cards {
-    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-  }
-
-  .file-property__format-buttons {
+  .file-property__date-formats {
     grid-template-columns: repeat(2, 1fr);
-  }
-
-  .file-property__card {
-    flex-direction: column;
-    text-align: center;
-  }
-
-  .file-property__card-icon {
-    width: 40px;
-    height: 40px;
-    margin: 0 auto;
   }
 }
 </style>

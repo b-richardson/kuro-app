@@ -1,278 +1,168 @@
 <template>
   <node-view-wrapper class="templater-file-wrapper">
-    <span
-      class="templater-file-result"
-      :class="`templater-file-${propertyType}`"
-    >
-      <span v-if="isLoading" class="loading-indicator">Loading...</span>
-      <span v-else-if="error" class="error-message">{{ error }}</span>
-      <span v-else>{{ displayValue }}</span>
-    </span>
+    <span :class="propertyClass">{{ displayValue }}</span>
   </node-view-wrapper>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from "vue";
+import { ref, onMounted, watch, computed } from "vue";
 import { NodeViewWrapper, NodeViewProps } from "@tiptap/vue-3";
-import dayjs from "dayjs";
-import { obsidianApiService } from "@/services/obsidian";
-import { debounce } from "lodash-es";
 
 const props = defineProps<NodeViewProps>();
-
-// State
 const displayValue = ref("");
-const isLoading = ref(false);
-const error = ref("");
-
-// Extract property type from node attributes
-const propertyType = computed(() => {
-  const code = props.node.attrs.originalCode || "";
-
-  if (code.includes("tp.file.title")) return "title";
-  if (code.includes("tp.file.folder")) return "folder";
-  if (code.includes("tp.file.path")) return "path";
-  if (code.includes("tp.file.creation_date")) return "creation";
-  if (code.includes("tp.file.last_modified_date")) return "modified";
-  if (code.includes("tp.file.content")) {
-    if (code.includes("split")) return "wordCount";
-    return "charCount";
-  }
-  if (code.includes("tp.file.size")) return "size";
-
-  return "unknown";
+const propertyClass = computed(() => {
+  return isRuntimeOnly.value
+    ? "templater-file-runtime"
+    : "templater-file-previewable";
 });
+const isRuntimeOnly = ref(true);
 
-// Get file property from Obsidian API
-const getFileProperty = async () => {
-  const code = props.node.attrs.originalCode;
+// Map of file property types to determine if they're runtime-only or can be previewed
+const runtimeOnlyProperties = [
+  "tp.file.path",
+  "tp.file.folder",
+  "tp.file.title",
+  "tp.file.creation_date",
+  "tp.file.last_modified_date",
+  "tp.file.cursor",
+  "tp.file.selection",
+  "tp.file.include",
+  "tp.file.rename",
+  "tp.file.move",
+  "tp.file.exists",
+];
 
-  // Skip if code is empty
-  if (!code) return;
+const previewableProperties = [
+  "tp.file.content",
+  "tp.file.size",
+  "tp.file.tags",
+  "tp.file.etags",
+  "tp.file.extension",
+];
 
+const formatFileProperty = () => {
   try {
-    isLoading.value = true;
-    error.value = "";
+    const originalCode =
+      props.node.attrs.originalCode || "<% tp.file.path() %>";
 
-    // Get the active file content and metadata
-    const activeFile = await obsidianApiService.getActiveFile(true);
+    // Decode HTML entities if they exist
+    const decodedCode = originalCode
+      .replace(/&lt;/g, "<")
+      .replace(/&gt;/g, ">")
+      .replace(/&quot;/g, '"');
 
-    if (typeof activeFile === "string") {
-      // If we got a string instead of a JSON object, parse it to extract what we need
-      handleString(activeFile, code);
-      return;
+    // Extract label if present
+    let label = "";
+    const labelMatch = decodedCode.match(/^(.*?)<%(.*?)%>/);
+    if (labelMatch && labelMatch[1].trim()) {
+      label = labelMatch[1].trim();
     }
 
-    // Now we have the note JSON with content, path, and metadata
-    const note = activeFile;
+    // Extract the property type and any parameters
+    const propertyMatch = decodedCode.match(/tp\.file\.([a-zA-Z_]+)(\(.*?\))?/);
 
-    // Different properties based on the template code
-    switch (propertyType.value) {
-      case "title": {
-        const includeExt = code.includes("title(true)");
-        const path = note.path;
-        const filename = path.split("/").pop() || "";
+    const propertyType = propertyMatch[1];
+    const propertyFunction = `tp.file.${propertyType}`;
 
-        if (includeExt) {
-          displayValue.value = filename;
-        } else {
-          // Remove extension
-          displayValue.value = filename.replace(/\.[^.]+$/, "");
-        }
-        break;
+    // Check if it's a runtime-only property
+    isRuntimeOnly.value = !previewableProperties.includes(propertyFunction);
+
+    if (isRuntimeOnly.value) {
+      // Handle runtime-only properties with appropriate placeholders
+      switch (propertyType) {
+        case "path":
+          // Check if relative path is requested
+          const isRelative =
+            originalCode.includes("true") || originalCode.includes("relative");
+          const pathDisplay = isRelative
+            ? "[Relative path determined at creation ⏳]"
+            : "[Path determined at creation ⏳]";
+          displayValue.value = label ? `${label} ${pathDisplay}` : pathDisplay;
+          break;
+
+        case "folder":
+          displayValue.value = label
+            ? `${label} [Folder determined at creation ⏳]`
+            : `[Folder determined at creation ⏳]`;
+          break;
+
+        case "title":
+          displayValue.value = label
+            ? `${label} [Filename set at creation ⏳]`
+            : `[Filename set at creation ⏳]`;
+          break;
+
+        case "creation_date":
+        case "last_modified_date":
+          const formatParam = originalCode.match(/\(["']([^"']+)["']\)/);
+          const dateType =
+            propertyType === "creation_date" ? "Creation" : "Modification";
+          const dateDisplay = formatParam
+            ? `[${dateType} date set at creation ⏳]`
+            : `[${dateType} date set at creation ⏳]`;
+          displayValue.value = label ? `${label} ${dateDisplay}` : dateDisplay;
+          break;
+
+        case "cursor":
+          displayValue.value = label
+            ? `${label} [Cursor position at runtime ⏳]`
+            : `[Cursor position at runtime ⏳]`;
+          break;
+
+        case "selection":
+          displayValue.value = label
+            ? `${label} [Selected text at runtime ⏳]`
+            : `[Selected text at runtime ⏳]`;
+          break;
+
+        default:
+          displayValue.value = label
+            ? `${label} [File property set at runtime ⏳]`
+            : `[File property set at runtime ⏳]`;
       }
+    } else {
+      // Handle previewable properties with realistic examples
+      switch (propertyType) {
+        case "content":
+          displayValue.value = label ? `${label} 250 words` : `250 words`;
+          break;
 
-      case "folder": {
-        const fullPath = code.includes("folder(true)");
-        const path = note.path;
-        const segments = path.split("/");
-        segments.pop(); // Remove filename
+        case "size":
+          displayValue.value = label ? `${label} 2.5 KB` : `2.5 KB`;
+          break;
 
-        if (fullPath) {
-          displayValue.value = segments.join("/");
-        } else {
-          // Just the direct parent folder
-          displayValue.value = segments.pop() || "";
-        }
-        break;
+        case "tags":
+        case "etags":
+          displayValue.value = label
+            ? `${label} #journal #daily`
+            : `#journal #daily`;
+          break;
+
+        case "extension":
+          displayValue.value = label ? `${label} md` : `md`;
+          break;
+
+        default:
+          displayValue.value = label
+            ? `${label} [Example preview]`
+            : `[Example preview]`;
       }
-
-      case "path": {
-        const fullPath = code.includes("path(true)");
-        const path = note.path;
-
-        if (fullPath) {
-          displayValue.value = path;
-        } else {
-          // Relative path without vault prefix
-          displayValue.value = path;
-        }
-        break;
-      }
-
-      case "creation": {
-        const formatMatch = code.match(/creation_date\(["']([^"']+)["']\)/);
-        const format = formatMatch ? formatMatch[1] : "YYYY-MM-DD";
-
-        // Convert timestamp to formatted date
-        if (note.stat && note.stat.ctime) {
-          displayValue.value = dayjs(note.stat.ctime).format(format);
-        } else {
-          displayValue.value = dayjs().format(format);
-        }
-        break;
-      }
-
-      case "modified": {
-        const formatMatch = code.match(
-          /last_modified_date\(["']([^"']+)["']\)/
-        );
-        const format = formatMatch ? formatMatch[1] : "YYYY-MM-DD";
-
-        // Convert timestamp to formatted date
-        if (note.stat && note.stat.mtime) {
-          displayValue.value = dayjs(note.stat.mtime).format(format);
-        } else {
-          displayValue.value = dayjs().format(format);
-        }
-        break;
-      }
-
-      case "wordCount": {
-        // Count words in content
-        const content = note.content || "";
-        const wordCount = content
-          .split(/\s+/)
-          .filter((word) => word.length > 0).length;
-        displayValue.value = wordCount.toString();
-        break;
-      }
-
-      case "charCount": {
-        // Count characters in content
-        const content = note.content || "";
-        displayValue.value = content.length.toString();
-        break;
-      }
-
-      case "size": {
-        const humanReadable = code.includes("size(true)");
-
-        if (note.stat && note.stat.size) {
-          if (humanReadable) {
-            // Format size as KB, MB, etc.
-            displayValue.value = formatFileSize(note.stat.size);
-          } else {
-            displayValue.value = note.stat.size.toString();
-          }
-        } else {
-          displayValue.value = humanReadable ? "0 KB" : "0";
-        }
-        break;
-      }
-
-      default:
-        displayValue.value = "Unsupported property";
     }
   } catch (err) {
-    console.error("Error fetching file property:", err);
-    error.value = err.message || "Error fetching file property";
-
-    // Fall back to placeholder data on error
-    provideFallbackData();
-  } finally {
-    isLoading.value = false;
+    console.error("Error formatting templater file property:", err);
+    displayValue.value = "[File property ⏳]";
   }
 };
 
-// Handle string response (fallback if JSON parsing fails)
-const handleString = (content: string, code: string) => {
-  try {
-    // We got the file as a string, do basic processing
-    switch (propertyType.value) {
-      case "title": {
-        // Extract filename from frontmatter or try to guess
-        const filenameMatch = content.match(/title:\s*["']?([^"'\r\n]+)["']?/i);
-        const filename = filenameMatch ? filenameMatch[1] : "Untitled";
-        displayValue.value = filename;
-        break;
-      }
-
-      case "wordCount": {
-        // Count words in content
-        const wordCount = content
-          .split(/\s+/)
-          .filter((word) => word.length > 0).length;
-        displayValue.value = wordCount.toString();
-        break;
-      }
-
-      case "charCount": {
-        // Count characters in content
-        displayValue.value = content.length.toString();
-        break;
-      }
-
-      default:
-        // For other types, we need the JSON response, so fall back
-        provideFallbackData();
-    }
-  } catch (e) {
-    console.error("Error processing string content:", e);
-    provideFallbackData();
-  }
-};
-
-// Format file size in human readable format
-const formatFileSize = (bytes: number): string => {
-  if (bytes < 1024) return bytes + " B";
-  else if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB";
-  else if (bytes < 1024 * 1024 * 1024)
-    return (bytes / (1024 * 1024)).toFixed(1) + " MB";
-  else return (bytes / (1024 * 1024 * 1024)).toFixed(1) + " GB";
-};
-
-// Provide fallback data when API call fails
-const provideFallbackData = () => {
-  switch (propertyType.value) {
-    case "title":
-      displayValue.value = "Untitled";
-      break;
-    case "folder":
-    case "path":
-      displayValue.value = "Unknown location";
-      break;
-    case "creation":
-    case "modified":
-      displayValue.value = dayjs().format("YYYY-MM-DD");
-      break;
-    case "wordCount":
-      displayValue.value = "0";
-      break;
-    case "charCount":
-      displayValue.value = "0";
-      break;
-    case "size":
-      displayValue.value = "0 KB";
-      break;
-    default:
-      displayValue.value = "Unknown property";
-  }
-};
-
-// Create debounced version of getFileProperty
-const debouncedGetFileProperty = debounce(getFileProperty, 300);
-
-// Initial load
 onMounted(() => {
-  debouncedGetFileProperty();
+  formatFileProperty();
 });
 
-// Watch for changes to the original code
+// Watch for changes to originalCode
 watch(
   () => props.node.attrs.originalCode,
   () => {
-    debouncedGetFileProperty();
+    formatFileProperty();
   }
 );
 </script>
@@ -282,74 +172,52 @@ watch(
   display: inline;
 }
 
-.templater-file-result {
+.templater-file-runtime {
   display: inline;
-  color: #60a5fa;
+  color: #9ca3af;
+  font-style: italic;
+  background-color: rgba(156, 163, 175, 0.1);
+  border-radius: 3px;
+  padding: 2px 4px;
+  white-space: nowrap;
+  border-bottom: 1px dashed #9ca3af;
+}
+
+.templater-file-previewable {
+  display: inline;
+  color: #34d399;
   font-weight: 500;
-  background-color: rgba(96, 165, 250, 0.1);
+  background-color: rgba(52, 211, 153, 0.1);
   border-radius: 3px;
   padding: 2px 4px;
   white-space: nowrap;
 }
 
-.loading-indicator {
-  color: #94a3b8;
-  font-style: italic;
-  font-size: 0.9em;
+/* Hover effects */
+.templater-file-runtime:hover {
+  background-color: rgba(156, 163, 175, 0.2);
 }
 
-.error-message {
-  color: #ef4444;
-  font-size: 0.9em;
-}
-
-/* Different styling for different property types */
-.templater-file-title {
-  color: #60a5fa;
-}
-
-.templater-file-folder,
-.templater-file-path {
-  color: #a78bfa;
-  background-color: rgba(167, 139, 250, 0.1);
-}
-
-.templater-file-creation,
-.templater-file-modified {
-  color: #34d399;
-  background-color: rgba(52, 211, 153, 0.1);
-}
-
-.templater-file-wordCount,
-.templater-file-charCount,
-.templater-file-size {
-  color: #fbbf24;
-  background-color: rgba(251, 191, 36, 0.1);
-}
-
-/* Hover effect */
-.templater-file-result:hover {
-  background-color: rgba(96, 165, 250, 0.2);
+.templater-file-previewable:hover {
+  background-color: rgba(52, 211, 153, 0.2);
 }
 
 /* Dark mode support */
-:global(.dark-theme) .templater-file-title {
-  color: #3b82f6;
+:global(.dark-theme) .templater-file-runtime {
+  color: #d1d5db;
+  background-color: rgba(209, 213, 219, 0.1);
 }
 
-:global(.dark-theme) .templater-file-folder,
-:global(.dark-theme) .templater-file-path {
-  color: #8b5cf6;
-}
-
-:global(.dark-theme) .templater-file-creation,
-:global(.dark-theme) .templater-file-modified {
+:global(.dark-theme) .templater-file-previewable {
   color: #10b981;
+  background-color: rgba(16, 185, 129, 0.1);
 }
 
-:global(.dark-theme) .templater-file-wordCount,
-:global(.dark-theme) .templater-file-charCount,
-:global(.dark-theme) .templater-file-size {
-  color: #f59e0b;
+:global(.dark-theme) .templater-file-runtime:hover {
+  background-color: rgba(209, 213, 219, 0.2);
+}
+
+:global(.dark-theme) .templater-file-previewable:hover {
+  background-color: rgba(16, 185, 129, 0.2);
 }
 </style>

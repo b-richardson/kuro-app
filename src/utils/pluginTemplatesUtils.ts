@@ -18,49 +18,39 @@ export function generateDefaultContent(
     case "table":
       return [""]; // Now self-contained in TableModule.vue
     case "text":
-      return ["Enter your text here..."];
+      return [""];
     case "divider":
-      return ["---"];
+      return [""];
 
     // Templater plugin modules
     case "templaterField":
-      return ["<% tp.date.now() %>"];
+      return [""];
     case "templaterDateAndTime":
-      return ["<% tp.date.now() %>", "<% tp.date.yesterday() %>"];
+      return [""];
     case "templaterFileProperty":
-      return ["<% tp.file.title %>", "<% tp.file.path() %>"];
+      return [""];
     case "templaterUserInput":
-      return ['Enter your name: <% tp.system.prompt("Name") %>'];
+      return [];
     case "templaterConditionalContent":
-      return ["<% if (condition) { %> Content when true <% } %>"];
+      return [""];
     case "templaterValueTransformation":
-      return ['<% tp.system.prompt("Value").toUpperCase() %>'];
+      return [""];
     case "templaterTemplateVariables":
-      return ['<% tp.file.include("Template Name") %>'];
+      return [""];
 
     // Dataview plugin modules
     case "dataviewQuery":
-      return ["```dataview", "LIST", 'FROM ""', "```"];
+      return [""];
     case "dataviewListQuery":
-      return ["```dataview", "LIST", "FROM #tag", "```"];
+      return [""];
     case "dataviewTableQuery":
-      return [
-        "```dataview",
-        "TABLE file.ctime, file.mtime",
-        'FROM "folder"',
-        "```",
-      ];
+      return [""];
     case "dataviewTaskQuery":
-      return ["```dataview", "TASK", "FROM #project", "```"];
+      return [""];
     case "dataviewCalendarQuery":
-      return [
-        "```dataview",
-        "CALENDAR file.ctime",
-        'FROM "Daily Notes"',
-        "```",
-      ];
+      return [""];
     case "dataviewInlineFields":
-      return ["Due:: 2023-12-31", "Status:: #in-progress", "Priority:: High"];
+      return [""];
 
     default:
       return [""];
