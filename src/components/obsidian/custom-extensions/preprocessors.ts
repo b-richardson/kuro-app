@@ -1,3 +1,5 @@
+import MarkdownIt from "markdown-it";
+
 /**
  * Collection of preprocessor functions for different Obsidian syntax elements
  */
@@ -38,12 +40,6 @@ export function preprocessMarkdown(content: string): string {
     (match, content) => {
       return `|${content}|`;
     }
-  );
-
-  // Enhance horizontal rule rendering
-  processedContent = processedContent.replace(
-    /^(\s*[*\-_]{3,}\s*)$/gm,
-    '<hr class="obsidian-hr" />'
   );
 
   return processedContent;
@@ -301,23 +297,32 @@ export function preprocessHtmlEntities(content: string): string {
   return processedContent;
 }
 
-/**
- * Main preprocessing function that combines all individual preprocessors
- */
 export function preprocessContent(content: string): string {
-  let processedContent = content;
+  // Detect YAML frontmatter
+  const frontmatterRegex = /^---\n([\s\S]*?)\n---\n?/m;
+  const match = content.match(frontmatterRegex);
 
-  // First handle HTML entities
-  processedContent = preprocessHtmlEntities(processedContent);
+  let frontmatterHtml = "";
+  if (match) {
+    const rawYaml = match[0];
+    frontmatterHtml = `<div class="obsidian-frontmatter" data-yaml="${encodeURIComponent(
+      rawYaml
+    )}"></div>`;
+    content = content.replace(rawYaml, "");
+  }
 
-  // Apply each preprocessor in sequence
-  processedContent = preprocessMarkdown(processedContent);
-  processedContent = preprocessDataview(processedContent);
-  processedContent = preprocessCallouts(processedContent);
-  processedContent = preprocessTemplaterDate(processedContent);
-  processedContent = preprocessTemplaterFile(processedContent);
-  processedContent = preprocessTemplaterUserInput(processedContent);
-  processedContent = preprocessTemplaterTransform(processedContent);
+  // Apply all preprocessing to the remaining markdown
+  let processedMarkdown = content;
+  processedMarkdown = preprocessHtmlEntities(processedMarkdown);
+  processedMarkdown = preprocessMarkdown(processedMarkdown);
+  processedMarkdown = preprocessDataview(processedMarkdown);
+  processedMarkdown = preprocessCallouts(processedMarkdown);
+  processedMarkdown = preprocessTemplaterDate(processedMarkdown);
+  processedMarkdown = preprocessTemplaterFile(processedMarkdown);
+  processedMarkdown = preprocessTemplaterUserInput(processedMarkdown);
+  processedMarkdown = preprocessTemplaterTransform(processedMarkdown);
 
-  return processedContent;
+  // ❌ DON'T convert to HTML
+  // ✅ TipTap needs the content as markdown (not HTML)
+  return `${frontmatterHtml}\n${processedMarkdown}`;
 }

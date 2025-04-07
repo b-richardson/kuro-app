@@ -765,6 +765,7 @@ function getFilePropertyName(propertyCode: string): string {
 }
 
 // Generate YAML frontmatter from properties
+// Then wrap it in a special container so the custom renderer can identify it
 function generateFrontmatter() {
   const frontmatterObj: Record<string, any> = {};
 
@@ -808,6 +809,7 @@ function generateFrontmatter() {
   // This replaces the quoted Templater syntax with unquoted syntax
   yamlString = yamlString.replace(/"<%(.*?)%>"/g, "<$1>");
 
+  // Just return the frontmatter without container markers - let the extension handle it
   return `---\n${yamlString}---\n`;
 }
 

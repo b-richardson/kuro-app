@@ -1,55 +1,122 @@
-// Create a new file: extensions/ObsidianFrontmatter.ts
-import { Extension } from "@tiptap/core";
-import { Plugin, PluginKey } from "prosemirror-state";
-import { Decoration, DecorationSet } from "prosemirror-view";
+import { Node, mergeAttributes } from "@tiptap/core";
+import { VueNodeViewRenderer } from "@tiptap/vue-3";
+import { InputRule } from "@tiptap/core";
+import RenderFrontmatter from "./RenderFrontmatter.vue";
 
-// Regex to match frontmatter
-const FRONTMATTER_REGEX = /^---\n([\s\S]*?)\n---/;
-
-export const ObsidianFrontmatter = Extension.create({
+export const ObsidianFrontmatter = Node.create({
   name: "obsidianFrontmatter",
 
-  addProseMirrorPlugins() {
+  // Allow inline content to be parsed within this node
+  group: "block",
+  content: "inline*",
+
+  onCreate() {
+    console.log("ObsidianFrontmatter extension created");
+  },
+
+  addOptions() {
+    return {
+      HTMLAttributes: {},
+    };
+  },
+
+  addInputRules() {
     return [
-      new Plugin({
-        key: new PluginKey("obsidianFrontmatter"),
-        props: {
-          decorations: (state) => {
-            const { doc } = state;
-            const decorations: Decoration[] = [];
+      new InputRule({
+        find: /^---\n([\s\S]*?)\n---$/m,
+        handler: ({
+          state,
+          range,
+          match,
+        }: {
+          state: any;
+          range: { from: number; to: number };
+          match: string[];
+        }) => {
+          const yamlContent = match[1];
 
-            // Look only at the first node for frontmatter
-            const firstNode = doc.firstChild;
-            if (!firstNode || !firstNode.isText) return DecorationSet.empty;
+          const { tr } = state;
+          const start = range.from;
+          const end = range.to;
 
-            const text = firstNode.text || "";
-            const match = FRONTMATTER_REGEX.exec(text);
+          if (yamlContent) {
+            tr.replaceWith(
+              start,
+              end,
+              this.type.create({ yaml: `---\n${yamlContent}---` })
+            );
 
-            if (match) {
-              const start = 0;
-              const end = match[0].length;
+            return tr;
+          }
 
-              decorations.push(
-                Decoration.inline(start, end, {
-                  class: "obsidian-frontmatter",
-                  style: `
-                    display: block;
-                    background-color: #2d2d2d;
-                    color: #999;
-                    font-family: 'JetBrains Mono', monospace;
-                    padding: 0.5em;
-                    margin: 0 0 1em 0;
-                    border-radius: 4px;
-                    white-space: pre-wrap;
-                  `,
-                })
-              );
-            }
-
-            return DecorationSet.create(doc, decorations);
-          },
+          return null;
         },
       }),
     ];
+  },
+
+  addAttributes() {
+    return {
+      yaml: {
+        default: "",
+        parseHTML: (element) => element.getAttribute("data-yaml") || "",
+      },
+    };
+  },
+
+  parseHTML() {
+    console.log("Attempting to parse frontmatter");
+    return [
+      {
+        tag: "div.obsidian-frontmatter",
+        getAttrs: (node) => {
+          if (typeof node === "string") return {};
+          const element = node as HTMLElement;
+          console.log("Found frontmatter element:", element);
+          return {
+            yaml: element.getAttribute("data-yaml") || "",
+          };
+        },
+      },
+    ];
+  },
+  renderHTML({ HTMLAttributes }) {
+    console.log("Rendering frontmatter HTML:", HTMLAttributes);
+    return [
+      "div",
+      mergeAttributes(
+        { class: "obsidian-frontmatter", "data-yaml": HTMLAttributes.yaml },
+        HTMLAttributes
+      ),
+      0,
+    ];
+  },
+
+  addNodeView() {
+    console.log("Adding node view for ObsidianFrontmatter");
+    return VueNodeViewRenderer(RenderFrontmatter);
+  },
+
+  // Custom markdown serialization
+  addStorage() {
+    return {
+      markdown: {
+        serialize: (state, node) => {
+          // Extract the YAML content without our container markers
+          const yaml = node.attrs.yaml || "";
+
+          // Look for the frontmatter content, skipping our container markers
+          const match = yaml.match(/---\n([\s\S]*?)---/);
+
+          if (match) {
+            // Output clean frontmatter without our container markers
+            state.write(`---\n${match[1]}---\n\n`);
+          } else {
+            // Fallback if no match
+            state.write(yaml);
+          }
+        },
+      },
+    };
   },
 });

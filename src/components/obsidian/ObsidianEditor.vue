@@ -199,6 +199,7 @@ const ObsidianTable = Table.extend({
 onMounted(() => {
   editor.value = new Editor({
     extensions: [
+      ObsidianFrontmatter,
       // Add ObsidianDataview first to give it priority
       ObsidianDataviewTable,
       ObsidianDataviewList,
@@ -297,7 +298,6 @@ onMounted(() => {
 
       ObsidianCallout,
       ObsidianLink,
-      ObsidianFrontmatter,
       ObsidianTemplateVars,
 
       Markdown.configure({
@@ -318,6 +318,12 @@ onMounted(() => {
     parseOptions: {
       preserveWhitespace: "full",
     },
+  });
+
+  nextTick(() => {
+    if (editor.value) {
+      console.log("🧠 TipTap Document JSON:", editor.value.getJSON());
+    }
   });
 });
 
@@ -356,10 +362,19 @@ watch(
     let processedContent = preprocessContent(newContent);
 
     // Update content in the editor, preserving history
-    editor.value.commands.setContent(processedContent, false);
+    editor.value.commands.setContent(processedContent);
 
     // Restore state after content update
     restoreEditorState();
+
+    nextTick(() => {
+      if (editor.value) {
+        console.log(
+          "📦 TipTap Document After Frontmatter Update:",
+          editor.value.getJSON()
+        );
+      }
+    });
   },
   { deep: true }
 );
