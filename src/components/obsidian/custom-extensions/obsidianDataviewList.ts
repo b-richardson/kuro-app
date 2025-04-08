@@ -34,15 +34,14 @@ export const ObsidianDataviewList = Node.create({
           if (
             typeof node === "object" &&
             node !== null &&
-            (node as HTMLElement).getAttribute("data-language") ===
-              "dataview" &&
-            // Explicitly check that this is NOT a TABLE query
-            !(node as HTMLElement).textContent
-              ?.trim()
-              .toUpperCase()
-              .startsWith("TABLE ")
+            (node as HTMLElement).getAttribute("data-language") === "dataview"
           ) {
-            return { language: "dataview" };
+            const text = (node as HTMLElement).textContent
+              ?.trim()
+              .toUpperCase();
+            if (!text?.startsWith("TABLE") && !text?.startsWith("CALENDAR")) {
+              return { language: "dataview" };
+            }
           }
           return false;
         },

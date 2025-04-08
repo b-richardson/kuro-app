@@ -284,6 +284,26 @@ export function preprocessTemplaterTransform(content: string): string {
   return processedContent;
 }
 
+export function preprocessDataviewCalendar(content: string): string {
+  let processedContent = content;
+
+  processedContent = processedContent.replace(
+    /```dataview\s+([\s\S]*?)```/g,
+    (match, query) => {
+      const trimmedQuery = query.trim();
+      const isCalendar = trimmedQuery.toUpperCase().startsWith("CALENDAR ");
+
+      const containerClass = isCalendar
+        ? "dataview-calendar-container"
+        : "dataview-block-container";
+
+      return `<div class="${containerClass}"><pre data-language="dataview"><code>${trimmedQuery}</code></pre></div>`;
+    }
+  );
+
+  return processedContent;
+}
+
 /**
  * Preprocesses HTML entities
  */
@@ -316,6 +336,7 @@ export function preprocessContent(content: string): string {
   processedMarkdown = preprocessHtmlEntities(processedMarkdown);
   processedMarkdown = preprocessMarkdown(processedMarkdown);
   processedMarkdown = preprocessDataview(processedMarkdown);
+  processedMarkdown = preprocessDataviewCalendar(processedMarkdown);
   processedMarkdown = preprocessCallouts(processedMarkdown);
   processedMarkdown = preprocessTemplaterDate(processedMarkdown);
   processedMarkdown = preprocessTemplaterFile(processedMarkdown);

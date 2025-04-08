@@ -1,11 +1,4 @@
 <template>
-  <!-- 
-  IMPORTANT NOTE FOR DEVELOPERS:
-  - This component should NOT implement any connection checks to Obsidian
-  - This component should NOT display any toast messages
-  - All connection validation and user feedback should be handled by parent components
-  - Keep this component focused solely on building Dataview calendar queries
-  -->
   <BaseModule
     :module="module"
     :index="index"
@@ -27,9 +20,7 @@
         <div class="dataview-calendar-editor__header-icon">
           <i class="fas fa-calendar-alt"></i>
         </div>
-        <div class="dataview-calendar-editor__header-title">
-          Dataview Calendar
-        </div>
+        <div class="dataview-calendar-editor__header-title">Calendar View</div>
       </div>
 
       <!-- Date Field Section -->
@@ -37,10 +28,10 @@
         <div class="dataview-calendar-editor__section-header">
           <div class="dataview-calendar-editor__section-title">
             <i class="fas fa-calendar-day"></i>
-            <span>Date Field</span>
+            <span>Date to Use</span>
           </div>
           <div class="dataview-calendar-editor__section-description">
-            Choose which date property to display on the calendar
+            Choose which date to use for placing notes on the calendar
           </div>
         </div>
 
@@ -49,18 +40,18 @@
             class="dataview-calendar-editor__date-card"
             :class="{
               'dataview-calendar-editor__date-card--active':
-                dateField === 'file.day',
+                dateField === 'file.ctime',
             }"
-            @click="setDateField('file.day')"
+            @click="setDateField('file.ctime')"
           >
             <div class="dataview-calendar-editor__date-card-icon">
-              <i class="fas fa-file-alt"></i>
+              <i class="fas fa-plus-circle"></i>
             </div>
             <div class="dataview-calendar-editor__date-card-label">
-              Note Date
+              Creation Date
             </div>
             <div class="dataview-calendar-editor__date-card-description">
-              Use the date from each note's frontmatter
+              When each note was first created
             </div>
           </button>
 
@@ -68,96 +59,58 @@
             class="dataview-calendar-editor__date-card"
             :class="{
               'dataview-calendar-editor__date-card--active':
-                dateField === 'due',
+                dateField === 'file.mtime',
             }"
-            @click="setDateField('due')"
+            @click="setDateField('file.mtime')"
           >
             <div class="dataview-calendar-editor__date-card-icon">
-              <i class="fas fa-hourglass-end"></i>
+              <i class="fas fa-edit"></i>
             </div>
             <div class="dataview-calendar-editor__date-card-label">
-              Due Date
+              Modified Date
             </div>
             <div class="dataview-calendar-editor__date-card-description">
-              Use the due date property from each note
-            </div>
-          </button>
-
-          <button
-            class="dataview-calendar-editor__date-card"
-            :class="{
-              'dataview-calendar-editor__date-card--active':
-                dateField === 'date',
-            }"
-            @click="setDateField('date')"
-          >
-            <div class="dataview-calendar-editor__date-card-icon">
-              <i class="fas fa-calendar-check"></i>
-            </div>
-            <div class="dataview-calendar-editor__date-card-label">
-              Event Date
-            </div>
-            <div class="dataview-calendar-editor__date-card-description">
-              Use the date property from each note
-            </div>
-          </button>
-
-          <button
-            class="dataview-calendar-editor__date-card"
-            :class="{
-              'dataview-calendar-editor__date-card--active':
-                dateField === 'custom',
-            }"
-            @click="setDateField('custom')"
-          >
-            <div class="dataview-calendar-editor__date-card-icon">
-              <i class="fas fa-cog"></i>
-            </div>
-            <div class="dataview-calendar-editor__date-card-label">
-              Custom Field
-            </div>
-            <div class="dataview-calendar-editor__date-card-description">
-              Use a custom date property
+              When each note was last updated
             </div>
           </button>
         </div>
 
-        <!-- Custom Date Field Selection -->
+        <!-- Custom Date Field Input -->
         <div
           v-if="dateField === 'custom'"
           class="dataview-calendar-editor__config-panel"
         >
           <div class="dataview-calendar-editor__config-content">
             <div class="dataview-calendar-editor__field-group">
-              <label class="dataview-calendar-editor__label"
-                >Custom Date Property</label
-              >
+              <label class="dataview-calendar-editor__label">
+                Custom Date Property
+              </label>
               <div class="dataview-calendar-editor__input-group">
                 <input
                   type="text"
                   class="dataview-calendar-editor__text-input"
-                  placeholder="e.g., deadline, start, created"
+                  placeholder="e.g., due, deadline, start"
                   v-model="customDateField"
                   @input="handleDateFieldChange"
                 />
               </div>
               <div class="dataview-calendar-editor__field-tip">
-                Enter the frontmatter property that contains date information
+                Enter the property name from your note's frontmatter
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      <!-- Source Selection Section -->
+      <!-- Notes to Include Section -->
       <div class="dataview-calendar-editor__section">
         <div class="dataview-calendar-editor__section-header">
           <div class="dataview-calendar-editor__section-title">
             <i class="fas fa-filter"></i>
-            <span>Choose Source</span>
+            <span>Notes to Include</span>
           </div>
           <div class="dataview-calendar-editor__section-description">
-            Select which notes to display on the calendar
+            Select which notes to show on your calendar
           </div>
         </div>
 
@@ -219,9 +172,9 @@
             class="dataview-calendar-editor__config-content"
           >
             <div class="dataview-calendar-editor__field-group">
-              <label class="dataview-calendar-editor__label"
-                >Select Folder</label
-              >
+              <label class="dataview-calendar-editor__label">
+                Select Folder
+              </label>
               <div class="dataview-calendar-editor__input-group">
                 <select
                   class="dataview-calendar-editor__select"
@@ -285,7 +238,7 @@
         </div>
       </div>
 
-      <!-- Date Range Section -->
+      <!-- Date Range & Display Options -->
       <div class="dataview-calendar-editor__section">
         <button
           class="dataview-calendar-editor__advanced-toggle"
@@ -305,6 +258,13 @@
         >
           <!-- Date Filter -->
           <div class="dataview-calendar-editor__field-group">
+            <div class="dataview-calendar-editor__section-header">
+              <div class="dataview-calendar-editor__section-title">
+                <i class="fas fa-clock"></i>
+                <span>Time Range</span>
+              </div>
+            </div>
+
             <div class="dataview-calendar-editor__checkbox">
               <input
                 type="checkbox"
@@ -312,7 +272,7 @@
                 v-model="dateFilter.enabled"
                 @change="handleDateFilterChange"
               />
-              <label for="date-filter-toggle">Filter by Date Range</label>
+              <label for="date-filter-toggle">Filter by time period</label>
             </div>
 
             <div
@@ -324,44 +284,19 @@
                   <input
                     type="radio"
                     name="dateRange"
-                    value="future"
-                    v-model="dateFilter.range"
-                    @change="handleDateFilterChange"
-                  />
-                  <span>Future dates only</span>
-                </label>
-
-                <label class="dataview-calendar-editor__radio">
-                  <input
-                    type="radio"
-                    name="dateRange"
-                    value="past"
-                    v-model="dateFilter.range"
-                    @change="handleDateFilterChange"
-                  />
-                  <span>Past dates only</span>
-                </label>
-
-                <label class="dataview-calendar-editor__radio">
-                  <input
-                    type="radio"
-                    name="dateRange"
                     value="custom"
                     v-model="dateFilter.range"
                     @change="handleDateFilterChange"
                   />
-                  <span>Custom range</span>
+                  <span>Custom date range</span>
                 </label>
               </div>
 
-              <div
-                v-if="dateFilter.range === 'custom'"
-                class="dataview-calendar-editor__date-range"
-              >
+              <div class="dataview-calendar-editor__date-range">
                 <div class="dataview-calendar-editor__date-range-field">
-                  <label class="dataview-calendar-editor__label"
-                    >Start Date</label
-                  >
+                  <label class="dataview-calendar-editor__label">
+                    Start Date
+                  </label>
                   <input
                     type="date"
                     class="dataview-calendar-editor__text-input"
@@ -371,9 +306,9 @@
                 </div>
 
                 <div class="dataview-calendar-editor__date-range-field">
-                  <label class="dataview-calendar-editor__label"
-                    >End Date</label
-                  >
+                  <label class="dataview-calendar-editor__label">
+                    End Date
+                  </label>
                   <input
                     type="date"
                     class="dataview-calendar-editor__text-input"
@@ -387,47 +322,45 @@
 
           <!-- Display Options -->
           <div class="dataview-calendar-editor__field-group">
-            <label class="dataview-calendar-editor__label">
-              <i class="fas fa-eye"></i>
-              Display Options
-            </label>
+            <div class="dataview-calendar-editor__section-header">
+              <div class="dataview-calendar-editor__section-title">
+                <i class="fas fa-eye"></i>
+                <span>Display Options</span>
+              </div>
+            </div>
 
             <div class="dataview-calendar-editor__display-options">
               <div class="dataview-calendar-editor__checkbox">
                 <input
                   type="checkbox"
-                  id="show-links"
-                  v-model="displayOptions.showLinks"
+                  id="show-as-text"
+                  v-model="displayOptions.showAsText"
                   @change="handleDisplayOptionsChange"
                 />
-                <label for="show-links">Show as Note Links</label>
-              </div>
-
-              <div class="dataview-calendar-editor__checkbox">
-                <input
-                  type="checkbox"
-                  id="show-text"
-                  v-model="displayOptions.showText"
-                  @change="handleDisplayOptionsChange"
-                />
-                <label for="show-text">Show Note Title/Text</label>
+                <label for="show-as-text">
+                  Show as text (instead of links)
+                </label>
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      <!-- Help Section -->
+      <!-- Calendar Preview Information -->
       <div class="dataview-calendar-editor__tips">
         <div class="dataview-calendar-editor__tips-header">
           <i class="fas fa-lightbulb"></i>
-          <span>About Dataview Calendar</span>
+          <span>About Calendar View</span>
         </div>
         <div class="dataview-calendar-editor__tips-content">
           <p>
-            This displays your notes in a monthly calendar view based on their
-            date properties. Notes will appear on the days corresponding to
-            their date field.
+            This creates a monthly calendar view showing your notes on their
+            corresponding dates. Notes will appear on the.ctime matching the
+            selected date field.
+          </p>
+          <p>
+            The calendar will be generated when this template is inserted into
+            your note.
           </p>
         </div>
       </div>
@@ -467,7 +400,7 @@ const baseModuleRef = ref<InstanceType<typeof BaseModule> | null>(null);
 const showAdvanced = ref(false);
 
 // Date Field selection
-const dateField = ref("file.day"); // 'file.day', 'due', 'date', 'custom'
+const dateField = ref("file.ctime"); // 'file.ctime', 'file.ctime', 'file.mtime', 'custom'
 const customDateField = ref("");
 
 // Source selection
@@ -485,8 +418,7 @@ const dateFilter = ref({
 
 // Display Options
 const displayOptions = ref({
-  showLinks: true,
-  showText: false,
+  showAsText: false, // If true, uses as:text in the query
 });
 
 // Obsidian data
@@ -619,8 +551,8 @@ function parseExistingQuery(query: string) {
       const fieldPart = calendarLine.replace(/^CALENDAR\s+/, "").trim();
 
       // Determine the date field
-      if (fieldPart === "file.day") {
-        dateField.value = "file.day";
+      if (fieldPart === "file.ctime") {
+        dateField.value = "file.ctime";
       } else if (fieldPart === "due") {
         dateField.value = "due";
       } else if (fieldPart === "date") {
@@ -755,29 +687,25 @@ function generateQuery(): string {
 
   // Date filter conditions
   if (dateFilter.value.enabled) {
-    const dateField = getActualDateField();
+    const dateFieldName = getActualDateField();
 
     if (dateFilter.value.range === "future") {
-      conditions.push(`${dateField} > date(now)`);
+      conditions.push(`${dateFieldName} > date(now)`);
     } else if (dateFilter.value.range === "past") {
-      conditions.push(`${dateField} < date(now)`);
+      conditions.push(`${dateFieldName} < date(now)`);
     } else if (
       dateFilter.value.range === "custom" &&
       dateFilter.value.startDate &&
       dateFilter.value.endDate
     ) {
       conditions.push(
-        `${dateField} between date("${dateFilter.value.startDate}") and date("${dateFilter.value.endDate}")`
+        `${dateFieldName} between date("${dateFilter.value.startDate}") and date("${dateFilter.value.endDate}")`
       );
     }
   }
 
-  // Display options conditions
-  if (!displayOptions.value.showLinks) {
-    conditions.push("!as:link");
-  }
-
-  if (displayOptions.value.showText) {
+  // Display options
+  if (displayOptions.value.showAsText) {
     conditions.push("as:text");
   }
 
