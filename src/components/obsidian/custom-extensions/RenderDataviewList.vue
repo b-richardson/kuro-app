@@ -67,7 +67,9 @@ const queryParts = computed(() => {
   const whereMatch = query.value.match(/WHERE\s+([^SORT|^LIMIT|^GROUP]+)/i);
   const whereClause = whereMatch ? whereMatch[1].trim() : "";
 
-  const sortMatch = query.value.match(/SORT\s+([^LIMIT|^WHERE|^GROUP]+)/i);
+  const sortMatch = query.value.match(
+    /SORT\s+(.*?)(?:\s+LIMIT|\s+WHERE|\s+GROUP|$)/i
+  );
   const sortClause = sortMatch ? sortMatch[1].trim() : "";
 
   const limitMatch = query.value.match(/LIMIT\s+(\d+)/i);
@@ -81,7 +83,7 @@ const getApiCompatibleQuery = () => {
   // Extract query parts
   const { fromClause, whereClause, sortClause, limitClause } = queryParts.value;
 
-  let tableQuery = `TABLE file.name AS "File" `;
+  let tableQuery = `TABLE file.name AS "File", file.ctime AS "Created", file.mtime AS "Modified", file.size AS "Size", tags AS "Tags" `;
 
   // Add FROM clause
   tableQuery += `FROM ${fromClause} `;
@@ -142,6 +144,7 @@ const executeQuery = async () => {
             }
           }
         }
+        console.log("Final query results:", queryResults.value);
         return item;
       });
     } else {
@@ -186,56 +189,49 @@ const debouncedExecuteQuery = debounce(executeQuery, 500);
 
 // Helper functions for formatting results
 const getItemTitle = (item: any): string => {
-  // Handle different result formats
-  if (typeof item === "string") {
-    return item;
-  }
-
-  // From TABLE conversion
-  if (item.title) {
-    return item.title;
-  }
-
-  // If no title found, return the first property or stringified object
-  if (typeof item === "object" && item !== null) {
-    const firstKey = Object.keys(item)[0];
-    return firstKey ? item[firstKey] : JSON.stringify(item);
-  }
-
-  return String(item);
+  // Just return the filename directly
+  return item?.filename || "Untitled";
 };
 
 const getItemMetadata = (item: any): string => {
-  if (typeof item !== "object" || !item) {
+  if (!item || !item.result) {
     return "";
   }
 
-  // If we have originalData from TABLE conversion, use it
-  if (item.originalData) {
-    const data = item.originalData;
-    const metadata = Object.entries(data)
-      .filter(([key]) => key !== "File" && key !== "title")
-      .map(([key, value]) => `${key}: ${value}`)
-      .join(" | ");
-
-    return metadata;
+  // Extract the property names from the LIST line in the original query
+  const listLine = query.value
+    .split("\n")
+    .find((line) => line.trim().startsWith("LIST"));
+  if (!listLine || listLine === "LIST") {
+    // If no specific properties were requested, show nothing
+    return "";
   }
 
-  // Common metadata properties
-  const metaProps = ["date", "created", "modified", "tags", "ctime", "mtime"];
+  // Get the requested properties
+  const propString = listLine.replace("LIST", "").trim();
+  if (!propString) return "";
+
+  const requestedProps = propString.split(",").map((p) => p.trim());
+
+  // Build metadata string only showing requested properties
   const metadata = [];
+  const data = item.result;
 
-  for (const prop of metaProps) {
-    if (item[prop]) {
-      let value = item[prop];
+  // Map from Dataview property names to API result keys
+  const propertyMap: Record<string, string> = {
+    "file.ctime": "Created",
+    "file.mtime": "Modified",
+    "file.size": "Size",
+    tags: "Tags",
+    // Add more mappings as needed
+  };
 
-      // Format date values
-      if (
-        prop.includes("time") ||
-        (prop.includes("date") && value instanceof Date)
-      ) {
-        value = new Date(value).toLocaleDateString();
-      }
+  for (const prop of requestedProps) {
+    // Look up the corresponding property in the API result
+    const resultKey = propertyMap[prop] || prop;
+
+    if (data[resultKey] !== undefined) {
+      let value = data[resultKey];
 
       // Format arrays
       if (Array.isArray(value)) {

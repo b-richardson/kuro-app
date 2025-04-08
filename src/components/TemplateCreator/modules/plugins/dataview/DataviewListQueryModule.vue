@@ -310,6 +310,43 @@
         </div>
       </div>
 
+      <!-- Limit Results Section (moved from advanced) -->
+      <div class="dataview-list-editor__section">
+        <div class="dataview-list-editor__section-header">
+          <div class="dataview-list-editor__section-title">
+            <i class="fas fa-calculator"></i>
+            <span>Limit Results</span>
+          </div>
+          <div class="dataview-list-editor__section-description">
+            Control how many results are in your list
+          </div>
+        </div>
+        <div class="dataview-list-editor__field-group">
+          <div class="dataview-list-editor__checkbox">
+            <input
+              type="checkbox"
+              id="limit-toggle"
+              v-model="useLimit"
+              @change="handleLimitChange"
+            />
+            <label for="limit-toggle">Limit number of results</label>
+          </div>
+          <div class="dataview-list-editor__limit-value" v-if="useLimit">
+            <input
+              type="number"
+              class="dataview-list-editor__text-input dataview-list-editor__number-input"
+              v-model.number="limitCount"
+              min="1"
+              max="1000"
+              @change="handleLimitChange"
+            />
+            <div class="dataview-list-editor__field-tip">
+              Maximum number of results to display
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- Advanced Options Section -->
       <div class="dataview-list-editor__section">
         <button
@@ -384,35 +421,6 @@
               </div>
             </div>
           </div>
-
-          <!-- Limit Section -->
-          <div class="dataview-list-editor__field-group">
-            <div class="dataview-list-editor__limit-field">
-              <div class="dataview-list-editor__checkbox">
-                <input
-                  type="checkbox"
-                  id="limit-toggle"
-                  v-model="useLimit"
-                  @change="handleLimitChange"
-                />
-                <label for="limit-toggle">Limit number of results</label>
-              </div>
-
-              <div class="dataview-list-editor__limit-value" v-if="useLimit">
-                <input
-                  type="number"
-                  class="dataview-list-editor__text-input dataview-list-editor__number-input"
-                  v-model.number="limitCount"
-                  min="1"
-                  max="1000"
-                  @change="handleLimitChange"
-                />
-                <div class="dataview-list-editor__field-tip">
-                  Maximum number of results to display
-                </div>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
 
@@ -478,21 +486,32 @@ const availableFolders = ref<{ name: string; path: string; parent: string }[]>([
   { name: "Root", path: "", parent: "" },
 ]);
 const availableTags = ref<string[]>([]);
-const availableProperties = ref<string[]>([
-  "file.name",
-  "file.ctime",
-  "file.mtime",
-  "file.size",
-  "file.path",
-  "file.folder",
-  "tags",
-  "title",
-  "date",
-  "status",
-  "priority",
-  "due",
-  "completed",
-]);
+const availableProperties = ref<string[]>([]);
+
+// Define a mapping between user-friendly names and Dataview properties
+const propertyMappings: Record<string, string> = {
+  // UI-friendly name -> Dataview property
+  Title: "file.name",
+  "Creation Date": "file.ctime",
+  "Modified Date": "file.mtime",
+  Size: "file.size",
+  Path: "file.path",
+  Folder: "file.folder",
+  Tags: "tags",
+  Date: "date",
+  Status: "status",
+  Priority: "priority",
+  "Due Date": "due",
+  Completed: "completed",
+};
+
+// And the reverse mapping for display purposes
+const reversePropertyMappings: Record<string, string> = Object.entries(
+  propertyMappings
+).reduce((acc, [key, value]) => {
+  acc[value] = key;
+  return acc;
+}, {} as Record<string, string>);
 
 // Display options
 const displayProperties = ref<string[]>([]);
@@ -503,8 +522,8 @@ const sortProperty = ref("file.name");
 const sortDirection = ref("asc");
 
 // Limit options
-const useLimit = ref(false);
-const limitCount = ref(20);
+const useLimit = ref(true);
+const limitCount = ref(5);
 
 // Initialize component
 onMounted(async () => {
@@ -621,22 +640,8 @@ async function fetchProperties() {
     const dql = `TABLE file.name AS FileName FROM "" LIMIT 10`;
     const results = await obsidianApiService.searchWithDataview(dql);
 
-    // Standard properties since we can't easily extract all frontmatter keys with a single query
-    availableProperties.value = [
-      "file.name",
-      "file.ctime",
-      "file.mtime",
-      "file.size",
-      "file.path",
-      "file.folder",
-      "tags",
-      "title",
-      "date",
-      "status",
-      "priority",
-      "due",
-      "completed",
-    ];
+    // Use the keys from our propertyMappings for user-friendly property names
+    availableProperties.value = Object.keys(propertyMappings);
 
     // Additional logic could be added here to extract properties from results if needed
   } catch (err) {
@@ -658,10 +663,12 @@ function parseExistingQuery(query: string) {
     const listMatch = lines[0].match(/^LIST\s+(.+)$/i);
     if (listMatch) {
       const propsString = listMatch[1];
-      // Split by commas outside of parentheses to handle functions like date(file.ctime)
       const props = propsString.split(/,(?![^(]*\))/g).map((p) => p.trim());
       if (props[0] !== "*") {
-        displayProperties.value = props;
+        // Convert Dataview properties to friendly names
+        displayProperties.value = props.map(
+          (prop) => reversePropertyMappings[prop] || prop
+        );
       }
     }
 
@@ -722,12 +729,15 @@ function parseExistingQuery(query: string) {
     if (sortLine) {
       const sortMatch = sortLine.match(/^SORT\s+(.+?)(\s+(ASC|DESC))?$/i);
       if (sortMatch) {
-        sortProperty.value = sortMatch[1].trim();
+        const dataviewProp = sortMatch[1].trim();
+        // Convert from Dataview property to friendly name
+        sortProperty.value =
+          reversePropertyMappings[dataviewProp] || dataviewProp;
         sortDirection.value = sortMatch[3]?.toLowerCase() || "asc";
       }
     } else {
-      // Default sort
-      sortProperty.value = "file.name";
+      // Default sort - use friendly name for file.name
+      sortProperty.value = "Title"; // Instead of "file.name"
       sortDirection.value = "asc";
     }
 
@@ -784,6 +794,7 @@ function handlePropertyValueChange() {
 }
 
 function handleSortChange() {
+  console.log("Sort changed to:", sortProperty.value, sortDirection.value);
   regenerateQuery();
 }
 
@@ -798,11 +809,12 @@ function addDisplayProperty() {
     !displayProperties.value.includes(newDisplayProperty.value)
   ) {
     displayProperties.value.push(newDisplayProperty.value);
+    console.log("Added property:", newDisplayProperty.value);
+    console.log("Current displayProperties:", displayProperties.value);
     newDisplayProperty.value = "";
     regenerateQuery();
   }
 }
-
 function removeDisplayProperty(index: number) {
   displayProperties.value.splice(index, 1);
   regenerateQuery();
@@ -812,9 +824,12 @@ function removeDisplayProperty(index: number) {
 function generateQuery(): string {
   let query = "```dataview\n";
 
-  // LIST part
+  // LIST part - convert friendly names to actual properties
   if (displayProperties.value.length > 0) {
-    query += `LIST ${displayProperties.value.join(", ")}\n`;
+    const mappedProps = displayProperties.value.map(
+      (friendlyName) => propertyMappings[friendlyName] || friendlyName
+    );
+    query += `LIST ${mappedProps.join(", ")}\n`;
   } else {
     query += "LIST\n";
   }
@@ -853,9 +868,9 @@ function generateQuery(): string {
 
   // SORT part
   if (sortProperty.value) {
-    query += `SORT ${
-      sortProperty.value
-    } ${sortDirection.value.toUpperCase()}\n`;
+    const mappedSortProp =
+      propertyMappings[sortProperty.value] || sortProperty.value;
+    query += `SORT ${mappedSortProp} ${sortDirection.value.toUpperCase()}\n`;
   }
 
   // LIMIT part
@@ -863,13 +878,17 @@ function generateQuery(): string {
     query += `LIMIT ${limitCount.value}\n`;
   }
 
+  console.log("Query before this += thing", query);
+
   query += "```";
+  console.log("Final query:", query);
   return query;
 }
 
 // Generate the query and update the module content
 function regenerateQuery() {
   const query = generateQuery();
+  console.log("Updating content with query:", query);
   updateContent([query]);
 }
 
