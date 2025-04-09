@@ -8,15 +8,10 @@
         </div>
         <h1 class="app-title">Template Builder</h1>
       </div>
-
-      <div class="connection-indicator">
-        <ObsidianStatusIndicator />
-      </div>
     </div>
 
-    <!-- Main navigation with sections -->
+    <!-- Main navigation -->
     <nav class="sidebar-nav">
-      <!-- Workspace section -->
       <div class="nav-section">
         <div class="nav-section-header">
           <i class="fas fa-cog"></i>
@@ -27,7 +22,6 @@
           <router-link
             to="/dashboard"
             class="nav-item"
-            exact
             :class="{ active: currentRoute === 'dashboard' }"
           >
             <i class="fas fa-home"></i>
@@ -53,78 +47,9 @@
           </router-link>
         </div>
       </div>
-
-      <!-- Obsidian section (only if connected) -->
-      <div class="nav-section" v-if="obsidianStore.isConnected">
-        <div class="nav-section-header">
-          <i class="fas fa-link"></i>
-          <span>Obsidian</span>
-        </div>
-
-        <div class="nav-section-items">
-          <router-link
-            to="/obsidian-explorer"
-            class="nav-item"
-            :class="{ active: currentRoute === 'obsidian-explorer' }"
-          >
-            <i class="fas fa-mountain"></i>
-            <span>Obsidian Explorer</span>
-          </router-link>
-        </div>
-      </div>
-
-      <!-- Settings has been removed from navigation and moved to user profile -->
     </nav>
 
-    <!-- Contextual content area -->
-    <div class="sidebar-context" v-if="showContextSection">
-      <!-- Template filters when in my templates view -->
-      <div v-if="currentRoute === 'my-templates'" class="context-section">
-        <div class="section-header">
-          <h2 class="section-title">Filters</h2>
-        </div>
-
-        <div class="filter-options">
-          <div class="filter-group">
-            <label class="filter-label">Sort By</label>
-            <div class="select-wrapper">
-              <select class="filter-select">
-                <option value="name">Name</option>
-                <option value="date">Date Modified</option>
-                <option value="created">Date Created</option>
-              </select>
-              <i class="fas fa-chevron-down select-icon"></i>
-            </div>
-          </div>
-
-          <div class="filter-group">
-            <label class="filter-label">View</label>
-            <div class="view-toggle">
-              <button class="view-toggle-btn active">
-                <i class="fas fa-th-large"></i>
-              </button>
-              <button class="view-toggle-btn">
-                <i class="fas fa-list"></i>
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Primary action button -->
-    <div class="sidebar-actions" v-if="showActionSection">
-      <button
-        v-if="currentRoute === 'dashboard' || currentRoute === 'my-templates'"
-        class="action-button"
-        @click="$emit('new-template')"
-      >
-        <i class="fas fa-plus"></i>
-        <span>New Template</span>
-      </button>
-    </div>
-
-    <!-- User section (moved to bottom) -->
+    <!-- User section -->
     <div class="user-section" v-if="authStore.user">
       <div class="user-section-header">
         <i class="fas fa-user"></i>
@@ -138,8 +63,15 @@
         tabindex="0"
         :class="{ active: currentRoute === 'settings' }"
       >
-        <div class="user-avatar">
-          {{ getInitials(authStore.user.name) }}
+        <div class="user-avatar-wrapper">
+          <div class="user-avatar">
+            {{ getInitials(authStore.user.name) }}
+          </div>
+          <div
+            v-if="obsidianStore.isConnected"
+            class="connection-dot"
+            title="Connected to Obsidian"
+          ></div>
         </div>
         <div class="user-info">
           <div class="user-name">{{ authStore.user.name }}</div>
@@ -150,7 +82,6 @@
         </div>
       </div>
 
-      <!-- Utility controls -->
       <div class="user-controls">
         <button
           class="control-button"
@@ -172,7 +103,7 @@
       </div>
     </div>
 
-    <!-- Mobile close button (only shows on small screens) -->
+    <!-- Mobile close button -->
     <button
       class="mobile-close-button"
       v-if="uiStore.isMobile"
@@ -187,61 +118,37 @@
 <script setup lang="ts">
 import { computed, ref, onMounted } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import ObsidianStatusIndicator from "@/components/Layout/ObsidianStatusIndicator.vue";
-import { useUIStore, usePreferencesStore, useObsidianStore } from "@/stores";
+import { useUIStore, usePreferencesStore } from "@/stores";
 import { useAuthStore } from "@/stores/auth";
+import { useObsidianStore } from "@/stores/obsidian";
 
-// Props
-const props = defineProps({
-  isModified: {
-    type: Boolean,
-    default: false,
-  },
-});
-
-// Emits
-const emit = defineEmits([
-  "save-template",
-  "export-template",
-  "new-template",
-  "theme-change",
-]);
-
-// Get stores
+// Stores
 const uiStore = useUIStore();
 const preferencesStore = usePreferencesStore();
 const authStore = useAuthStore();
-const obsidianStore = useObsidianStore();
 const router = useRouter();
-
-// Get current route
 const route = useRoute();
+const obsidianStore = useObsidianStore();
+
+// Theme state
+const isDarkTheme = ref(true);
+
+// Determine current route
 const currentRoute = computed(() => {
-  if (route.path === "/dashboard") return "dashboard";
-  if (route.path === "/editor") return "editor";
-  if (route.path === "/my-templates") return "my-templates";
-  if (route.path === "/template-library") return "templateLibrary";
-  if (route.path === "/settings") return "settings";
-  if (route.path === "/obsidian-explorer") return "obsidian-explorer";
-  if (route.path === "/templates") return "template-browser";
+  const path = route.path;
+  if (path === "/dashboard") return "dashboard";
+  if (path === "/my-templates") return "my-templates";
+  if (path === "/templates") return "template-browser";
+  if (path === "/settings") return "settings";
   return "";
 });
 
-// Conditionally show different sections
-const showContextSection = computed(() => {
-  return ["library"].includes(currentRoute.value);
-});
-
-const showActionSection = computed(() => {
-  return ["editor", "dashboard", "library"].includes(currentRoute.value);
-});
-
-// User profile methods
+// Handlers
 const getInitials = (name: string) => {
   if (!name) return "";
   return name
     .split(" ")
-    .map((part) => part.charAt(0))
+    .map((part) => part[0])
     .join("")
     .toUpperCase();
 };
@@ -255,11 +162,15 @@ const navigateToSettings = () => {
   router.push({ path: "/settings" });
 };
 
-// Theme toggle
-const isDarkTheme = ref(true);
+const toggleTheme = () => {
+  isDarkTheme.value = !isDarkTheme.value;
+  const theme = isDarkTheme.value ? "dark" : "light";
+  document.documentElement.setAttribute("data-theme", theme);
+  preferencesStore.setEditorTheme(theme);
+};
 
+// Init theme
 onMounted(() => {
-  // Initialize theme based on stored preference
   const savedTheme =
     preferencesStore.editorTheme ||
     (window.matchMedia("(prefers-color-scheme: dark)").matches
@@ -268,20 +179,6 @@ onMounted(() => {
 
   isDarkTheme.value = savedTheme === "dark";
 });
-
-const toggleTheme = () => {
-  isDarkTheme.value = !isDarkTheme.value;
-  const themeName = isDarkTheme.value ? "dark" : "light";
-
-  // Update the document theme
-  document.documentElement.setAttribute("data-theme", themeName);
-
-  // Store preference
-  preferencesStore.setEditorTheme(themeName);
-
-  // Emit theme change
-  emit("theme-change", themeName);
-};
 </script>
 
 <style scoped>
@@ -589,6 +486,23 @@ const toggleTheme = () => {
 }
 
 /* User section (new) */
+.user-avatar-wrapper {
+  position: relative;
+  display: inline-block;
+}
+
+.connection-dot {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 10px;
+  height: 10px;
+  background-color: #10b981; /* Green */
+
+  border-radius: 50%;
+  box-shadow: 0 0 6px #10b981;
+}
+
 .user-section {
   padding: var(--spacing-lg) var(--spacing-lg);
   border-top: 1px solid var(--glass-border);

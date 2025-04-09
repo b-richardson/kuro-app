@@ -12,9 +12,8 @@
         'with-sidebar': authStore.isAuthenticated && !isAuthRoute,
       }"
     >
-      <!-- Sidebar for authenticated users -->
       <GlobalSidebar
-        v-if="authStore.isAuthenticated"
+        v-if="authStore.isAuthenticated && !isAuthRoute"
         :is-modified="isModified"
         @save-template="handleSaveTemplate"
         @new-template="handleNewTemplate"
@@ -25,7 +24,7 @@
       <!-- Main content -->
       <main class="app-content">
         <button
-          v-if="authStore.isAuthenticated"
+          v-if="authStore.isAuthenticated && !isAuthRoute"
           class="sidebar-toggle glass-button"
           @click="toggleSidebar"
           aria-label="Toggle sidebar"

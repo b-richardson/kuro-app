@@ -133,6 +133,10 @@
 
         <div class="settings-divider"></div>
 
+        <ObsidianStatusCard />
+
+        <div class="settings-divider"></div>
+
         <!-- Appearance Section -->
         <div class="settings-section">
           <h2 class="settings-section__title">Appearance</h2>
@@ -182,6 +186,7 @@ import { ref, onMounted, computed } from "vue";
 import { useRouter } from "vue-router";
 import ConfirmationDialog from "../components/UI/ConfirmationDialog.vue";
 import { useTemplateStore, useUIStore, usePreferencesStore } from "../stores";
+import ObsidianStatusCard from "../components/Layout/ObsidianStatusIndicator.vue";
 import { useAuthStore } from "../stores/auth";
 
 const router = useRouter();
