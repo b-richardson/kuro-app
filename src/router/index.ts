@@ -21,7 +21,7 @@ import SettingsView from "../views/SettingsView.vue";
 import DesignView from "../views/DesignView.vue";
 import ObsidianOnboarding from "../views/ObsidianOnboarding.vue";
 import ObsidianExplorer from "../views/ObsidianExplorer.vue";
-import FrameworksView from "../views/Frameworks/FrameworksView.vue";
+import TemplateBrowserView from "@/views/TemplateBrowserView.vue";
 
 // Route definitions
 const routes = [
@@ -97,9 +97,9 @@ const routes = [
     component: ObsidianExplorer,
   },
   {
-    path: "/frameworks",
-    name: "frameworks",
-    component: FrameworksView,
+    path: "/templates",
+    name: "template-browser",
+    component: TemplateBrowserView,
   },
 
   // Catch-all route - redirect to home

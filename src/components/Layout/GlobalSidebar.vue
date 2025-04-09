@@ -44,12 +44,12 @@
           </router-link>
 
           <router-link
-            to="/frameworks"
+            to="/templates"
             class="nav-item"
-            :class="{ active: currentRoute === 'frameworks' }"
+            :class="{ active: currentRoute === 'template-browser' }"
           >
-            <i class="fas fa-puzzle-piece"></i>
-            <span>Frameworks</span>
+            <i class="fas fa-bars"></i>
+            <span>Template Browser</span>
           </router-link>
         </div>
       </div>
@@ -223,7 +223,7 @@ const currentRoute = computed(() => {
   if (route.path === "/template-library") return "templateLibrary";
   if (route.path === "/settings") return "settings";
   if (route.path === "/obsidian-explorer") return "obsidian-explorer";
-  if (route.path === "/frameworks") return "frameworks";
+  if (route.path === "/templates") return "template-browser";
   return "";
 });
 
