@@ -11,351 +11,269 @@
     @select="$emit('select')"
     @duplicate="$emit('duplicate')"
     @module-change="$emit('module-change')"
-    @add-line="regenerateQuery"
     ref="baseModuleRef"
   >
-    <div class="dataview-calendar-editor">
+    <div class="dv-cal-builder">
       <!-- Module Header -->
-      <div class="dataview-calendar-editor__header">
-        <div class="dataview-calendar-editor__header-icon">
-          <i class="fas fa-calendar-alt"></i>
+      <div class="dv-cal-header">
+        <div class="dv-cal-header-icon">
+          <i class="fas fa-calendar-week"></i>
         </div>
-        <div class="dataview-calendar-editor__header-title">Calendar View</div>
+        <div class="dv-cal-header-title">Calendar View</div>
       </div>
 
-      <!-- Date Field Section -->
-      <div class="dataview-calendar-editor__section">
-        <div class="dataview-calendar-editor__section-header">
-          <div class="dataview-calendar-editor__section-title">
-            <i class="fas fa-calendar-day"></i>
-            <span>Date to Use</span>
-          </div>
-          <div class="dataview-calendar-editor__section-description">
-            Choose which date to use for placing notes on the calendar
+      <!-- Step 1: Date Field -->
+      <div class="dv-cal-section dv-cal-section--date">
+        <div class="dv-cal-section-header">
+          <span class="dv-cal-step-number">1</span>
+          <i class="fas fa-calendar-day dv-cal-section-icon"></i>
+          <h3 class="dv-cal-section-title">Date Field</h3>
+          <span class="dv-cal-section-description"
+            >Which date places notes on the calendar?</span
+          >
+        </div>
+        <div class="dv-cal-section-content">
+          <div class="dv-cal-field-group">
+            <div class="dv-cal-segmented-control">
+              <button
+                :class="{ active: dateField === 'file.ctime' }"
+                @click="setDateField('file.ctime')"
+              >
+                <i class="fas fa-plus-circle"></i> Created
+              </button>
+              <button
+                :class="{ active: dateField === 'file.mtime' }"
+                @click="setDateField('file.mtime')"
+              >
+                <i class="fas fa-edit"></i> Modified
+              </button>
+              <button
+                :class="{ active: dateField === 'custom' }"
+                @click="setDateField('custom')"
+              >
+                <i class="fas fa-sliders-h"></i> Custom
+              </button>
+            </div>
+            <div
+              v-if="dateField === 'custom'"
+              class="dv-cal-input-wrapper dv-cal-input-wrapper--field"
+            >
+              <i class="fas fa-sliders-h dv-cal-input-icon"></i>
+              <input
+                type="text"
+                class="dv-cal-input"
+                placeholder="Enter property name (e.g., due, deadline)"
+                v-model="customDateField"
+                @input="handleDateFieldChange"
+              />
+            </div>
           </div>
         </div>
+      </div>
 
-        <div class="dataview-calendar-editor__date-selector">
-          <button
-            class="dataview-calendar-editor__date-card"
-            :class="{
-              'dataview-calendar-editor__date-card--active':
-                dateField === 'file.ctime',
-            }"
-            @click="setDateField('file.ctime')"
+      <!-- Step 2: Source -->
+      <div class="dv-cal-section dv-cal-section--source">
+        <div class="dv-cal-section-header">
+          <span class="dv-cal-step-number">2</span>
+          <i class="fas fa-filter dv-cal-section-icon"></i>
+          <h3 class="dv-cal-section-title">Source Notes</h3>
+          <span class="dv-cal-section-description"
+            >Where to find notes to display?</span
           >
-            <div class="dataview-calendar-editor__date-card-icon">
-              <i class="fas fa-plus-circle"></i>
-            </div>
-            <div class="dataview-calendar-editor__date-card-label">
-              Creation Date
-            </div>
-            <div class="dataview-calendar-editor__date-card-description">
-              When each note was first created
-            </div>
-          </button>
-
-          <button
-            class="dataview-calendar-editor__date-card"
-            :class="{
-              'dataview-calendar-editor__date-card--active':
-                dateField === 'file.mtime',
-            }"
-            @click="setDateField('file.mtime')"
-          >
-            <div class="dataview-calendar-editor__date-card-icon">
-              <i class="fas fa-edit"></i>
-            </div>
-            <div class="dataview-calendar-editor__date-card-label">
-              Modified Date
-            </div>
-            <div class="dataview-calendar-editor__date-card-description">
-              When each note was last updated
-            </div>
-          </button>
         </div>
+        <div class="dv-cal-section-content">
+          <div class="dv-cal-field-group">
+            <div class="dv-cal-segmented-control">
+              <button
+                :class="{ active: sourceType === 'all' }"
+                @click="setSourceType('all')"
+              >
+                <i class="fas fa-globe-americas"></i> Everywhere
+              </button>
+              <button
+                :class="{ active: sourceType === 'folder' }"
+                @click="setSourceType('folder')"
+              >
+                <i class="fas fa-folder"></i> In Folder
+              </button>
+              <button
+                :class="{ active: sourceType === 'tag' }"
+                @click="setSourceType('tag')"
+              >
+                <i class="fas fa-tag"></i> With Tag
+              </button>
+            </div>
 
-        <!-- Custom Date Field Input -->
+            <!-- Folder Selection -->
+            <div
+              v-if="sourceType === 'folder'"
+              class="dv-cal-input-wrapper dv-cal-input-wrapper--select"
+            >
+              <i class="fas fa-folder dv-cal-input-icon"></i>
+              <select
+                class="dv-cal-select"
+                v-model="selectedFolder"
+                @change="handleSourceValueChange"
+              >
+                <option disabled value="">Select a folder...</option>
+                <option value="">Root Folder ("")</option>
+                <option
+                  v-for="folder in availableFolders"
+                  :key="folder.path"
+                  :value="folder.path"
+                >
+                  {{ folder.path || "/" }}
+                </option>
+              </select>
+              <button
+                class="dv-cal-action-btn dv-cal-action-btn--refresh"
+                title="Refresh folder list"
+                @click="fetchFolders"
+              >
+                <i class="fas fa-sync-alt"></i>
+              </button>
+            </div>
+
+            <!-- Tag Selection -->
+            <div
+              v-if="sourceType === 'tag'"
+              class="dv-cal-input-wrapper dv-cal-input-wrapper--select"
+            >
+              <i class="fas fa-tag dv-cal-input-icon"></i>
+              <select
+                class="dv-cal-select"
+                v-model="selectedTag"
+                @change="handleSourceValueChange"
+              >
+                <option disabled value="">Select a tag...</option>
+                <option v-for="tag in availableTags" :key="tag" :value="tag">
+                  #{{ tag }}
+                </option>
+              </select>
+              <button
+                class="dv-cal-action-btn dv-cal-action-btn--refresh"
+                title="Refresh tag list"
+                @click="fetchTags"
+              >
+                <i class="fas fa-sync-alt"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 3: Date Range (Optional Filter) -->
+      <div class="dv-cal-section dv-cal-section--range">
         <div
-          v-if="dateField === 'custom'"
-          class="dataview-calendar-editor__config-panel"
-        >
-          <div class="dataview-calendar-editor__config-content">
-            <div class="dataview-calendar-editor__field-group">
-              <label class="dataview-calendar-editor__label">
-                Custom Date Property
-              </label>
-              <div class="dataview-calendar-editor__input-group">
-                <input
-                  type="text"
-                  class="dataview-calendar-editor__text-input"
-                  placeholder="e.g., due, deadline, start"
-                  v-model="customDateField"
-                  @input="handleDateFieldChange"
-                />
-              </div>
-              <div class="dataview-calendar-editor__field-tip">
-                Enter the property name from your note's frontmatter
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Notes to Include Section -->
-      <div class="dataview-calendar-editor__section">
-        <div class="dataview-calendar-editor__section-header">
-          <div class="dataview-calendar-editor__section-title">
-            <i class="fas fa-filter"></i>
-            <span>Notes to Include</span>
-          </div>
-          <div class="dataview-calendar-editor__section-description">
-            Select which notes to show on your calendar
-          </div>
-        </div>
-
-        <div class="dataview-calendar-editor__source-selector">
-          <button
-            class="dataview-calendar-editor__source-card"
-            :class="{
-              'dataview-calendar-editor__source-card--active':
-                sourceType === 'all',
-            }"
-            @click="setSourceType('all')"
-          >
-            <div class="dataview-calendar-editor__source-card-icon">
-              <i class="fas fa-file-alt"></i>
-            </div>
-            <div class="dataview-calendar-editor__source-card-label">
-              All Notes
-            </div>
-          </button>
-
-          <button
-            class="dataview-calendar-editor__source-card"
-            :class="{
-              'dataview-calendar-editor__source-card--active':
-                sourceType === 'folder',
-            }"
-            @click="setSourceType('folder')"
-          >
-            <div class="dataview-calendar-editor__source-card-icon">
-              <i class="fas fa-folder"></i>
-            </div>
-            <div class="dataview-calendar-editor__source-card-label">
-              From Folder
-            </div>
-          </button>
-
-          <button
-            class="dataview-calendar-editor__source-card"
-            :class="{
-              'dataview-calendar-editor__source-card--active':
-                sourceType === 'tag',
-            }"
-            @click="setSourceType('tag')"
-          >
-            <div class="dataview-calendar-editor__source-card-icon">
-              <i class="fas fa-hashtag"></i>
-            </div>
-            <div class="dataview-calendar-editor__source-card-label">
-              With Tag
-            </div>
-          </button>
-        </div>
-
-        <!-- Configuration Panel -->
-        <div class="dataview-calendar-editor__config-panel">
-          <!-- Folder Selection -->
-          <div
-            v-if="sourceType === 'folder'"
-            class="dataview-calendar-editor__config-content"
-          >
-            <div class="dataview-calendar-editor__field-group">
-              <label class="dataview-calendar-editor__label">
-                Select Folder
-              </label>
-              <div class="dataview-calendar-editor__input-group">
-                <select
-                  class="dataview-calendar-editor__select"
-                  v-model="selectedFolder"
-                  @change="handleSourceValueChange"
-                >
-                  <option disabled value="">Select a folder</option>
-                  <option
-                    v-for="folder in availableFolders"
-                    :key="folder.path"
-                    :value="folder.path"
-                  >
-                    {{ folder.path || "/" }}
-                  </option>
-                </select>
-                <button
-                  class="dataview-calendar-editor__action-btn"
-                  title="Refresh folder list"
-                  @click="fetchFolders"
-                >
-                  <i class="fas fa-sync-alt"></i>
-                </button>
-              </div>
-              <div class="dataview-calendar-editor__field-tip">
-                Only include notes from this folder
-              </div>
-            </div>
-          </div>
-
-          <!-- Tag Selection -->
-          <div
-            v-if="sourceType === 'tag'"
-            class="dataview-calendar-editor__config-content"
-          >
-            <div class="dataview-calendar-editor__field-group">
-              <label class="dataview-calendar-editor__label">Select Tag</label>
-              <div class="dataview-calendar-editor__input-group">
-                <select
-                  class="dataview-calendar-editor__select"
-                  v-model="selectedTag"
-                  @change="handleSourceValueChange"
-                >
-                  <option disabled value="">Select a tag</option>
-                  <option v-for="tag in availableTags" :key="tag" :value="tag">
-                    #{{ tag }}
-                  </option>
-                </select>
-                <button
-                  class="dataview-calendar-editor__action-btn"
-                  title="Refresh tag list"
-                  @click="fetchTags"
-                >
-                  <i class="fas fa-sync-alt"></i>
-                </button>
-              </div>
-              <div class="dataview-calendar-editor__field-tip">
-                Only include notes with this tag
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Date Range & Display Options -->
-      <div class="dataview-calendar-editor__section">
-        <button
-          class="dataview-calendar-editor__advanced-toggle"
+          class="dv-cal-section-header dv-cal-section-header--toggle"
           @click="showAdvanced = !showAdvanced"
         >
-          <span>{{
-            showAdvanced ? "Hide advanced options" : "Show advanced options"
-          }}</span>
+          <span class="dv-cal-step-number dv-cal-step-number--optional">?</span>
+          <i class="fas fa-calendar-check dv-cal-section-icon"></i>
+          <h3 class="dv-cal-section-title">Filter & Display Options</h3>
           <i
-            :class="showAdvanced ? 'fas fa-chevron-up' : 'fas fa-chevron-down'"
+            :class="[
+              'fas',
+              showAdvanced ? 'fa-chevron-up' : 'fa-chevron-down',
+              'dv-cal-section-toggle-icon',
+            ]"
           ></i>
-        </button>
+        </div>
 
         <div
           v-if="showAdvanced"
-          class="dataview-calendar-editor__advanced-panel"
+          class="dv-cal-section-content dv-cal-section-content--collapsible"
         >
           <!-- Date Filter -->
-          <div class="dataview-calendar-editor__field-group">
-            <div class="dataview-calendar-editor__section-header">
-              <div class="dataview-calendar-editor__section-title">
-                <i class="fas fa-clock"></i>
-                <span>Time Range</span>
-              </div>
+          <div class="dv-cal-field-group">
+            <div class="dv-cal-field-group--inline">
+              <label class="dv-cal-toggle">
+                <input
+                  type="checkbox"
+                  v-model="dateFilter.enabled"
+                  @change="handleDateFilterChange"
+                />
+                <span class="dv-cal-toggle-slider"></span>
+              </label>
+              <span
+                class="dv-cal-toggle-label"
+                :class="{
+                  'dv-cal-toggle-label--disabled': !dateFilter.enabled,
+                }"
+              >
+                Only show notes within a specific date range
+              </span>
             </div>
 
-            <div class="dataview-calendar-editor__checkbox">
-              <input
-                type="checkbox"
-                id="date-filter-toggle"
-                v-model="dateFilter.enabled"
-                @change="handleDateFilterChange"
-              />
-              <label for="date-filter-toggle">Filter by time period</label>
+            <div v-if="dateFilter.enabled" class="dv-cal-date-range-inputs">
+              <div class="dv-cal-input-wrapper">
+                <label
+                  for="cal-start-date"
+                  class="dv-cal-label dv-cal-label--inline"
+                  >Start:</label
+                >
+                <input
+                  id="cal-start-date"
+                  type="date"
+                  class="dv-cal-input dv-cal-input--date"
+                  v-model="dateFilter.startDate"
+                  @change="handleDateFilterChange"
+                />
+              </div>
+              <div class="dv-cal-input-wrapper">
+                <label
+                  for="cal-end-date"
+                  class="dv-cal-label dv-cal-label--inline"
+                  >End:</label
+                >
+                <input
+                  id="cal-end-date"
+                  type="date"
+                  class="dv-cal-input dv-cal-input--date"
+                  v-model="dateFilter.endDate"
+                  @change="handleDateFilterChange"
+                />
+              </div>
             </div>
-
-            <div
-              v-if="dateFilter.enabled"
-              class="dataview-calendar-editor__date-filter-options"
-            >
-              <div class="dataview-calendar-editor__radio-group">
-                <label class="dataview-calendar-editor__radio">
-                  <input
-                    type="radio"
-                    name="dateRange"
-                    value="custom"
-                    v-model="dateFilter.range"
-                    @change="handleDateFilterChange"
-                  />
-                  <span>Custom date range</span>
-                </label>
-              </div>
-
-              <div class="dataview-calendar-editor__date-range">
-                <div class="dataview-calendar-editor__date-range-field">
-                  <label class="dataview-calendar-editor__label">
-                    Start Date
-                  </label>
-                  <input
-                    type="date"
-                    class="dataview-calendar-editor__text-input"
-                    v-model="dateFilter.startDate"
-                    @change="handleDateFilterChange"
-                  />
-                </div>
-
-                <div class="dataview-calendar-editor__date-range-field">
-                  <label class="dataview-calendar-editor__label">
-                    End Date
-                  </label>
-                  <input
-                    type="date"
-                    class="dataview-calendar-editor__text-input"
-                    v-model="dateFilter.endDate"
-                    @change="handleDateFilterChange"
-                  />
-                </div>
-              </div>
+            <div v-if="dateFilter.enabled" class="dv-cal-field-tip">
+              Leave start or end blank to filter only before or after a date.
             </div>
           </div>
 
           <!-- Display Options -->
-          <div class="dataview-calendar-editor__field-group">
-            <div class="dataview-calendar-editor__section-header">
-              <div class="dataview-calendar-editor__section-title">
-                <i class="fas fa-eye"></i>
-                <span>Display Options</span>
-              </div>
-            </div>
-
-            <div class="dataview-calendar-editor__display-options">
-              <div class="dataview-calendar-editor__checkbox">
+          <div class="dv-cal-field-group">
+            <div class="dv-cal-field-group--inline">
+              <label class="dv-cal-toggle">
                 <input
                   type="checkbox"
-                  id="show-as-text"
                   v-model="displayOptions.showAsText"
                   @change="handleDisplayOptionsChange"
                 />
-                <label for="show-as-text">
-                  Show as text (instead of links)
-                </label>
-              </div>
+                <span class="dv-cal-toggle-slider"></span>
+              </label>
+              <span
+                class="dv-cal-toggle-label"
+                :class="{
+                  'dv-cal-toggle-label--disabled': !displayOptions.showAsText,
+                }"
+              >
+                Show as text (instead of links)
+              </span>
             </div>
           </div>
         </div>
       </div>
 
       <!-- Calendar Preview Information -->
-      <div class="dataview-calendar-editor__tips">
-        <div class="dataview-calendar-editor__tips-header">
+      <div class="dv-cal-tips">
+        <div class="dv-cal-tips-header">
           <i class="fas fa-lightbulb"></i>
           <span>About Calendar View</span>
         </div>
-        <div class="dataview-calendar-editor__tips-content">
+        <div class="dv-cal-tips-content">
           <p>
             This creates a monthly calendar view showing your notes on their
-            corresponding dates. Notes will appear on the.ctime matching the
+            corresponding dates. Notes will appear on the date matching the
             selected date field.
           </p>
           <p>
@@ -400,7 +318,7 @@ const baseModuleRef = ref<InstanceType<typeof BaseModule> | null>(null);
 const showAdvanced = ref(false);
 
 // Date Field selection
-const dateField = ref("file.ctime"); // 'file.ctime', 'file.ctime', 'file.mtime', 'custom'
+const dateField = ref("file.ctime"); // 'file.ctime', 'file.mtime', 'custom'
 const customDateField = ref("");
 
 // Source selection
@@ -553,10 +471,8 @@ function parseExistingQuery(query: string) {
       // Determine the date field
       if (fieldPart === "file.ctime") {
         dateField.value = "file.ctime";
-      } else if (fieldPart === "due") {
-        dateField.value = "due";
-      } else if (fieldPart === "date") {
-        dateField.value = "date";
+      } else if (fieldPart === "file.mtime") {
+        dateField.value = "file.mtime";
       } else {
         dateField.value = "custom";
         customDateField.value = fieldPart;
@@ -615,15 +531,12 @@ function parseExistingQuery(query: string) {
       }
 
       // Check for display options
-      displayOptions.value.showLinks = !whereClause.includes("!as:link");
-      displayOptions.value.showText = whereClause.includes("as:text");
+      displayOptions.value.showAsText = whereClause.includes("as:text");
     }
 
     // Set advanced options panel state
     showAdvanced.value =
-      dateFilter.value.enabled ||
-      !displayOptions.value.showLinks ||
-      displayOptions.value.showText;
+      dateFilter.value.enabled || displayOptions.value.showAsText;
 
     // Regenerate the query to ensure it's formatted correctly
     regenerateQuery();
@@ -701,6 +614,14 @@ function generateQuery(): string {
       conditions.push(
         `${dateFieldName} between date("${dateFilter.value.startDate}") and date("${dateFilter.value.endDate}")`
       );
+    } else if (dateFilter.value.startDate) {
+      conditions.push(
+        `${dateFieldName} >= date("${dateFilter.value.startDate}")`
+      );
+    } else if (dateFilter.value.endDate) {
+      conditions.push(
+        `${dateFieldName} <= date("${dateFilter.value.endDate}")`
+      );
     }
   }
 
@@ -740,450 +661,384 @@ function updateContent(content: string[]) {
 </script>
 
 <style scoped>
-.dataview-calendar-editor {
+/* --- Base & Dark Glassmorphism --- */
+.dv-cal-builder {
   width: 100%;
-  color: #e2e8f0;
+  /* Dark glassmorphism base */
+  background: rgba(21, 26, 36, 0.7); /* Dark semi-transparent */
+  backdrop-filter: blur(12px) saturate(150%);
+  -webkit-backdrop-filter: blur(12px) saturate(150%);
+  border: 1px solid rgba(255, 255, 255, 0.1); /* Light border */
+  border-radius: 12px;
+  padding: 20px;
+  color: var(--text-normal-dark, #e1e1e6); /* Light text */
+  font-family: var(--font-interface, sans-serif);
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 20px; /* Slightly reduced gap */
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
 }
 
-/* Header styles */
-.dataview-calendar-editor__header {
+/* --- Header --- */
+.dv-cal-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-bottom: 15px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--text-title-dark, #ffffff);
+}
+
+.dv-cal-header-icon {
+  font-size: 20px;
+  color: var(--interactive-accent-light, #60a5fa); /* Bright accent */
+}
+
+.dv-cal-header-title {
+  font-size: 18px;
+  font-weight: 600;
+}
+
+/* --- Sections --- */
+.dv-cal-section {
+  background: rgba(30, 36, 50, 0.6); /* Darker section background */
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  padding: 18px;
+  transition: box-shadow 0.2s ease-in-out;
+}
+
+.dv-cal-section-header {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding-bottom: 12px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  margin-bottom: 15px;
+  color: var(--text-title-dark, #f0f0f5);
 }
-
-.dataview-calendar-editor__header-icon {
-  color: #60a5fa;
-  font-size: 18px;
-}
-
-.dataview-calendar-editor__header-title {
-  font-size: 16px;
-  font-weight: 500;
-}
-
-/* Section styling */
-.dataview-calendar-editor__section {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-
-.dataview-calendar-editor__section-header {
-  margin-bottom: 4px;
-}
-
-.dataview-calendar-editor__section-title {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-weight: 500;
-  font-size: 16px;
-  color: #e2e8f0;
-}
-
-.dataview-calendar-editor__section-description {
-  color: #94a3b8;
-  font-size: 14px;
-  margin-top: 4px;
-}
-
-/* Date Field selection */
-.dataview-calendar-editor__date-selector {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 12px;
-  margin-bottom: 16px;
-}
-
-.dataview-calendar-editor__date-card {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-  gap: 8px;
-  padding: 16px 12px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 8px;
-  color: #cbd5e1;
-  transition: all 0.2s;
+.dv-cal-section-header--toggle {
   cursor: pointer;
+  margin-bottom: 0; /* Remove bottom margin when toggleable */
+  transition: background-color 0.15s ease-out;
+  border-radius: 6px;
+  padding: 5px 8px;
+  margin: -5px -8px 10px -8px; /* Adjust padding/margin to make clickable area nice */
+}
+.dv-cal-section-header--toggle:hover {
+  background-color: rgba(255, 255, 255, 0.05);
 }
 
-.dataview-calendar-editor__date-card:hover {
-  background: rgba(255, 255, 255, 0.1);
-  transform: translateY(-2px);
-}
-
-.dataview-calendar-editor__date-card--active {
-  background: rgba(59, 130, 246, 0.15);
-  border-color: rgba(59, 130, 246, 0.5);
-  color: #fff;
-}
-
-.dataview-calendar-editor__date-card-icon {
-  font-size: 22px;
-  margin-bottom: 8px;
-  color: #60a5fa;
-}
-
-.dataview-calendar-editor__date-card-label {
-  font-size: 14px;
-  font-weight: 500;
-}
-
-.dataview-calendar-editor__date-card-description {
-  font-size: 12px;
-  color: #94a3b8;
-  line-height: 1.4;
-  margin-top: 4px;
-}
-
-/* Source selection */
-.dataview-calendar-editor__source-selector {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 12px;
-  margin-bottom: 16px;
-}
-
-.dataview-calendar-editor__source-card {
-  display: flex;
-  flex-direction: column;
+.dv-cal-step-number {
+  background-color: var(--interactive-accent-light, #60a5fa);
+  color: var(--text-on-accent, #111);
+  font-size: 11px;
+  font-weight: bold;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  padding: 12px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 8px;
-  color: #cbd5e1;
-  transition: all 0.2s;
-  cursor: pointer;
+  flex-shrink: 0;
+}
+.dv-cal-step-number--optional {
+  background-color: rgba(148, 163, 184, 0.5); /* Grey for optional */
+  color: var(--text-normal-dark, #e1e1e6);
 }
 
-.dataview-calendar-editor__source-card:hover {
-  background: rgba(255, 255, 255, 0.1);
-  transform: translateY(-2px);
+.dv-cal-section-icon {
+  font-size: 16px;
+  color: var(--icon-color-dark, #94a3b8); /* Muted light icon color */
 }
 
-.dataview-calendar-editor__source-card--active {
-  background: rgba(59, 130, 246, 0.15);
-  border-color: rgba(59, 130, 246, 0.5);
-  color: #fff;
+.dv-cal-section-title {
+  font-size: 16px;
+  font-weight: 500;
+  margin: 0;
+  flex-grow: 1; /* Allow title to take space */
+}
+.dv-cal-section-description {
+  font-size: 13px;
+  color: var(--text-muted-dark, #94a3b8);
+  margin-left: auto; /* Push description to the right */
+  padding-left: 10px;
+}
+.dv-cal-section-toggle-icon {
+  margin-left: auto;
+  color: var(--icon-color-dark, #94a3b8);
+  transition: transform 0.2s ease-out;
+}
+.dv-cal-section-header--toggle i.fa-chevron-up {
+  transform: rotate(180deg);
 }
 
-.dataview-calendar-editor__source-card-icon {
-  font-size: 22px;
-  margin-bottom: 8px;
-  color: #60a5fa;
+.dv-cal-section-content {
+  display: flex;
+  flex-direction: column;
+  gap: 15px; /* Consistent gap */
+}
+.dv-cal-section-content--collapsible {
+  padding-top: 15px;
+  /* Add subtle animation? Maybe just appear/disappear */
 }
 
-.dataview-calendar-editor__source-card-label {
-  font-size: 14px;
-}
-
-/* Configuration Panel */
-.dataview-calendar-editor__config-panel {
-  background: rgba(0, 0, 0, 0.1);
-  border-radius: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  overflow: hidden;
-}
-
-.dataview-calendar-editor__config-content {
-  padding: 16px;
-}
-
-/* Form field groups */
-.dataview-calendar-editor__field-group {
+/* --- Field Groups & Labels --- */
+.dv-cal-field-group {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  margin-bottom: 16px;
 }
-
-.dataview-calendar-editor__field-group:last-child {
-  margin-bottom: 0;
-}
-
-.dataview-calendar-editor__label {
-  font-size: 14px;
-  font-weight: 500;
-  color: #e2e8f0;
-  display: flex;
+.dv-cal-field-group--inline {
+  flex-direction: row;
   align-items: center;
-  gap: 6px;
+  gap: 10px;
 }
 
-.dataview-calendar-editor__field-tip {
+.dv-cal-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-muted-dark, #94a3b8);
+}
+.dv-cal-label--inline {
+  white-space: nowrap;
+}
+
+.dv-cal-field-tip {
   font-size: 12px;
-  color: #94a3b8;
-  margin-top: 4px;
+  color: var(--text-faint-dark, #717a8a);
+  padding-left: 5px;
 }
 
-.dataview-calendar-editor__input-group {
-  display: flex;
-  gap: 8px;
-}
-
-/* Text inputs */
-.dataview-calendar-editor__text-input {
-  padding: 10px 12px;
-  background: rgba(255, 255, 255, 0.05);
+/* --- Inputs & Selects --- */
+.dv-cal-input,
+.dv-cal-select {
+  padding: 9px 12px;
+  background: rgba(15, 20, 30, 0.7); /* Darker input background */
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 6px;
-  color: #e2e8f0;
+  color: var(--text-normal-dark, #e1e1e6);
   font-size: 14px;
   width: 100%;
-  transition: all 0.2s;
+  transition: all 0.2s ease-in-out;
 }
-
-.dataview-calendar-editor__text-input:focus {
+.dv-cal-input:focus,
+.dv-cal-select:focus {
   outline: none;
-  border-color: rgba(59, 130, 246, 0.5);
-  box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.25);
+  border-color: var(--interactive-accent-light, #60a5fa);
+  box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.3);
+  background: rgba(30, 36, 50, 0.9);
 }
-
-.dataview-calendar-editor__text-input::placeholder {
-  color: rgba(148, 163, 184, 0.5);
+.dv-cal-input::placeholder {
+  color: var(--text-faint-dark, #717a8a);
 }
-
-/* Select dropdown */
-.dataview-calendar-editor__select {
-  padding: 10px 12px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 6px;
-  color: #e2e8f0;
-  font-size: 14px;
-  width: 100%;
-  -webkit-appearance: none;
+.dv-cal-select {
   appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23cbd5e1' d='M6 8.825L1.175 4 2.05 3.125 6 7.075 9.95 3.125 10.825 4z'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
   background-repeat: no-repeat;
-  background-position: right 12px center;
-  padding-right: 36px;
+  background-position: right 10px center;
+  padding-right: 35px;
+}
+.dv-cal-input--date {
+  min-width: 150px; /* Give date inputs some space */
+  flex-grow: 1;
+}
+.dv-cal-input--date::-webkit-calendar-picker-indicator {
+  filter: invert(0.8); /* Make picker icon lighter on dark background */
+  cursor: pointer;
 }
 
-.dataview-calendar-editor__select:focus {
-  outline: none;
-  border-color: rgba(59, 130, 246, 0.5);
+.dv-cal-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px; /* Gap between icon/input/button */
+}
+.dv-cal-input-wrapper--field .dv-cal-input,
+.dv-cal-input-wrapper--select .dv-cal-select {
+  padding-left: 34px; /* Space for icon */
+  flex-grow: 1; /* Allow input/select to grow */
+}
+.dv-cal-input-icon {
+  position: absolute;
+  left: 11px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--icon-color-dark, #94a3b8);
+  font-size: 13px;
+  pointer-events: none; /* Don't interfere with clicks */
 }
 
-/* Button styling */
-.dataview-calendar-editor__action-btn {
+/* --- Action Button (Refresh) --- */
+.dv-cal-action-btn {
   display: flex;
   align-items: center;
   justify-content: center;
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.1);
   color: #94a3b8;
-  width: 38px;
-  height: 38px;
+  width: 36px; /* Match input height */
+  height: 36px;
   border-radius: 6px;
   cursor: pointer;
   transition: all 0.2s;
   flex-shrink: 0;
 }
-
-.dataview-calendar-editor__action-btn:hover {
+.dv-cal-action-btn:hover {
   background: rgba(255, 255, 255, 0.1);
   color: #e2e8f0;
 }
+.dv-cal-action-btn i {
+  font-size: 13px;
+}
 
-/* Advanced panel */
-.dataview-calendar-editor__advanced-toggle {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 12px 16px;
-  background: rgba(0, 0, 0, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.05);
+/* --- Segmented Controls --- */
+.dv-cal-segmented-control {
+  display: flex; /* Changed to flex */
+  background: rgba(0, 0, 0, 0.2); /* Darker base */
   border-radius: 8px;
-  color: #94a3b8;
-  font-size: 14px;
+  padding: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  width: 100%; /* Make it take full width */
+}
+.dv-cal-segmented-control button {
+  flex: 1; /* Make buttons share width equally */
+  padding: 7px 12px; /* Slightly more padding */
+  border: none;
+  background: transparent;
+  border-radius: 6px;
+  color: var(--text-muted-dark, #94a3b8);
+  font-size: 13px;
+  font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s;
-}
-
-.dataview-calendar-editor__advanced-toggle:hover {
-  color: #e2e8f0;
-}
-
-.dataview-calendar-editor__advanced-panel {
-  margin-top: 16px;
-  padding: 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-  background: rgba(0, 0, 0, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  border-radius: 8px;
-  animation: fadeIn 0.2s ease-in-out;
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(-10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-/* Checkbox styling */
-.dataview-calendar-editor__checkbox {
+  transition: background-color 0.2s, color 0.2s, box-shadow 0.2s;
   display: flex;
   align-items: center;
-  gap: 8px;
+  justify-content: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+.dv-cal-segmented-control button.active {
+  background: rgba(255, 255, 255, 0.1); /* Subtle light active state */
+  color: var(--interactive-accent-light, #60a5fa);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+.dv-cal-segmented-control button i {
+  font-size: 13px; /* Slightly larger icons */
 }
 
-.dataview-calendar-editor__checkbox input[type="checkbox"] {
-  appearance: none;
-  width: 18px;
-  height: 18px;
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 4px;
+/* --- Date Range --- */
+.dv-cal-date-range-inputs {
+  display: flex;
+  gap: 12px; /* Reduced gap between date inputs */
+  margin-top: 10px;
+  flex-wrap: wrap; /* Allow wrapping on smaller screens */
+  max-width: 95%; /* Prevent overflow */
+}
+
+/* Custom Toggle Switch */
+.dv-cal-toggle {
   position: relative;
-  cursor: pointer;
+  display: inline-block;
+  width: 40px;
+  height: 22px;
+  flex-shrink: 0; /* Prevent toggle from shrinking */
 }
-
-.dataview-calendar-editor__checkbox input[type="checkbox"]:checked {
-  background: rgba(59, 130, 246, 0.8);
-  border-color: rgba(59, 130, 246, 0.8);
+.dv-cal-toggle input {
+  opacity: 0;
+  width: 0;
+  height: 0;
 }
-
-.dataview-calendar-editor__checkbox input[type="checkbox"]:checked::after {
-  content: "✓";
+.dv-cal-toggle-slider {
   position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  color: white;
-  font-size: 12px;
-}
-
-.dataview-calendar-editor__checkbox label {
-  font-size: 14px;
   cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  transition: 0.3s;
+  border-radius: 22px;
 }
-
-/* Radio buttons */
-.dataview-calendar-editor__radio-group {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin-bottom: 12px;
-}
-
-.dataview-calendar-editor__radio {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  cursor: pointer;
-}
-
-.dataview-calendar-editor__radio input[type="radio"] {
-  appearance: none;
-  width: 18px;
-  height: 18px;
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 50%;
-  position: relative;
-  cursor: pointer;
-}
-
-.dataview-calendar-editor__radio input[type="radio"]:checked {
-  border-color: rgba(59, 130, 246, 0.8);
-}
-
-.dataview-calendar-editor__radio input[type="radio"]:checked::after {
+.dv-cal-toggle-slider:before {
+  position: absolute;
   content: "";
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 10px;
-  height: 10px;
-  background: rgba(59, 130, 246, 0.8);
+  height: 16px;
+  width: 16px;
+  left: 2px;
+  bottom: 2px;
+  background-color: #ccc; /* Lighter grey knob */
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  transition: 0.3s;
   border-radius: 50%;
 }
-
-.dataview-calendar-editor__display-options {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+.dv-cal-toggle input:checked + .dv-cal-toggle-slider {
+  background-color: var(--interactive-accent-light, #60a5fa);
+  border-color: var(--interactive-accent-light, #60a5fa);
 }
-
-/* Date filter */
-.dataview-calendar-editor__date-filter-options {
-  margin-top: 8px;
-  margin-left: 26px;
+.dv-cal-toggle input:focus-visible + .dv-cal-toggle-slider {
+  /* Use focus-visible */
+  box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.3);
 }
-
-.dataview-calendar-editor__date-range {
-  display: flex;
-  gap: 16px;
-  margin-top: 12px;
+.dv-cal-toggle input:checked + .dv-cal-toggle-slider:before {
+  transform: translateX(18px);
+  background-color: #fff; /* White knob when active */
 }
-
-.dataview-calendar-editor__date-range-field {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+.dv-cal-toggle-label {
+  font-size: 14px;
+  color: var(--text-normal-dark, #e1e1e6);
+  cursor: pointer; /* Make label clickable too */
+  transition: color 0.2s;
+}
+.dv-cal-toggle-label--disabled {
+  color: var(--text-faint-dark, #717a8a);
 }
 
 /* Tips section */
-.dataview-calendar-editor__tips {
-  margin-top: 8px;
-  padding: 16px;
+.dv-cal-tips {
   background: rgba(15, 23, 42, 0.3);
-  border-radius: 6px;
+  border-radius: 10px;
   border: 1px solid rgba(255, 255, 255, 0.05);
+  padding: 16px;
 }
 
-.dataview-calendar-editor__tips-header {
+.dv-cal-tips-header {
   display: flex;
   align-items: center;
   gap: 8px;
-  color: #60a5fa;
+  color: var(--interactive-accent-light, #60a5fa);
   font-size: 14px;
   font-weight: 500;
   margin-bottom: 12px;
 }
 
-.dataview-calendar-editor__tips-content {
+.dv-cal-tips-content {
   font-size: 13px;
-  color: #94a3b8;
+  color: var(--text-muted-dark, #94a3b8);
   line-height: 1.5;
 }
 
+.dv-cal-tips-content p {
+  margin: 0 0 8px 0;
+}
+
+.dv-cal-tips-content p:last-child {
+  margin-bottom: 0;
+}
+
 /* Responsive adjustments */
-@media (max-width: 768px) {
-  .dataview-calendar-editor__date-selector {
-    grid-template-columns: 1fr;
+@media (max-width: 600px) {
+  .dv-cal-segmented-control {
+    flex-wrap: wrap; /* Allow wrapping on small screens */
   }
-
-  .dataview-calendar-editor__source-selector {
-    grid-template-columns: repeat(2, 1fr);
+  .dv-cal-segmented-control button {
+    flex-basis: 50%; /* Two buttons per row */
   }
-
-  .dataview-calendar-editor__date-range {
+  .dv-cal-date-range-inputs {
     flex-direction: column;
-    gap: 12px;
+    gap: 10px;
+  }
+  .dv-cal-section-description {
+    display: none; /* Hide description on small screens */
   }
 }
 </style>

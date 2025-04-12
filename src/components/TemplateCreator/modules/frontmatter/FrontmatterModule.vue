@@ -49,20 +49,20 @@
           </button>
           <button
             class="properties-template-button"
-            @click="toggleTemplateDropdown"
+            @click="toggleTemplateDrawer"
           >
             <i class="fas fa-layer-group"></i> Use Template
             <i
               :class="[
                 'fas',
-                showTemplateDropdown ? 'fa-chevron-up' : 'fa-chevron-down',
+                showTemplateDrawer ? 'fa-chevron-up' : 'fa-chevron-down',
                 'properties-dropdown-arrow',
               ]"
             ></i>
           </button>
           <div
             class="properties-dropdown-menu properties-dropdown-menu--template"
-            v-if="showTemplateDropdown"
+            v-if="showTemplateDrawer"
           >
             <button
               v-for="template in quickTemplates"
@@ -82,60 +82,68 @@
         <!-- Action Bar when properties exist -->
         <div class="properties-actions properties-actions--existing">
           <div class="properties-add-dropdown">
-            <button class="properties-add-button" @click="toggleAddDropdown">
+            <button class="properties-add-button" @click="toggleAddDrawer">
               <i class="fas fa-plus"></i> Add Property
               <i
                 :class="[
                   'fas',
-                  showAddDropdown ? 'fa-chevron-up' : 'fa-chevron-down',
+                  showAddDrawer ? 'fa-chevron-up' : 'fa-chevron-down',
                   'properties-dropdown-arrow',
                 ]"
               ></i>
             </button>
-            <div
-              class="properties-dropdown-menu properties-dropdown-menu--add"
-              v-if="showAddDropdown"
-            >
-              <button
-                v-for="type in propertyTypes"
-                :key="type.id"
-                class="properties-dropdown-item"
-                @click="addNewProperty(type.id)"
-              >
-                <i :class="type.icon"></i>
-                <span>{{ type.name }}</span>
-              </button>
-            </div>
           </div>
 
           <div class="properties-template-dropdown">
             <button
               class="properties-template-button"
-              @click="toggleTemplateDropdown"
+              @click="toggleTemplateDrawer"
             >
               <i class="fas fa-layer-group"></i> Templates
               <i
                 :class="[
                   'fas',
-                  showTemplateDropdown ? 'fa-chevron-up' : 'fa-chevron-down',
+                  showTemplateDrawer ? 'fa-chevron-up' : 'fa-chevron-down',
                   'properties-dropdown-arrow',
                 ]"
               ></i>
             </button>
-            <div
-              class="properties-dropdown-menu properties-dropdown-menu--template"
-              v-if="showTemplateDropdown"
+          </div>
+        </div>
+
+        <!-- Add Property Drawer -->
+        <div
+          v-if="showAddDrawer"
+          class="properties-drawer properties-drawer--add"
+        >
+          <div class="properties-drawer-grid">
+            <button
+              v-for="type in propertyTypes"
+              :key="type.id"
+              class="properties-drawer-item"
+              @click="addNewProperty(type.id)"
             >
-              <button
-                v-for="template in quickTemplates"
-                :key="template.id"
-                class="properties-dropdown-item"
-                @click="applyTemplate(template.id)"
-              >
-                <i :class="template.icon"></i>
-                <span>{{ template.name }}</span>
-              </button>
-            </div>
+              <i :class="type.icon"></i>
+              <span>{{ type.name }}</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Templates Drawer -->
+        <div
+          v-if="showTemplateDrawer"
+          class="properties-drawer properties-drawer--template"
+        >
+          <div class="properties-drawer-grid">
+            <button
+              v-for="template in quickTemplates"
+              :key="template.id"
+              class="properties-drawer-item"
+              @click="applyTemplate(template.id)"
+            >
+              <i :class="template.icon"></i>
+              <span>{{ template.name }}</span>
+            </button>
           </div>
         </div>
 
@@ -143,24 +151,229 @@
         <div
           v-for="(property, index) in properties"
           :key="index"
-          class="property-row"
+          class="property-container"
         >
-          <!-- Type Selector/Icon -->
-          <div class="property-type-selector">
+          <div class="property-row">
+            <!-- Type Selector/Icon -->
+            <div class="property-type-selector">
+              <button
+                @click="toggleTypeDrawer(index)"
+                class="property-type-button"
+              >
+                <i :class="getPropertyTypeInfo(property.type).icon"></i>
+              </button>
+            </div>
+
+            <!-- Property Name -->
+            <input
+              type="text"
+              v-model="property.name"
+              class="property-name-input"
+              placeholder="Property name"
+              @input="debounceUpdate"
+              @blur="updateFrontmatter"
+            />
+
+            <!-- Property Value (Dynamic Component) -->
+            <div class="property-value-cell">
+              <!-- Text Input -->
+              <input
+                v-if="property.type === 'text'"
+                type="text"
+                v-model="property.value"
+                class="property-value-input property-value-input--text"
+                placeholder="Text value"
+                @input="debounceUpdate"
+                @blur="updateFrontmatter"
+              />
+
+              <!-- Number Input -->
+              <input
+                v-if="property.type === 'number'"
+                type="number"
+                v-model.number="property.value"
+                class="property-value-input property-value-input--number"
+                placeholder="0"
+                @input="debounceUpdate"
+                @blur="updateFrontmatter"
+              />
+
+              <!-- Checkbox (Boolean) Input -->
+              <div
+                v-if="
+                  property.type === 'checkbox' || property.type === 'boolean'
+                "
+                class="property-value-input--checkbox"
+              >
+                <input
+                  type="checkbox"
+                  :id="'prop-checkbox-' + index"
+                  v-model="property.value"
+                  @change="updateFrontmatter"
+                />
+                <label
+                  :for="'prop-checkbox-' + index"
+                  class="checkbox-custom-label"
+                ></label>
+              </div>
+
+              <!-- Date Input -->
+              <input
+                v-if="property.type === 'date'"
+                type="date"
+                v-model="property.value"
+                class="property-value-input property-value-input--date"
+                @input="debounceUpdate"
+                @change="updateFrontmatter"
+              />
+
+              <!-- DateTime Input -->
+              <input
+                v-if="property.type === 'datetime'"
+                type="datetime-local"
+                v-model="property.value"
+                class="property-value-input property-value-input--datetime"
+                @input="debounceUpdate"
+                @change="updateFrontmatter"
+              />
+
+              <!-- isRecurring Checkbox -->
+              <div
+                v-if="property.type === 'isRecurring'"
+                class="property-value-input--checkbox property-value-input--recurring"
+              >
+                <input
+                  type="checkbox"
+                  :id="'prop-recurring-' + index"
+                  v-model="property.value"
+                  @change="updateFrontmatter"
+                />
+                <label
+                  :for="'prop-recurring-' + index"
+                  class="checkbox-custom-label"
+                >
+                  <span v-if="property.value" class="recurring-indicator">
+                    <i class="fas fa-redo-alt"></i>
+                  </span>
+                </label>
+                <span class="recurring-label">Recurring task</span>
+              </div>
+
+              <!-- List (Tags) Input -->
+              <div
+                v-if="property.type === 'list' || property.type === 'tags'"
+                class="property-value-input--list"
+              >
+                <div class="property-tags">
+                  <span
+                    v-for="(tag, tagIndex) in property.value"
+                    :key="tagIndex"
+                    class="property-tag"
+                  >
+                    {{ tag }}
+                    <button
+                      @click="removeTag(index, tagIndex)"
+                      class="property-tag-remove"
+                    >
+                      <i class="fas fa-times"></i>
+                    </button>
+                  </span>
+                </div>
+                <input
+                  type="text"
+                  v-model="tagInputs[index]"
+                  class="property-tag-entry-input"
+                  placeholder="Add item..."
+                  @keydown.enter.prevent="addTag(index)"
+                  @blur="addTagOnBlur(index)"
+                />
+              </div>
+
+              <!-- Templater Prompt -->
+              <div
+                v-if="property.type === 'prompt'"
+                class="property-value-input--prompt"
+              >
+                <div class="prompt-editor">
+                  <div class="prompt-field">
+                    <label>Question to ask:</label>
+                    <input
+                      type="text"
+                      v-model="property.promptOptions.question"
+                      placeholder="e.g., What is the title?"
+                      class="prompt-input"
+                      @input="debounceUpdate"
+                    />
+                  </div>
+                  <div class="prompt-field">
+                    <label>Default answer:</label>
+                    <input
+                      type="text"
+                      v-model="property.promptOptions.defaultValue"
+                      placeholder="Optional default value"
+                      class="prompt-input"
+                      @input="debounceUpdate"
+                    />
+                  </div>
+                  <div class="prompt-checkbox">
+                    <input
+                      type="checkbox"
+                      :id="'multiline-' + index"
+                      v-model="property.promptOptions.multiline"
+                      @change="updateFrontmatter"
+                    />
+                    <label :for="'multiline-' + index"
+                      >Allow multiple lines</label
+                    >
+                  </div>
+                </div>
+              </div>
+
+              <!-- Templater File Info -->
+              <div
+                v-if="
+                  property.type === 'fileInfo' ||
+                  property.type === 'fileProperty'
+                "
+                class="property-value-input--fileinfo"
+              >
+                <div class="fileinfo-selector">
+                  <select
+                    v-model="property.fileProperty"
+                    class="fileinfo-select"
+                    @change="updateFrontmatter"
+                  >
+                    <option value="" disabled>
+                      Select file information...
+                    </option>
+                    <option
+                      v-for="option in filePropertyOptions"
+                      :key="option.id"
+                      :value="option.code"
+                    >
+                      {{ option.name }}
+                    </option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <!-- Delete Button -->
             <button
-              @click="toggleTypeDropdown(index)"
-              class="property-type-button"
+              class="property-delete-button"
+              @click="removeProperty(index)"
             >
-              <i :class="getPropertyTypeInfo(property.type).icon"></i>
+              <i class="fas fa-trash-alt"></i>
             </button>
-            <div
-              class="properties-dropdown-menu property-type-dropdown"
-              v-if="activeTypeDropdown === index"
-            >
+          </div>
+
+          <!-- Type Drawer -->
+          <div v-if="activeTypeDrawer === index" class="property-type-drawer">
+            <div class="property-type-drawer-grid">
               <button
                 v-for="type in propertyTypes"
                 :key="type.id"
-                class="properties-dropdown-item"
+                class="property-type-drawer-item"
                 @click="changePropertyType(index, type.id)"
               >
                 <i :class="type.icon"></i>
@@ -168,200 +381,6 @@
               </button>
             </div>
           </div>
-
-          <!-- Property Name -->
-          <input
-            type="text"
-            v-model="property.name"
-            class="property-name-input"
-            placeholder="Property name"
-            @input="debounceUpdate"
-            @blur="updateFrontmatter"
-          />
-
-          <!-- Property Value (Dynamic Component) -->
-          <div class="property-value-cell">
-            <!-- Text Input -->
-            <input
-              v-if="property.type === 'text'"
-              type="text"
-              v-model="property.value"
-              class="property-value-input property-value-input--text"
-              placeholder="Text value"
-              @input="debounceUpdate"
-              @blur="updateFrontmatter"
-            />
-
-            <!-- Number Input -->
-            <input
-              v-if="property.type === 'number'"
-              type="number"
-              v-model.number="property.value"
-              class="property-value-input property-value-input--number"
-              placeholder="0"
-              @input="debounceUpdate"
-              @blur="updateFrontmatter"
-            />
-
-            <!-- Checkbox (Boolean) Input -->
-            <div
-              v-if="property.type === 'checkbox' || property.type === 'boolean'"
-              class="property-value-input--checkbox"
-            >
-              <input
-                type="checkbox"
-                :id="'prop-checkbox-' + index"
-                v-model="property.value"
-                @change="updateFrontmatter"
-              />
-              <label
-                :for="'prop-checkbox-' + index"
-                class="checkbox-custom-label"
-              ></label>
-            </div>
-
-            <!-- Date Input -->
-            <input
-              v-if="property.type === 'date'"
-              type="date"
-              v-model="property.value"
-              class="property-value-input property-value-input--date"
-              @input="debounceUpdate"
-              @change="updateFrontmatter"
-            />
-
-            <!-- DateTime Input -->
-            <input
-              v-if="property.type === 'datetime'"
-              type="datetime-local"
-              v-model="property.value"
-              class="property-value-input property-value-input--datetime"
-              @input="debounceUpdate"
-              @change="updateFrontmatter"
-            />
-
-            <!-- isRecurring Checkbox -->
-            <div
-              v-if="property.type === 'isRecurring'"
-              class="property-value-input--checkbox property-value-input--recurring"
-            >
-              <input
-                type="checkbox"
-                :id="'prop-recurring-' + index"
-                v-model="property.value"
-                @change="updateFrontmatter"
-              />
-              <label
-                :for="'prop-recurring-' + index"
-                class="checkbox-custom-label"
-              >
-                <span v-if="property.value" class="recurring-indicator">
-                  <i class="fas fa-redo-alt"></i>
-                </span>
-              </label>
-              <span class="recurring-label">Recurring task</span>
-            </div>
-
-            <!-- List (Tags) Input -->
-            <div
-              v-if="property.type === 'list' || property.type === 'tags'"
-              class="property-value-input--list"
-            >
-              <div class="property-tags">
-                <span
-                  v-for="(tag, tagIndex) in property.value"
-                  :key="tagIndex"
-                  class="property-tag"
-                >
-                  {{ tag }}
-                  <button
-                    @click="removeTag(index, tagIndex)"
-                    class="property-tag-remove"
-                  >
-                    <i class="fas fa-times"></i>
-                  </button>
-                </span>
-              </div>
-              <input
-                type="text"
-                v-model="tagInputs[index]"
-                class="property-tag-entry-input"
-                placeholder="Add item..."
-                @keydown.enter.prevent="addTag(index)"
-                @blur="addTagOnBlur(index)"
-              />
-            </div>
-
-            <!-- Templater Prompt -->
-            <div
-              v-if="property.type === 'prompt'"
-              class="property-value-input--prompt"
-            >
-              <div class="prompt-editor">
-                <div class="prompt-field">
-                  <label>Question to ask:</label>
-                  <input
-                    type="text"
-                    v-model="property.promptOptions.question"
-                    placeholder="e.g., What is the title?"
-                    class="prompt-input"
-                    @input="debounceUpdate"
-                  />
-                </div>
-                <div class="prompt-field">
-                  <label>Default answer:</label>
-                  <input
-                    type="text"
-                    v-model="property.promptOptions.defaultValue"
-                    placeholder="Optional default value"
-                    class="prompt-input"
-                    @input="debounceUpdate"
-                  />
-                </div>
-                <div class="prompt-checkbox">
-                  <input
-                    type="checkbox"
-                    :id="'multiline-' + index"
-                    v-model="property.promptOptions.multiline"
-                    @change="updateFrontmatter"
-                  />
-                  <label :for="'multiline-' + index"
-                    >Allow multiple lines</label
-                  >
-                </div>
-              </div>
-            </div>
-
-            <!-- Templater File Info -->
-            <div
-              v-if="
-                property.type === 'fileInfo' || property.type === 'fileProperty'
-              "
-              class="property-value-input--fileinfo"
-            >
-              <div class="fileinfo-selector">
-                <select
-                  v-model="property.fileProperty"
-                  class="fileinfo-select"
-                  @change="updateFrontmatter"
-                >
-                  <option value="" disabled>Select file information...</option>
-                  <option
-                    v-for="option in filePropertyOptions"
-                    :key="option.id"
-                    :value="option.code"
-                  >
-                    {{ option.name }}
-                  </option>
-                </select>
-              </div>
-            </div>
-          </div>
-
-          <!-- Delete Button -->
-          <button class="property-delete-button" @click="removeProperty(index)">
-            <i class="fas fa-trash-alt"></i>
-          </button>
         </div>
       </div>
     </div>
@@ -397,9 +416,9 @@ const emit = defineEmits<{
 const baseModuleRef = ref<InstanceType<typeof BaseModule> | null>(null);
 
 // UI state
-const showAddDropdown = ref(false);
-const showTemplateDropdown = ref(false);
-const activeTypeDropdown = ref<number | null>(null);
+const showAddDrawer = ref(false);
+const showTemplateDrawer = ref(false);
+const activeTypeDrawer = ref<number | null>(null);
 let updateTimeout: ReturnType<typeof setTimeout> | null = null;
 
 // Property Types with human-friendly names and icons
@@ -661,8 +680,8 @@ onBeforeUnmount(() => {
 function handleOutsideClick(e: Event) {
   const target = e.target as HTMLElement;
   if (baseModuleRef.value && !baseModuleRef.value.$el.contains(target)) {
-    // Close all dropdowns if clicking outside
-    closeDropdowns();
+    // Close all drawers if clicking outside
+    closeDrawers();
   }
 }
 
@@ -671,28 +690,30 @@ function truncate(str: string, len: number) {
   return str.length > len ? str.substring(0, len) + "..." : str;
 }
 
-// Toggle dropdowns
-function toggleAddDropdown() {
-  closeDropdowns();
-  showAddDropdown.value = !showAddDropdown.value;
+// Toggle functions
+function toggleAddDrawer() {
+  closeDrawers();
+  showAddDrawer.value = !showAddDrawer.value;
 }
 
-function toggleTemplateDropdown() {
-  closeDropdowns();
-  showTemplateDropdown.value = !showTemplateDropdown.value;
+function toggleTemplateDrawer() {
+  closeDrawers();
+  showTemplateDrawer.value = !showTemplateDrawer.value;
 }
 
-function toggleTypeDropdown(index: number) {
-  closeDropdowns();
-  activeTypeDropdown.value = activeTypeDropdown.value === index ? null : index;
+function toggleTypeDrawer(index: number) {
+  // Close all other dropdowns first
+  closeDrawers();
+
+  // Toggle the drawer for this index
+  activeTypeDrawer.value = activeTypeDrawer.value === index ? null : index;
 }
 
-function closeDropdowns() {
-  activeTypeDropdown.value = null;
-  showAddDropdown.value = false;
-  showTemplateDropdown.value = false;
+function closeDrawers() {
+  activeTypeDrawer.value = null;
+  showAddDrawer.value = false;
+  showTemplateDrawer.value = false;
 }
-
 // Apply a template
 function applyTemplate(templateId: string) {
   const template = quickTemplates.find((t) => t.id === templateId);
@@ -702,7 +723,7 @@ function applyTemplate(templateId: string) {
     initializeTagInputs();
     updateFrontmatter();
   }
-  showTemplateDropdown.value = false;
+  showTemplateDrawer.value = false; // Close drawer
 }
 
 // Add a new property
@@ -744,7 +765,7 @@ function addNewProperty(type: string) {
   });
 
   updateFrontmatter();
-  showAddDropdown.value = false; // Close dropdown after adding
+  showAddDrawer.value = false; // Close drawer after adding
 }
 
 // Get default value based on property type
@@ -809,7 +830,7 @@ function changePropertyType(index: number, newType: string) {
 
   const prop = properties.value[index];
   if (prop.type === dataType) {
-    activeTypeDropdown.value = null;
+    activeTypeDrawer.value = null;
     return; // No change
   }
 
@@ -823,7 +844,7 @@ function changePropertyType(index: number, newType: string) {
 
   initializeTagInputs(); // Re-init in case it changed to/from list
   updateFrontmatter();
-  activeTypeDropdown.value = null; // Close dropdown
+  activeTypeDrawer.value = null; // Close drawer
 }
 
 // Remove a property
@@ -934,6 +955,7 @@ function generateFrontmatter() {
   // Handle special case for Templater tags
   // This replaces the quoted Templater syntax with unquoted syntax
   yamlString = yamlString.replace(/"<%(.*?)%>"/g, "<$1>");
+  console.log("Final YAML with Templater tags processed:", yamlString);
 
   // Just return the frontmatter without container markers - let the extension handle it
   return `---\n${yamlString}---\n`;
@@ -947,6 +969,8 @@ function updateFrontmatter() {
   }
 
   const frontmatter = generateFrontmatter();
+  // Add this console log to see the generated frontmatter
+  console.log("Generated Frontmatter:", frontmatter);
   emit("update:content", [frontmatter]);
 }
 
@@ -1630,6 +1654,119 @@ watch(
 
 .property-delete-button i {
   font-size: 14px;
+}
+
+/* Property Action Drawer at the top of the module */
+.properties-drawer {
+  background: var(--background-primary, #282c34);
+  border: 1px solid var(--background-modifier-border, #3f444b);
+  border-radius: 6px;
+  margin: 2px 0 8px;
+  padding: 8px;
+  animation: fadeIn 0.15s ease-out;
+}
+
+.properties-drawer-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 6px;
+}
+
+.properties-drawer-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 4px;
+  background: var(--background-secondary, #2f333a);
+  border: 1px solid var(--background-modifier-border, #3f444b);
+  color: var(--text-normal, #e2e8f0);
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: left;
+}
+
+.properties-drawer-item:hover {
+  background: var(--background-modifier-hover, #4a4f56);
+  border-color: var(--interactive-accent, #4a7de7);
+}
+
+.properties-drawer-item i {
+  width: 16px;
+  text-align: center;
+  color: var(--interactive-accent, #4a7de7);
+  font-size: 14px;
+}
+
+/* Container for property row and its drawer */
+.property-container {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 2px;
+}
+
+/* The property row itself - keep your existing styles */
+.property-row {
+  display: grid;
+  grid-template-columns: [type] 30px [name] 1fr [value] 1.5fr [delete] 30px;
+  gap: 8px;
+  align-items: center;
+  padding: 4px 0;
+  border-radius: 4px;
+  transition: background-color 0.15s ease-in-out;
+}
+
+/* Property Type Drawer */
+.property-type-drawer {
+  background: var(--background-primary, #282c34);
+  border: 1px solid var(--background-modifier-border, #3f444b);
+  border-radius: 0 0 6px 6px;
+  margin: 2px 0 8px;
+  padding: 8px;
+  animation: fadeIn 0.15s ease-out;
+}
+
+.property-type-drawer-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 6px;
+}
+
+.property-type-drawer-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 4px;
+  background: var(--background-secondary, #2f333a);
+  border: 1px solid var(--background-modifier-border, #3f444b);
+  color: var(--text-normal, #e2e8f0);
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: left;
+}
+
+.property-type-drawer-item:hover {
+  background: var(--background-modifier-hover, #4a4f56);
+  border-color: var(--interactive-accent, #4a7de7);
+}
+
+.property-type-drawer-item i {
+  width: 16px;
+  text-align: center;
+  color: var(--interactive-accent, #4a7de7);
+  font-size: 14px;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* Animations */
