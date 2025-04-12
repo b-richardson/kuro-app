@@ -1,11 +1,4 @@
 <template>
-  <!-- 
-  IMPORTANT NOTE FOR DEVELOPERS:
-  - This component should NOT implement any connection checks to Obsidian
-  - This component should NOT display any toast messages
-  - All connection validation and user feedback should be handled by parent components
-  - Keep this component focused solely on building Dataview queries
-  -->
   <BaseModule
     :module="module"
     :index="index"
@@ -18,254 +11,165 @@
     @select="$emit('select')"
     @duplicate="$emit('duplicate')"
     @module-change="$emit('module-change')"
-    @add-line="regenerateQuery"
     ref="baseModuleRef"
   >
-    <div class="dataview-list-editor">
-      <!-- Module Header -->
-      <div class="dataview-list-editor__header">
-        <div class="dataview-list-editor__header-icon">
-          <i class="fas fa-database"></i>
+    <div class="dataview-builder">
+      <!-- Header -->
+      <div class="dv-header">
+        <div class="dv-header-icon">
+          <i class="fas fa-stream"></i>
         </div>
-        <div class="dataview-list-editor__header-title">Dataview List</div>
+        <div class="dv-header-title">Dataview List Builder</div>
       </div>
 
-      <!-- Source Selection Section -->
-      <div class="dataview-list-editor__section">
-        <div class="dataview-list-editor__section-header">
-          <div class="dataview-list-editor__section-title">
-            <i class="fas fa-filter"></i>
-            <span>Choose Source</span>
-          </div>
-          <div class="dataview-list-editor__section-description">
-            Select where to find your notes
-          </div>
+      <!-- Section 1: Source -->
+      <div class="dv-section">
+        <div class="dv-section-header">
+          <span class="dv-step-number">1</span>
+          <i class="fas fa-search dv-section-icon"></i>
+          <h3 class="dv-section-title">Find Notes</h3>
         </div>
-
-        <div class="dataview-list-editor__source-selector">
-          <button
-            class="dataview-list-editor__source-card"
-            :class="{
-              'dataview-list-editor__source-card--active': sourceType === 'all',
-            }"
-            @click="setSourceType('all')"
-          >
-            <div class="dataview-list-editor__source-card-icon">
-              <i class="fas fa-file-alt"></i>
-            </div>
-            <div class="dataview-list-editor__source-card-label">All Notes</div>
-          </button>
-
-          <button
-            class="dataview-list-editor__source-card"
-            :class="{
-              'dataview-list-editor__source-card--active':
-                sourceType === 'folder',
-            }"
-            @click="setSourceType('folder')"
-          >
-            <div class="dataview-list-editor__source-card-icon">
-              <i class="fas fa-folder"></i>
-            </div>
-            <div class="dataview-list-editor__source-card-label">
-              From Folder
-            </div>
-          </button>
-
-          <button
-            class="dataview-list-editor__source-card"
-            :class="{
-              'dataview-list-editor__source-card--active': sourceType === 'tag',
-            }"
-            @click="setSourceType('tag')"
-          >
-            <div class="dataview-list-editor__source-card-icon">
-              <i class="fas fa-hashtag"></i>
-            </div>
-            <div class="dataview-list-editor__source-card-label">With Tag</div>
-          </button>
-
-          <button
-            class="dataview-list-editor__source-card"
-            :class="{
-              'dataview-list-editor__source-card--active':
-                sourceType === 'property',
-            }"
-            @click="setSourceType('property')"
-          >
-            <div class="dataview-list-editor__source-card-icon">
-              <i class="fas fa-key"></i>
-            </div>
-            <div class="dataview-list-editor__source-card-label">
-              With Property
-            </div>
-          </button>
-        </div>
-
-        <!-- Configuration Panel -->
-        <div class="dataview-list-editor__config-panel">
-          <!-- Folder Selection -->
-          <div
-            v-if="sourceType === 'folder'"
-            class="dataview-list-editor__config-content"
-          >
-            <div class="dataview-list-editor__field-group">
-              <label class="dataview-list-editor__label">Select Folder</label>
-              <div class="dataview-list-editor__input-group">
-                <select
-                  class="dataview-list-editor__select"
-                  v-model="selectedFolder"
-                  @change="handleSourceValueChange"
-                >
-                  <option disabled value="">Select a folder</option>
-                  <option
-                    v-for="folder in availableFolders"
-                    :key="folder.path"
-                    :value="folder.path"
-                  >
-                    {{ folder.path || "/" }}
-                  </option>
-                </select>
-                <button
-                  class="dataview-list-editor__action-btn"
-                  title="Refresh folder list"
-                  @click="fetchFolders"
-                >
-                  <i class="fas fa-sync-alt"></i>
-                </button>
-              </div>
-              <div class="dataview-list-editor__field-tip">
-                Only include notes from this folder
-              </div>
-            </div>
-          </div>
-
-          <!-- Tag Selection -->
-          <div
-            v-if="sourceType === 'tag'"
-            class="dataview-list-editor__config-content"
-          >
-            <div class="dataview-list-editor__field-group">
-              <label class="dataview-list-editor__label">Select Tag</label>
-              <div class="dataview-list-editor__input-group">
-                <select
-                  class="dataview-list-editor__select"
-                  v-model="selectedTag"
-                  @change="handleSourceValueChange"
-                >
-                  <option disabled value="">Select a tag</option>
-                  <option v-for="tag in availableTags" :key="tag" :value="tag">
-                    #{{ tag }}
-                  </option>
-                </select>
-                <button
-                  class="dataview-list-editor__action-btn"
-                  title="Refresh tag list"
-                  @click="fetchTags"
-                >
-                  <i class="fas fa-sync-alt"></i>
-                </button>
-              </div>
-              <div class="dataview-list-editor__field-tip">
-                Only include notes with this tag
-              </div>
-            </div>
-          </div>
-
-          <!-- Property Selection -->
-          <div
-            v-if="sourceType === 'property'"
-            class="dataview-list-editor__config-content"
-          >
-            <div class="dataview-list-editor__field-group">
-              <label class="dataview-list-editor__label"
-                >Filter by Property</label
+        <div class="dv-section-content">
+          <div class="dv-field-group">
+            <label class="dv-label">Look for notes:</label>
+            <div class="dv-segmented-control">
+              <button
+                :class="{ active: sourceType === 'all' }"
+                @click="setSourceType('all')"
               >
+                <i class="fas fa-globe-americas"></i> Everywhere
+              </button>
+              <button
+                :class="{ active: sourceType === 'folder' }"
+                @click="setSourceType('folder')"
+              >
+                <i class="fas fa-folder"></i> In Folder
+              </button>
+              <button
+                :class="{ active: sourceType === 'tag' }"
+                @click="setSourceType('tag')"
+              >
+                <i class="fas fa-tag"></i> With Tag
+              </button>
+              <button
+                :class="{ active: sourceType === 'property' }"
+                @click="setSourceType('property')"
+              >
+                <i class="fas fa-key"></i> With Property
+              </button>
+            </div>
+          </div>
 
-              <div class="dataview-list-editor__property-field">
-                <div class="dataview-list-editor__property-name">
-                  <select
-                    class="dataview-list-editor__select"
-                    v-model="selectedProperty"
-                    @change="handlePropertyChange"
-                  >
-                    <option disabled value="">Select a property</option>
-                    <option
-                      v-for="prop in availableProperties"
-                      :key="prop"
-                      :value="prop"
-                    >
-                      {{ prop }}
-                    </option>
-                  </select>
-                </div>
-
-                <div class="dataview-list-editor__property-operator">
-                  <select
-                    class="dataview-list-editor__select"
-                    v-model="propertyOperator"
-                    @change="handlePropertyOperatorChange"
-                  >
-                    <option value="=">equals</option>
-                    <option value="!=">not equals</option>
-                    <option value=">">greater than</option>
-                    <option value="<">less than</option>
-                    <option value=">=">greater/equal</option>
-                    <option value="<=">less/equal</option>
-                    <option value="contains">contains</option>
-                  </select>
-                </div>
-
-                <div class="dataview-list-editor__property-value">
-                  <input
-                    type="text"
-                    class="dataview-list-editor__text-input"
-                    placeholder="Value"
-                    v-model="propertyValue"
-                    @input="handlePropertyValueChange"
-                  />
-                </div>
-
-                <button
-                  class="dataview-list-editor__action-btn"
-                  title="Refresh property list"
-                  @click="fetchProperties"
+          <!-- Folder Source -->
+          <div v-if="sourceType === 'folder'" class="dv-field-group">
+            <label class="dv-label">Select Folder</label>
+            <div class="dv-input-wrapper">
+              <i class="fas fa-folder dv-input-icon"></i>
+              <select
+                class="dv-input"
+                v-model="selectedFolder"
+                @change="handleSourceValueChange"
+              >
+                <option disabled value="">Select a folder</option>
+                <option
+                  v-for="folder in availableFolders"
+                  :key="folder.path"
+                  :value="folder.path"
                 >
-                  <i class="fas fa-sync-alt"></i>
-                </button>
-              </div>
+                  {{ folder.path || "/" }}
+                </option>
+              </select>
+              <button class="dv-remove-button" @click="fetchFolders">
+                <i class="fas fa-sync-alt"></i>
+              </button>
+            </div>
+          </div>
 
-              <div class="dataview-list-editor__field-tip">
-                Only include notes where this property matches the condition
-              </div>
+          <!-- Tag Source -->
+          <div v-if="sourceType === 'tag'" class="dv-field-group">
+            <label class="dv-label">Select Tag</label>
+            <div class="dv-input-wrapper">
+              <span class="dv-tag-prefix">#</span>
+              <select
+                class="dv-input"
+                v-model="selectedTag"
+                @change="handleSourceValueChange"
+              >
+                <option disabled value="">Select a tag</option>
+                <option v-for="tag in availableTags" :key="tag" :value="tag">
+                  {{ tag }}
+                </option>
+              </select>
+              <button class="dv-remove-button" @click="fetchTags">
+                <i class="fas fa-sync-alt"></i>
+              </button>
+            </div>
+          </div>
+
+          <!-- Property Source -->
+          <div v-if="sourceType === 'property'" class="dv-field-group">
+            <label class="dv-label">Filter by Property</label>
+            <div class="dv-filter-row">
+              <select
+                class="dv-input dv-input--filter-prop"
+                v-model="selectedProperty"
+                @change="handlePropertyChange"
+              >
+                <option disabled value="">Select a property</option>
+                <option
+                  v-for="prop in availableProperties"
+                  :key="prop"
+                  :value="prop"
+                >
+                  {{ prop }}
+                </option>
+              </select>
+              <select
+                class="dv-select dv-select--filter-op"
+                v-model="propertyOperator"
+                @change="handlePropertyOperatorChange"
+              >
+                <option value="=">equals</option>
+                <option value="!=">not equals</option>
+                <option value=">">greater than</option>
+                <option value="<">less than</option>
+                <option value=">=">greater/equal</option>
+                <option value="<=">less/equal</option>
+                <option value="contains">contains</option>
+              </select>
+              <input
+                type="text"
+                class="dv-input dv-input--filter-value"
+                placeholder="Value"
+                v-model="propertyValue"
+                @input="handlePropertyValueChange"
+              />
+              <button class="dv-remove-button" @click="fetchProperties">
+                <i class="fas fa-sync-alt"></i>
+              </button>
             </div>
           </div>
         </div>
       </div>
 
-      <!-- Display Properties Section -->
-      <div class="dataview-list-editor__section">
-        <div class="dataview-list-editor__section-header">
-          <div class="dataview-list-editor__section-title">
-            <i class="fas fa-list"></i>
-            <span>Display Properties</span>
-          </div>
-          <div class="dataview-list-editor__section-description">
-            Choose what information to show for each note
-          </div>
+      <!-- Section 2: Display Properties -->
+      <div class="dv-section">
+        <div class="dv-section-header">
+          <span class="dv-step-number">2</span>
+          <i class="fas fa-info-circle dv-section-icon"></i>
+          <h3 class="dv-section-title">Show Information</h3>
         </div>
-
-        <!-- Properties Tags -->
-        <div class="dataview-list-editor__field-group">
-          <div class="dataview-list-editor__properties">
+        <div class="dv-section-content">
+          <div class="dv-display-fields-list">
             <div
               v-for="(prop, index) in displayProperties"
               :key="index"
-              class="dataview-list-editor__property-tag"
+              class="dv-display-field"
             >
+              <i class="fas fa-sticky-note"></i>
               <span>{{ prop }}</span>
               <button
-                class="dataview-list-editor__property-tag-remove"
+                class="dv-remove-button dv-remove-button--display"
                 @click="removeDisplayProperty(index)"
               >
                 <i class="fas fa-times"></i>
@@ -273,18 +177,17 @@
             </div>
             <div
               v-if="displayProperties.length === 0"
-              class="dataview-list-editor__properties-empty"
+              class="dv-display-field dv-display-field--default"
             >
-              No properties selected (will show default list)
+              <i class="fas fa-sticky-note"></i>
+              <span>No properties selected (will show default list)</span>
             </div>
           </div>
-
-          <!-- Add property input -->
-          <div class="dataview-list-editor__add-property">
-            <div class="dataview-list-editor__add-property-field">
+          <div class="dv-field-group">
+            <div class="dv-input-wrapper">
               <input
                 type="text"
-                class="dataview-list-editor__text-input"
+                class="dv-input"
                 placeholder="Add property..."
                 v-model="newDisplayProperty"
                 list="available-properties"
@@ -297,81 +200,31 @@
                   :value="prop"
                 ></option>
               </datalist>
-            </div>
-            <button
-              class="dataview-list-editor__add-btn"
-              @click="addDisplayProperty"
-              :disabled="!newDisplayProperty"
-            >
-              <i class="fas fa-plus"></i>
-              <span>Add Property</span>
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <!-- Limit Results Section (moved from advanced) -->
-      <div class="dataview-list-editor__section">
-        <div class="dataview-list-editor__section-header">
-          <div class="dataview-list-editor__section-title">
-            <i class="fas fa-calculator"></i>
-            <span>Limit Results</span>
-          </div>
-          <div class="dataview-list-editor__section-description">
-            Control how many results are in your list
-          </div>
-        </div>
-        <div class="dataview-list-editor__field-group">
-          <div class="dataview-list-editor__checkbox">
-            <input
-              type="checkbox"
-              id="limit-toggle"
-              v-model="useLimit"
-              @change="handleLimitChange"
-            />
-            <label for="limit-toggle">Limit number of results</label>
-          </div>
-          <div class="dataview-list-editor__limit-value" v-if="useLimit">
-            <input
-              type="number"
-              class="dataview-list-editor__text-input dataview-list-editor__number-input"
-              v-model.number="limitCount"
-              min="1"
-              max="1000"
-              @change="handleLimitChange"
-            />
-            <div class="dataview-list-editor__field-tip">
-              Maximum number of results to display
+              <button
+                class="dv-add-button"
+                @click="addDisplayProperty"
+                :disabled="!newDisplayProperty"
+              >
+                <i class="fas fa-plus"></i> Add
+              </button>
             </div>
           </div>
         </div>
       </div>
 
-      <!-- Advanced Options Section -->
-      <div class="dataview-list-editor__section">
-        <button
-          class="dataview-list-editor__advanced-toggle"
-          @click="showAdvanced = !showAdvanced"
-        >
-          <span>{{
-            showAdvanced ? "Hide advanced options" : "Show advanced options"
-          }}</span>
-          <i
-            :class="showAdvanced ? 'fas fa-chevron-up' : 'fas fa-chevron-down'"
-          ></i>
-        </button>
-
-        <div v-if="showAdvanced" class="dataview-list-editor__advanced-panel">
-          <!-- Sort Section -->
-          <div class="dataview-list-editor__field-group">
-            <label class="dataview-list-editor__label">
-              <i class="fas fa-sort"></i>
-              Sort Results
-            </label>
-
-            <div class="dataview-list-editor__sort-property">
+      <!-- Section 3: Arrange & Limit -->
+      <div class="dv-section">
+        <div class="dv-section-header">
+          <span class="dv-step-number">3</span>
+          <i class="fas fa-sort-amount-down dv-section-icon"></i>
+          <h3 class="dv-section-title">Arrange & Limit</h3>
+        </div>
+        <div class="dv-section-content dv-section-content--arrange">
+          <div class="dv-field-group dv-field-group--sort">
+            <label class="dv-label">Sort by:</label>
+            <div class="dv-sort-controls">
               <select
-                class="dataview-list-editor__select"
+                class="dv-input"
                 v-model="sortProperty"
                 @change="handleSortChange"
               >
@@ -387,55 +240,49 @@
                   {{ prop }}
                 </option>
               </select>
-            </div>
-
-            <div class="dataview-list-editor__sort-direction">
-              <div class="dataview-list-editor__radio-group">
-                <label class="dataview-list-editor__radio">
-                  <input
-                    type="radio"
-                    name="sortDirection"
-                    :value="'asc'"
-                    v-model="sortDirection"
-                    @change="handleSortChange"
-                  />
-                  <span class="dataview-list-editor__radio-text">
-                    <i class="fas fa-sort-amount-down-alt"></i>
-                    Ascending
-                  </span>
-                </label>
-
-                <label class="dataview-list-editor__radio">
-                  <input
-                    type="radio"
-                    name="sortDirection"
-                    :value="'desc'"
-                    v-model="sortDirection"
-                    @change="handleSortChange"
-                  />
-                  <span class="dataview-list-editor__radio-text">
-                    <i class="fas fa-sort-amount-down"></i>
-                    Descending
-                  </span>
-                </label>
+              <div class="dv-segmented-control dv-segmented-control--sort">
+                <button
+                  :class="{ active: sortDirection === 'asc' }"
+                  @click="setSortDirection('asc')"
+                >
+                  <i class="fas fa-arrow-up"></i> Asc
+                </button>
+                <button
+                  :class="{ active: sortDirection === 'desc' }"
+                  @click="setSortDirection('desc')"
+                >
+                  <i class="fas fa-arrow-down"></i> Desc
+                </button>
               </div>
             </div>
           </div>
-        </div>
-      </div>
 
-      <!-- Help Section -->
-      <div class="dataview-list-editor__tips">
-        <div class="dataview-list-editor__tips-header">
-          <i class="fas fa-lightbulb"></i>
-          <span>About Dataview Lists</span>
-        </div>
-        <div class="dataview-list-editor__tips-content">
-          <p>
-            This creates a list of notes based on your criteria. The results
-            will appear in your note as a list with the properties you've
-            selected.
-          </p>
+          <div class="dv-field-group dv-field-group--limit">
+            <label class="dv-label">Limit results:</label>
+            <div class="dv-limit-controls">
+              <label class="dv-toggle">
+                <input
+                  type="checkbox"
+                  v-model="useLimit"
+                  @change="handleLimitChange"
+                />
+                <span class="dv-toggle-slider"></span>
+              </label>
+              <input
+                v-if="useLimit"
+                type="number"
+                class="dv-input dv-input--limit-count"
+                min="1"
+                step="1"
+                v-model.number="limitCount"
+                @change="handleLimitChange"
+              />
+              <span v-if="useLimit" class="dv-limit-label">items</span>
+              <span v-else class="dv-limit-label dv-limit-label--disabled"
+                >Show all</span
+              >
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -899,485 +746,468 @@ function updateContent(content: string[]) {
 </script>
 
 <style scoped>
-.dataview-list-editor {
+/* --- Base & Glassmorphism --- */
+.dataview-builder {
   width: 100%;
-  color: #e2e8f0;
+  /* Light glassmorphism base */
+  /* background: rgba(255, 255, 255, 0.3); */
+  /* background: linear-gradient(135deg, rgba(255, 255, 255, 0.2) 0%, rgba(255, 255, 255, 0.1) 100%); */
+  background: var(
+    --background-secondary-alt-om,
+    rgba(235, 237, 242, 0.6)
+  ); /* Use CSS var or fallback */
+  backdrop-filter: blur(10px); /* Apply blur */
+  -webkit-backdrop-filter: blur(10px); /* Safari */
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 12px;
+  padding: 20px;
+  color: var(--text-normal, #2e3338); /* Darker text for light background */
+  font-family: var(--font-interface, sans-serif);
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 25px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
 }
 
-/* Header styles */
-.dataview-list-editor__header {
+/* --- Header --- */
+.dv-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-bottom: 15px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+  color: var(--text-title, #1a1d21);
+}
+
+.dv-header-icon {
+  font-size: 20px;
+  color: var(--interactive-accent, #4a7de7);
+}
+
+.dv-header-title {
+  font-size: 18px;
+  font-weight: 600;
+}
+
+/* --- Sections --- */
+.dv-section {
+  background: rgba(255, 255, 255, 0.4); /* Slightly more opaque */
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  border-radius: 10px;
+  padding: 18px;
+  transition: box-shadow 0.2s ease-in-out;
+}
+/* .dv-section:hover {
+   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+} */
+
+.dv-section-header {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding-bottom: 12px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  margin-bottom: 15px;
+  color: var(--text-title, #1a1d21);
 }
 
-.dataview-list-editor__header-icon {
-  color: #60a5fa;
-  font-size: 18px;
-}
-
-.dataview-list-editor__header-title {
-  font-size: 16px;
-  font-weight: 500;
-}
-
-/* Section styling */
-.dataview-list-editor__section {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-
-.dataview-list-editor__section-header {
-  margin-bottom: 4px;
-}
-
-.dataview-list-editor__section-title {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-weight: 500;
-  font-size: 16px;
-  color: #e2e8f0;
-}
-
-.dataview-list-editor__section-description {
-  color: #94a3b8;
-  font-size: 14px;
-  margin-top: 4px;
-}
-
-/* Source selection */
-.dataview-list-editor__source-selector {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 12px;
-  margin-bottom: 16px;
-}
-
-.dataview-list-editor__source-card {
-  display: flex;
-  flex-direction: column;
+.dv-step-number {
+  background-color: var(--interactive-accent, #4a7de7);
+  color: white;
+  font-size: 11px;
+  font-weight: bold;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  padding: 12px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 8px;
-  color: #cbd5e1;
-  transition: all 0.2s;
-  cursor: pointer;
 }
 
-.dataview-list-editor__source-card:hover {
-  background: rgba(255, 255, 255, 0.1);
-  transform: translateY(-2px);
+.dv-section-icon {
+  font-size: 16px;
+  color: var(--icon-color, #5c6166);
 }
 
-.dataview-list-editor__source-card--active {
-  background: rgba(59, 130, 246, 0.15);
-  border-color: rgba(59, 130, 246, 0.5);
-  color: #fff;
+.dv-section-title {
+  font-size: 16px;
+  font-weight: 500;
+  margin: 0;
 }
 
-.dataview-list-editor__source-card-icon {
-  font-size: 22px;
-  margin-bottom: 8px;
-  color: #60a5fa;
+.dv-section-content {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.dv-section-content--arrange {
+  flex-direction: row;
+  gap: 25px;
+  align-items: flex-start;
 }
 
-.dataview-list-editor__source-card-label {
-  font-size: 14px;
-}
-
-/* Configuration Panel */
-.dataview-list-editor__config-panel {
-  background: rgba(0, 0, 0, 0.1);
-  border-radius: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  overflow: hidden;
-}
-
-.dataview-list-editor__config-content {
-  padding: 16px;
-}
-
-/* Form field groups */
-.dataview-list-editor__field-group {
+/* --- Field Groups & Labels --- */
+.dv-field-group {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  margin-bottom: 16px;
+}
+.dv-field-group--sort,
+.dv-field-group--limit {
+  flex: 1; /* Share space in arrange section */
 }
 
-.dataview-list-editor__field-group:last-child {
-  margin-bottom: 0;
-}
-
-.dataview-list-editor__label {
-  font-size: 14px;
+.dv-label {
+  font-size: 13px;
   font-weight: 500;
-  color: #e2e8f0;
+  color: var(--text-muted, #5c6166);
+}
+
+/* --- Inputs & Selects --- */
+.dv-input,
+.dv-select {
+  padding: 9px 12px;
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 6px;
+  color: var(--text-normal, #2e3338);
+  font-size: 14px;
+  width: 100%;
+  transition: all 0.2s ease-in-out;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.03);
+}
+.dv-input:focus,
+.dv-select:focus {
+  outline: none;
+  border-color: var(--interactive-accent, #4a7de7);
+  box-shadow: 0 0 0 2px rgba(74, 125, 231, 0.2);
+  background: white;
+}
+.dv-input::placeholder {
+  color: var(--text-faint, #989ea4);
+}
+.dv-select {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%235c6166' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  padding-right: 35px;
+}
+
+.dv-input-wrapper {
+  position: relative;
   display: flex;
   align-items: center;
+}
+.dv-input-wrapper--source .dv-input {
+  padding-left: 32px;
+}
+.dv-input-icon {
+  position: absolute;
+  left: 10px;
+  color: var(--text-muted, #5c6166);
+  font-size: 14px;
+}
+.dv-tag-prefix {
+  position: absolute;
+  left: 10px;
+  color: var(--text-muted, #5c6166);
+  font-size: 14px;
+  font-weight: 500;
+}
+.dv-input-wrapper--source .dv-tag-prefix + .dv-input {
+  padding-left: 25px;
+}
+
+/* --- Segmented Controls --- */
+.dv-segmented-control {
+  display: inline-flex;
+  background: rgba(0, 0, 0, 0.04);
+  border-radius: 8px;
+  padding: 4px;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+}
+.dv-segmented-control button {
+  flex: 1;
+  padding: 6px 12px;
+  border: none;
+  background: transparent;
+  border-radius: 6px;
+  color: var(--text-muted, #5c6166);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s, color 0.2s, box-shadow 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   gap: 6px;
 }
-
-.dataview-list-editor__field-tip {
+.dv-segmented-control button.active {
+  background: white;
+  color: var(--interactive-accent, #4a7de7);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+.dv-segmented-control button i {
   font-size: 12px;
-  color: #94a3b8;
-  margin-top: 4px;
+}
+.dv-segmented-control--sort {
+  padding: 3px;
+}
+.dv-segmented-control--sort button {
+  padding: 4px 10px;
+  font-size: 12px;
 }
 
-.dataview-list-editor__input-group {
+/* --- Filters --- */
+.dv-filters-list {
   display: flex;
-  gap: 8px;
+  flex-direction: column;
+  gap: 10px;
+  padding-left: 20px; /* Indent filters */
+  border-left: 2px solid rgba(0, 0, 0, 0.08);
+  margin-left: 10px;
 }
-
-/* Text inputs */
-.dataview-list-editor__text-input {
-  padding: 10px 12px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 6px;
-  color: #e2e8f0;
-  font-size: 14px;
-  width: 100%;
-  transition: all 0.2s;
-}
-
-.dataview-list-editor__text-input:focus {
-  outline: none;
-  border-color: rgba(59, 130, 246, 0.5);
-  box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.25);
-}
-
-.dataview-list-editor__text-input::placeholder {
-  color: rgba(148, 163, 184, 0.5);
-}
-
-/* Select dropdown */
-.dataview-list-editor__select {
-  padding: 10px 12px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 6px;
-  color: #e2e8f0;
-  font-size: 14px;
-  width: 100%;
-  -webkit-appearance: none;
-  appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23cbd5e1' d='M6 8.825L1.175 4 2.05 3.125 6 7.075 9.95 3.125 10.825 4z'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 12px center;
-  padding-right: 36px;
-}
-
-.dataview-list-editor__select:focus {
-  outline: none;
-  border-color: rgba(59, 130, 246, 0.5);
-}
-
-/* Button styling */
-.dataview-list-editor__action-btn {
+.dv-filter-row {
   display: flex;
   align-items: center;
-  justify-content: center;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: #94a3b8;
-  width: 38px;
-  height: 38px;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.3);
+  padding: 8px 10px;
   border-radius: 6px;
-  cursor: pointer;
-  transition: all 0.2s;
+}
+.dv-filter-type {
+  font-size: 11px;
+  font-weight: bold;
+  color: var(--text-accent, #4a7de7);
+  background: rgba(74, 125, 231, 0.1);
+  padding: 3px 6px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+.dv-input--filter-prop {
+  width: 150px;
   flex-shrink: 0;
 }
-
-.dataview-list-editor__action-btn:hover {
-  background: rgba(255, 255, 255, 0.1);
-  color: #e2e8f0;
+.dv-select--filter-op {
+  width: 120px;
+  flex-shrink: 0;
+}
+.dv-input--filter-value {
+  flex-grow: 1;
 }
 
-/* Property fields */
-.dataview-list-editor__property-field {
-  display: grid;
-  grid-template-columns: 1.5fr 1fr 1.5fr auto;
-  gap: 8px;
-  align-items: center;
+.dv-filters-empty {
+  font-size: 13px;
+  color: var(--text-muted, #5c6166);
+  padding: 10px;
+  background: rgba(0, 0, 0, 0.02);
+  border-radius: 6px;
+  text-align: center;
+  border: 1px dashed rgba(0, 0, 0, 0.08);
 }
 
-/* Properties display */
-.dataview-list-editor__properties {
+/* --- Display Fields --- */
+.dv-display-fields-list {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  min-height: 38px;
-  padding: 4px;
-}
-
-.dataview-list-editor__properties-empty {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  height: 38px;
-  color: #94a3b8;
-  font-size: 14px;
-  font-style: italic;
-}
-
-.dataview-list-editor__property-tag {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  background: rgba(59, 130, 246, 0.15);
-  color: #60a5fa;
-  padding: 6px 10px;
-  border-radius: 4px;
-  font-size: 14px;
-}
-
-.dataview-list-editor__property-tag-remove {
-  background: none;
-  border: none;
-  color: inherit;
-  cursor: pointer;
-  padding: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  opacity: 0.7;
-  transition: opacity 0.2s;
-}
-
-.dataview-list-editor__property-tag-remove:hover {
-  opacity: 1;
-}
-
-.dataview-list-editor__add-property {
-  display: flex;
-  gap: 8px;
-}
-
-.dataview-list-editor__add-property-field {
-  flex: 1;
-}
-
-.dataview-list-editor__add-btn {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  background: rgba(59, 130, 246, 0.15);
-  color: #60a5fa;
-  border: 1px solid rgba(59, 130, 246, 0.3);
-  padding: 8px 12px;
+  padding: 10px;
+  background: rgba(0, 0, 0, 0.02);
   border-radius: 6px;
-  font-size: 14px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.dataview-list-editor__add-btn:hover:not(:disabled) {
-  background: rgba(59, 130, 246, 0.25);
-}
-
-.dataview-list-editor__add-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-/* Advanced panel */
-.dataview-list-editor__advanced-toggle {
-  width: 100%;
-  display: flex;
+  min-height: 40px;
   align-items: center;
-  justify-content: space-between;
-  padding: 12px 16px;
-  background: rgba(0, 0, 0, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  border-radius: 8px;
-  color: #94a3b8;
-  font-size: 14px;
-  cursor: pointer;
-  transition: all 0.2s;
 }
-
-.dataview-list-editor__advanced-toggle:hover {
-  color: #e2e8f0;
-}
-
-.dataview-list-editor__advanced-panel {
-  margin-top: 16px;
-  padding: 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-  background: rgba(0, 0, 0, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  border-radius: 8px;
-  animation: fadeIn 0.2s ease-in-out;
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(-10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-/* Sort controls */
-.dataview-list-editor__sort-property {
-  margin-bottom: 12px;
-}
-
-.dataview-list-editor__sort-direction {
-  margin-top: 4px;
-}
-
-.dataview-list-editor__radio-group {
-  display: flex;
-  gap: 16px;
-}
-
-.dataview-list-editor__radio {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  cursor: pointer;
-}
-
-.dataview-list-editor__radio input[type="radio"] {
-  appearance: none;
-  width: 18px;
-  height: 18px;
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 50%;
-  position: relative;
-  cursor: pointer;
-}
-
-.dataview-list-editor__radio input[type="radio"]:checked {
-  border-color: rgba(59, 130, 246, 0.8);
-}
-
-.dataview-list-editor__radio input[type="radio"]:checked::after {
-  content: "";
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 10px;
-  height: 10px;
-  background: rgba(59, 130, 246, 0.8);
-  border-radius: 50%;
-}
-
-.dataview-list-editor__radio-text {
-  display: flex;
+.dv-display-field {
+  display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-size: 14px;
-}
-
-/* Checkbox styling */
-.dataview-list-editor__checkbox {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.dataview-list-editor__checkbox input[type="checkbox"] {
-  appearance: none;
-  width: 18px;
-  height: 18px;
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 4px;
-  position: relative;
-  cursor: pointer;
-}
-
-.dataview-list-editor__checkbox input[type="checkbox"]:checked {
-  background: rgba(59, 130, 246, 0.8);
-  border-color: rgba(59, 130, 246, 0.8);
-}
-
-.dataview-list-editor__checkbox input[type="checkbox"]:checked::after {
-  content: "✓";
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  color: white;
-  font-size: 12px;
-}
-
-.dataview-list-editor__checkbox label {
-  font-size: 14px;
-  cursor: pointer;
-}
-
-.dataview-list-editor__limit-value {
-  margin-top: 8px;
-  margin-left: 26px;
-}
-
-.dataview-list-editor__number-input {
-  width: 100px;
-  text-align: center;
-}
-
-/* Tips section */
-.dataview-list-editor__tips {
-  margin-top: 8px;
-  padding: 16px;
-  background: rgba(15, 23, 42, 0.3);
+  background: white;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  padding: 4px 4px 4px 8px; /* Less padding left */
   border-radius: 6px;
-  border: 1px solid rgba(255, 255, 255, 0.05);
-}
-
-.dataview-list-editor__tips-header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  color: #60a5fa;
-  font-size: 14px;
-  font-weight: 500;
-  margin-bottom: 12px;
-}
-
-.dataview-list-editor__tips-content {
   font-size: 13px;
-  color: #94a3b8;
-  line-height: 1.5;
+}
+.dv-display-field--default {
+  background: transparent;
+  border: 1px dashed rgba(0, 0, 0, 0.1);
+  color: var(--text-muted, #5c6166);
+  padding: 4px 8px;
+}
+.dv-display-field--default i {
+  color: var(--text-faint, #989ea4);
+}
+.dv-display-field i {
+  color: var(--interactive-accent, #4a7de7);
+  font-size: 12px;
+  margin-right: 2px;
+}
+.dv-input--display-field {
+  padding: 2px 6px;
+  font-size: 13px;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  width: auto; /* Adjust width based on content */
+  min-width: 100px;
+}
+.dv-input--display-field:focus {
+  background: rgba(74, 125, 231, 0.05);
 }
 
-/* Responsive adjustments */
-@media (max-width: 768px) {
-  .dataview-list-editor__source-selector {
-    grid-template-columns: repeat(2, 1fr);
-  }
+/* --- Remove Buttons --- */
+.dv-remove-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.05);
+  border: none;
+  color: var(--text-muted, #5c6166);
+  cursor: pointer;
+  transition: background-color 0.2s, color 0.2s;
+  font-size: 10px;
+}
+.dv-remove-button:hover {
+  background: var(--background-modifier-error, #da5858);
+  color: white;
+}
+.dv-remove-button--display {
+  width: 18px;
+  height: 18px;
+  font-size: 9px;
+}
 
-  .dataview-list-editor__property-field {
-    grid-template-columns: 1fr;
-    gap: 8px;
-  }
+/* --- Add Button --- */
+.dv-add-button {
+  align-self: flex-start; /* Don't stretch full width */
+  padding: 6px 12px;
+  background: rgba(74, 125, 231, 0.1);
+  border: 1px solid rgba(74, 125, 231, 0.2);
+  color: var(--interactive-accent, #4a7de7);
+  font-size: 13px;
+  font-weight: 500;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.dv-add-button:hover {
+  background: rgba(74, 125, 231, 0.2);
+  border-color: rgba(74, 125, 231, 0.4);
+}
+.dv-add-button i {
+  font-size: 11px;
+}
 
-  .dataview-list-editor__radio-group {
-    flex-direction: column;
-    gap: 12px;
-  }
+/* --- Arrange & Limit --- */
+.dv-sort-controls {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.dv-input--sort-prop {
+  flex-grow: 1;
+}
+.dv-limit-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.dv-input--limit-count {
+  width: 70px;
+  text-align: center;
+  padding-right: 12px; /* Adjust for number arrows */
+}
+.dv-limit-label {
+  font-size: 13px;
+  color: var(--text-muted, #5c6166);
+}
+.dv-limit-label--disabled {
+  color: var(--text-faint, #989ea4);
+}
+
+/* Custom Toggle Switch */
+.dv-toggle {
+  position: relative;
+  display: inline-block;
+  width: 40px; /* Slightly smaller */
+  height: 22px; /* Slightly smaller */
+}
+.dv-toggle input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+.dv-toggle-slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  transition: 0.3s;
+  border-radius: 22px;
+}
+.dv-toggle-slider:before {
+  position: absolute;
+  content: "";
+  height: 16px; /* Smaller knob */
+  width: 16px;
+  left: 2px;
+  bottom: 2px;
+  background-color: white;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  transition: 0.3s;
+  border-radius: 50%;
+}
+.dv-toggle input:checked + .dv-toggle-slider {
+  background-color: var(--interactive-accent, #4a7de7);
+  border-color: var(--interactive-accent, #4a7de7);
+}
+.dv-toggle input:focus + .dv-toggle-slider {
+  box-shadow: 0 0 0 2px rgba(74, 125, 231, 0.2);
+}
+.dv-toggle input:checked + .dv-toggle-slider:before {
+  transform: translateX(18px);
+}
+
+/* --- Preview Section --- */
+.dv-preview-section {
+  margin-top: 10px;
+  background: rgba(0, 0, 0, 0.03);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  border-radius: 8px;
+  padding: 12px 15px;
+}
+.dv-preview-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-muted, #5c6166);
+  margin-bottom: 8px;
+}
+.dv-preview-code {
+  background: rgba(0, 0, 0, 0.05);
+  border-radius: 4px;
+  padding: 10px;
+  font-family: var(--font-monospace, monospace);
+  font-size: 13px;
+  color: var(--text-normal, #2e3338);
+  white-space: pre-wrap;
+  word-break: break-all;
+  margin: 0;
+}
+.dv-preview-code code {
+  background: none;
+  padding: 0;
+  font-size: inherit;
+  color: inherit;
 }
 </style>
