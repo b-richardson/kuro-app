@@ -1,11 +1,4 @@
 <template>
-  <!-- 
-  IMPORTANT NOTE FOR DEVELOPERS:
-  - This component should NOT implement any connection checks to Obsidian
-  - This component should NOT display any toast messages
-  - All connection validation and user feedback should be handled by parent components
-  - Keep this component focused solely on building Dataview task queries
-  -->
   <BaseModule
     :module="module"
     :index="index"
@@ -21,492 +14,89 @@
     @add-line="regenerateQuery"
     ref="baseModuleRef"
   >
-    <div class="dataview-task-editor">
+    <div class="dv-task-builder">
       <!-- Module Header -->
-      <div class="dataview-task-editor__header">
-        <div class="dataview-task-editor__header-icon">
-          <i class="fas fa-tasks"></i>
+      <div class="dv-task-header">
+        <div class="dv-task-header-icon">
+          <i class="fas fa-check-circle"></i>
         </div>
-        <div class="dataview-task-editor__header-title">Dataview Tasks</div>
+        <div class="dv-task-header-title">Task List Builder</div>
       </div>
 
-      <!-- Task Status Section -->
-      <div class="dataview-task-editor__section">
-        <div class="dataview-task-editor__section-header">
-          <div class="dataview-task-editor__section-title">
-            <i class="fas fa-check-circle"></i>
-            <span>Task Status</span>
-          </div>
-          <div class="dataview-task-editor__section-description">
-            Choose which tasks to include in your query
-          </div>
-        </div>
-
-        <div class="dataview-task-editor__status-selector">
-          <button
-            class="dataview-task-editor__status-card"
-            :class="{
-              'dataview-task-editor__status-card--active':
-                taskStatus === 'incomplete',
-            }"
-            @click="setTaskStatus('incomplete')"
-          >
-            <div class="dataview-task-editor__status-card-icon">
-              <i class="far fa-square"></i>
-            </div>
-            <div class="dataview-task-editor__status-card-label">
-              Incomplete Tasks
-            </div>
-          </button>
-
-          <button
-            class="dataview-task-editor__status-card"
-            :class="{
-              'dataview-task-editor__status-card--active':
-                taskStatus === 'complete',
-            }"
-            @click="setTaskStatus('complete')"
-          >
-            <div class="dataview-task-editor__status-card-icon">
-              <i class="far fa-check-square"></i>
-            </div>
-            <div class="dataview-task-editor__status-card-label">
-              Completed Tasks
-            </div>
-          </button>
-
-          <button
-            class="dataview-task-editor__status-card"
-            :class="{
-              'dataview-task-editor__status-card--active': taskStatus === 'all',
-            }"
-            @click="setTaskStatus('all')"
-          >
-            <div class="dataview-task-editor__status-card-icon">
-              <i class="fas fa-tasks"></i>
-            </div>
-            <div class="dataview-task-editor__status-card-label">All Tasks</div>
-          </button>
-        </div>
-      </div>
-
-      <!-- Source Selection Section -->
-      <div class="dataview-task-editor__section">
-        <div class="dataview-task-editor__section-header">
-          <div class="dataview-task-editor__section-title">
-            <i class="fas fa-filter"></i>
-            <span>Choose Source</span>
-          </div>
-          <div class="dataview-task-editor__section-description">
-            Select where to find tasks
-          </div>
-        </div>
-
-        <div class="dataview-task-editor__source-selector">
-          <button
-            class="dataview-task-editor__source-card"
-            :class="{
-              'dataview-task-editor__source-card--active': sourceType === 'all',
-            }"
-            @click="setSourceType('all')"
-          >
-            <div class="dataview-task-editor__source-card-icon">
-              <i class="fas fa-file-alt"></i>
-            </div>
-            <div class="dataview-task-editor__source-card-label">All Notes</div>
-          </button>
-
-          <button
-            class="dataview-task-editor__source-card"
-            :class="{
-              'dataview-task-editor__source-card--active':
-                sourceType === 'folder',
-            }"
-            @click="setSourceType('folder')"
-          >
-            <div class="dataview-task-editor__source-card-icon">
-              <i class="fas fa-folder"></i>
-            </div>
-            <div class="dataview-task-editor__source-card-label">
-              From Folder
-            </div>
-          </button>
-
-          <button
-            class="dataview-task-editor__source-card"
-            :class="{
-              'dataview-task-editor__source-card--active': sourceType === 'tag',
-            }"
-            @click="setSourceType('tag')"
-          >
-            <div class="dataview-task-editor__source-card-icon">
-              <i class="fas fa-hashtag"></i>
-            </div>
-            <div class="dataview-task-editor__source-card-label">With Tag</div>
-          </button>
-
-          <button
-            class="dataview-task-editor__source-card"
-            :class="{
-              'dataview-task-editor__source-card--active':
-                sourceType === 'current',
-            }"
-            @click="setSourceType('current')"
-          >
-            <div class="dataview-task-editor__source-card-icon">
-              <i class="fas fa-file"></i>
-            </div>
-            <div class="dataview-task-editor__source-card-label">
-              Current Note
-            </div>
-          </button>
-        </div>
-
-        <!-- Configuration Panel -->
-        <div class="dataview-task-editor__config-panel">
-          <!-- Folder Selection -->
-          <div
-            v-if="sourceType === 'folder'"
-            class="dataview-task-editor__config-content"
-          >
-            <div class="dataview-task-editor__field-group">
-              <label class="dataview-task-editor__label">Select Folder</label>
-              <div class="dataview-task-editor__input-group">
-                <select
-                  class="dataview-task-editor__select"
-                  v-model="selectedFolder"
-                  @change="handleSourceValueChange"
-                >
-                  <option disabled value="">Select a folder</option>
-                  <option
-                    v-for="folder in availableFolders"
-                    :key="folder.path"
-                    :value="folder.path"
-                  >
-                    {{ folder.path || "/" }}
-                  </option>
-                </select>
-                <button
-                  class="dataview-task-editor__action-btn"
-                  title="Refresh folder list"
-                  @click="fetchFolders"
-                >
-                  <i class="fas fa-sync-alt"></i>
-                </button>
-              </div>
-              <div class="dataview-task-editor__field-tip">
-                Only include tasks from notes in this folder
-              </div>
-            </div>
-          </div>
-
-          <!-- Tag Selection -->
-          <div
-            v-if="sourceType === 'tag'"
-            class="dataview-task-editor__config-content"
-          >
-            <div class="dataview-task-editor__field-group">
-              <label class="dataview-task-editor__label">Select Tag</label>
-              <div class="dataview-task-editor__input-group">
-                <select
-                  class="dataview-task-editor__select"
-                  v-model="selectedTag"
-                  @change="handleSourceValueChange"
-                >
-                  <option disabled value="">Select a tag</option>
-                  <option v-for="tag in availableTags" :key="tag" :value="tag">
-                    #{{ tag }}
-                  </option>
-                </select>
-                <button
-                  class="dataview-task-editor__action-btn"
-                  title="Refresh tag list"
-                  @click="fetchTags"
-                >
-                  <i class="fas fa-sync-alt"></i>
-                </button>
-              </div>
-              <div class="dataview-task-editor__field-tip">
-                Only include tasks from notes with this tag
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Task Filtering Section -->
-      <div class="dataview-task-editor__section">
-        <div class="dataview-task-editor__section-header">
-          <div class="dataview-task-editor__section-title">
-            <i class="fas fa-search"></i>
-            <span>Task Filters</span>
-          </div>
-          <div class="dataview-task-editor__section-description">
-            Find tasks that match specific criteria
-          </div>
-        </div>
-
-        <div class="dataview-task-editor__filters">
-          <!-- Text Contains Filter -->
-          <div class="dataview-task-editor__filter-item">
-            <div class="dataview-task-editor__checkbox">
-              <input
-                type="checkbox"
-                id="text-filter"
-                v-model="filters.textEnabled"
-                @change="regenerateQuery"
-              />
-              <label for="text-filter">Task text contains</label>
-            </div>
-
-            <div
-              v-if="filters.textEnabled"
-              class="dataview-task-editor__filter-content"
-            >
-              <input
-                type="text"
-                class="dataview-task-editor__text-input"
-                placeholder="Filter text..."
-                v-model="filters.textValue"
-                @input="regenerateQuery"
-              />
-            </div>
-          </div>
-
-          <!-- Due Date Filter -->
-          <div class="dataview-task-editor__filter-item">
-            <div class="dataview-task-editor__checkbox">
-              <input
-                type="checkbox"
-                id="due-filter"
-                v-model="filters.dueEnabled"
-                @change="regenerateQuery"
-              />
-              <label for="due-filter">Has due date</label>
-            </div>
-
-            <div
-              v-if="filters.dueEnabled"
-              class="dataview-task-editor__filter-content"
-            >
-              <div class="dataview-task-editor__radio-group">
-                <label class="dataview-task-editor__radio">
-                  <input
-                    type="radio"
-                    name="dueType"
-                    value="any"
-                    v-model="filters.dueType"
-                    @change="regenerateQuery"
-                  />
-                  <span>Any due date</span>
-                </label>
-
-                <label class="dataview-task-editor__radio">
-                  <input
-                    type="radio"
-                    name="dueType"
-                    value="overdue"
-                    v-model="filters.dueType"
-                    @change="regenerateQuery"
-                  />
-                  <span>Overdue</span>
-                </label>
-
-                <label class="dataview-task-editor__radio">
-                  <input
-                    type="radio"
-                    name="dueType"
-                    value="future"
-                    v-model="filters.dueType"
-                    @change="regenerateQuery"
-                  />
-                  <span>Future</span>
-                </label>
-              </div>
-            </div>
-          </div>
-
-          <!-- Priority Filter -->
-          <div class="dataview-task-editor__filter-item">
-            <div class="dataview-task-editor__checkbox">
-              <input
-                type="checkbox"
-                id="priority-filter"
-                v-model="filters.priorityEnabled"
-                @change="regenerateQuery"
-              />
-              <label for="priority-filter">Has priority</label>
-            </div>
-
-            <div
-              v-if="filters.priorityEnabled"
-              class="dataview-task-editor__filter-content"
-            >
-              <div class="dataview-task-editor__priority-options">
-                <label class="dataview-task-editor__priority-option">
-                  <input
-                    type="checkbox"
-                    v-model="filters.priorityValues.high"
-                    @change="regenerateQuery"
-                  />
-                  <span
-                    class="dataview-task-editor__priority-badge dataview-task-editor__priority-badge--high"
-                    >P1</span
-                  >
-                </label>
-
-                <label class="dataview-task-editor__priority-option">
-                  <input
-                    type="checkbox"
-                    v-model="filters.priorityValues.medium"
-                    @change="regenerateQuery"
-                  />
-                  <span
-                    class="dataview-task-editor__priority-badge dataview-task-editor__priority-badge--medium"
-                    >P2</span
-                  >
-                </label>
-
-                <label class="dataview-task-editor__priority-option">
-                  <input
-                    type="checkbox"
-                    v-model="filters.priorityValues.low"
-                    @change="regenerateQuery"
-                  />
-                  <span
-                    class="dataview-task-editor__priority-badge dataview-task-editor__priority-badge--low"
-                    >P3</span
-                  >
-                </label>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Organization Section -->
-      <div class="dataview-task-editor__section">
-        <button
-          class="dataview-task-editor__advanced-toggle"
-          @click="showAdvanced = !showAdvanced"
-        >
-          <span>{{
-            showAdvanced
-              ? "Hide organization options"
-              : "Show organization options"
-          }}</span>
+      <!-- Brief explanation (collapsible) -->
+      <div class="dv-task-intro-wrapper">
+        <button @click="showIntro = !showIntro" class="dv-task-intro-toggle">
+          <i class="fas fa-info-circle"></i>
+          <span>{{ showIntro ? "Hide information" : "What is this?" }}</span>
           <i
-            :class="showAdvanced ? 'fas fa-chevron-up' : 'fas fa-chevron-down'"
+            :class="['fas', showIntro ? 'fa-chevron-up' : 'fa-chevron-down']"
           ></i>
         </button>
+        <div v-if="showIntro" class="dv-task-intro">
+          <p>
+            This module lets you create dynamic lists of tasks from your vault,
+            filtering and organizing them according to your needs.
+          </p>
+        </div>
+      </div>
 
-        <div v-if="showAdvanced" class="dataview-task-editor__advanced-panel">
-          <!-- Group By -->
-          <div class="dataview-task-editor__field-group">
-            <label class="dataview-task-editor__label">
-              <i class="fas fa-layer-group"></i>
-              Group Tasks By
-            </label>
+      <!-- Step 1: Task Status -->
+      <div class="dv-task-section">
+        <div class="dv-task-section-header">
+          <span class="dv-task-step-number">1</span>
+          <i class="fas fa-check-circle dv-task-section-icon"></i>
+          <h3 class="dv-task-section-title">Task Status</h3>
+          <span class="dv-task-section-description"
+            >Which tasks to include?</span
+          >
+        </div>
 
-            <div class="dataview-task-editor__select-wrapper">
-              <select
-                class="dataview-task-editor__select"
-                v-model="groupBy"
-                @change="regenerateQuery"
-              >
-                <option value="">No Grouping</option>
-                <option value="file.path">File</option>
-                <option value="section">Section</option>
-                <option value="status">Status</option>
-                <option value="due">Due Date</option>
-                <option value="priority">Priority</option>
-              </select>
-            </div>
-
-            <div class="dataview-task-editor__field-tip">
-              Organize tasks into groups based on this property
-            </div>
-          </div>
-
-          <!-- Sort By -->
-          <div class="dataview-task-editor__field-group">
-            <label class="dataview-task-editor__label">
-              <i class="fas fa-sort"></i>
-              Sort Tasks By
-            </label>
-
-            <div class="dataview-task-editor__sort-property">
-              <select
-                class="dataview-task-editor__select"
-                v-model="sortProperty"
-                @change="handleSortChange"
-              >
-                <option value="text">Task Text</option>
-                <option value="due">Due Date</option>
-                <option value="priority">Priority</option>
-                <option value="created">Created Date</option>
-                <option value="completion">Completion Date</option>
-                <option value="path">File Path</option>
-              </select>
-            </div>
-
-            <div class="dataview-task-editor__sort-direction">
-              <div class="dataview-task-editor__radio-group">
-                <label class="dataview-task-editor__radio">
-                  <input
-                    type="radio"
-                    name="sortDirection"
-                    :value="'asc'"
-                    v-model="sortDirection"
-                    @change="handleSortChange"
-                  />
-                  <span class="dataview-task-editor__radio-text">
-                    <i class="fas fa-sort-amount-down-alt"></i>
-                    Ascending
-                  </span>
-                </label>
-
-                <label class="dataview-task-editor__radio">
-                  <input
-                    type="radio"
-                    name="sortDirection"
-                    :value="'desc'"
-                    v-model="sortDirection"
-                    @change="handleSortChange"
-                  />
-                  <span class="dataview-task-editor__radio-text">
-                    <i class="fas fa-sort-amount-down"></i>
-                    Descending
-                  </span>
-                </label>
+        <div class="dv-task-section-content">
+          <div class="dv-task-status-cards">
+            <div
+              class="dv-task-status-card"
+              :class="{ active: taskStatus === 'incomplete' }"
+              @click="setTaskStatus('incomplete')"
+            >
+              <div class="dv-task-status-icon">
+                <i class="far fa-square"></i>
+              </div>
+              <div class="dv-task-status-info">
+                <div class="dv-task-status-title">Incomplete</div>
+                <div class="dv-task-status-description">
+                  Tasks that haven't been checked off
+                </div>
               </div>
             </div>
-          </div>
 
-          <!-- Limit Section -->
-          <div class="dataview-task-editor__field-group">
-            <div class="dataview-task-editor__limit-field">
-              <div class="dataview-task-editor__checkbox">
-                <input
-                  type="checkbox"
-                  id="limit-toggle"
-                  v-model="useLimit"
-                  @change="handleLimitChange"
-                />
-                <label for="limit-toggle">Limit number of tasks</label>
+            <div
+              class="dv-task-status-card"
+              :class="{ active: taskStatus === 'complete' }"
+              @click="setTaskStatus('complete')"
+            >
+              <div class="dv-task-status-icon">
+                <i class="far fa-check-square"></i>
               </div>
+              <div class="dv-task-status-info">
+                <div class="dv-task-status-title">Completed</div>
+                <div class="dv-task-status-description">
+                  Tasks that are checked off
+                </div>
+              </div>
+            </div>
 
-              <div class="dataview-task-editor__limit-value" v-if="useLimit">
-                <input
-                  type="number"
-                  class="dataview-task-editor__text-input dataview-task-editor__number-input"
-                  v-model.number="limitCount"
-                  min="1"
-                  max="1000"
-                  @change="handleLimitChange"
-                />
-                <div class="dataview-task-editor__field-tip">
-                  Maximum number of tasks to display
+            <div
+              class="dv-task-status-card"
+              :class="{ active: taskStatus === 'all' }"
+              @click="setTaskStatus('all')"
+            >
+              <div class="dv-task-status-icon">
+                <i class="fas fa-tasks"></i>
+              </div>
+              <div class="dv-task-status-info">
+                <div class="dv-task-status-title">All Tasks</div>
+                <div class="dv-task-status-description">
+                  Both complete and incomplete tasks
                 </div>
               </div>
             </div>
@@ -514,18 +104,462 @@
         </div>
       </div>
 
-      <!-- Help Section -->
-      <div class="dataview-task-editor__tips">
-        <div class="dataview-task-editor__tips-header">
-          <i class="fas fa-lightbulb"></i>
-          <span>About Dataview Tasks</span>
+      <!-- Step 2: Source Selection -->
+      <div class="dv-task-section">
+        <div class="dv-task-section-header">
+          <span class="dv-task-step-number">2</span>
+          <i class="fas fa-filter dv-task-section-icon"></i>
+          <h3 class="dv-task-section-title">Task Source</h3>
+          <span class="dv-task-section-description">Where to find tasks?</span>
         </div>
-        <div class="dataview-task-editor__tips-content">
-          <p>
-            This creates a list of tasks from your vault based on your criteria.
-            The tasks will display their text, source file, and relevant
-            metadata like due dates or priorities.
-          </p>
+
+        <div class="dv-task-section-content">
+          <div class="dv-task-segmented-control">
+            <button
+              :class="{ active: sourceType === 'all' }"
+              @click="setSourceType('all')"
+            >
+              <i class="fas fa-globe-americas"></i> Everywhere
+            </button>
+            <button
+              :class="{ active: sourceType === 'folder' }"
+              @click="setSourceType('folder')"
+            >
+              <i class="fas fa-folder"></i> Folder
+            </button>
+            <button
+              :class="{ active: sourceType === 'tag' }"
+              @click="setSourceType('tag')"
+            >
+              <i class="fas fa-tag"></i> Tag
+            </button>
+            <button
+              :class="{ active: sourceType === 'current' }"
+              @click="setSourceType('current')"
+            >
+              <i class="fas fa-file"></i> Current Note
+            </button>
+          </div>
+
+          <!-- Folder Selection -->
+          <div
+            v-if="sourceType === 'folder'"
+            class="dv-task-input-wrapper dv-task-input-wrapper--select"
+          >
+            <i class="fas fa-folder dv-task-input-icon"></i>
+            <select
+              class="dv-task-select"
+              v-model="selectedFolder"
+              @change="handleSourceValueChange"
+            >
+              <option disabled value="">Select a folder...</option>
+              <option value="">Root Folder ("")</option>
+              <option
+                v-for="folder in availableFolders"
+                :key="folder.path"
+                :value="folder.path"
+              >
+                {{ folder.path || "/" }}
+              </option>
+            </select>
+            <button
+              class="dv-task-action-btn"
+              title="Refresh folder list"
+              @click="fetchFolders"
+            >
+              <i class="fas fa-sync-alt"></i>
+            </button>
+          </div>
+
+          <!-- Tag Selection -->
+          <div
+            v-if="sourceType === 'tag'"
+            class="dv-task-input-wrapper dv-task-input-wrapper--select"
+          >
+            <i class="fas fa-tag dv-task-input-icon"></i>
+            <select
+              class="dv-task-select"
+              v-model="selectedTag"
+              @change="handleSourceValueChange"
+            >
+              <option disabled value="">Select a tag...</option>
+              <option v-for="tag in availableTags" :key="tag" :value="tag">
+                #{{ tag }}
+              </option>
+            </select>
+            <button
+              class="dv-task-action-btn"
+              title="Refresh tag list"
+              @click="fetchTags"
+            >
+              <i class="fas fa-sync-alt"></i>
+            </button>
+          </div>
+
+          <!-- Current Note Message -->
+          <div
+            v-if="sourceType === 'current'"
+            class="dv-task-current-note-message"
+          >
+            <i class="fas fa-info-circle"></i>
+            <span
+              >Tasks will be pulled from the current note when this template is
+              used</span
+            >
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 3: Refinement Options -->
+      <div class="dv-task-section">
+        <div class="dv-task-section-header">
+          <span class="dv-task-step-number">3</span>
+          <i class="fas fa-search dv-task-section-icon"></i>
+          <h3 class="dv-task-section-title">Refine Results</h3>
+          <span class="dv-task-section-description"
+            >Customize your task list</span
+          >
+        </div>
+
+        <div class="dv-task-section-content">
+          <!-- Filter Panel -->
+          <div class="dv-task-filter-container">
+            <div class="dv-task-filter-header">
+              <h4>Filter Criteria</h4>
+              <div class="dv-task-filter-tip">
+                Choose specific criteria to narrow down your task list
+              </div>
+            </div>
+
+            <div class="dv-task-filter-cards">
+              <!-- Text Contains Filter -->
+              <div
+                class="dv-task-filter-card"
+                :class="{ active: filters.textEnabled }"
+              >
+                <div class="dv-task-filter-card-header">
+                  <label class="dv-task-toggle">
+                    <input
+                      type="checkbox"
+                      v-model="filters.textEnabled"
+                      @change="regenerateQuery"
+                    />
+                    <span class="dv-task-toggle-slider"></span>
+                  </label>
+                  <span class="dv-task-filter-title">Task Text Contains</span>
+                </div>
+
+                <div
+                  v-if="filters.textEnabled"
+                  class="dv-task-filter-card-content"
+                >
+                  <div class="dv-task-input-wrapper">
+                    <i class="fas fa-font dv-task-input-icon"></i>
+                    <input
+                      type="text"
+                      class="dv-task-input"
+                      placeholder="Enter text to search for in tasks..."
+                      v-model="filters.textValue"
+                      @input="regenerateQuery"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <!-- Due Date Filter -->
+              <div
+                class="dv-task-filter-card"
+                :class="{ active: filters.dueEnabled }"
+              >
+                <div class="dv-task-filter-card-header">
+                  <label class="dv-task-toggle">
+                    <input
+                      type="checkbox"
+                      v-model="filters.dueEnabled"
+                      @change="regenerateQuery"
+                    />
+                    <span class="dv-task-toggle-slider"></span>
+                  </label>
+                  <span class="dv-task-filter-title">Due Date</span>
+                </div>
+
+                <div
+                  v-if="filters.dueEnabled"
+                  class="dv-task-filter-card-content"
+                >
+                  <div class="dv-task-chip-selector">
+                    <button
+                      :class="{ active: filters.dueType === 'any' }"
+                      @click="setDueType('any')"
+                    >
+                      Any due date
+                    </button>
+                    <button
+                      :class="{ active: filters.dueType === 'overdue' }"
+                      @click="setDueType('overdue')"
+                    >
+                      Overdue
+                    </button>
+                    <button
+                      :class="{ active: filters.dueType === 'future' }"
+                      @click="setDueType('future')"
+                    >
+                      Future
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Priority Filter -->
+              <div
+                class="dv-task-filter-card"
+                :class="{ active: filters.priorityEnabled }"
+              >
+                <div class="dv-task-filter-card-header">
+                  <label class="dv-task-toggle">
+                    <input
+                      type="checkbox"
+                      v-model="filters.priorityEnabled"
+                      @change="regenerateQuery"
+                    />
+                    <span class="dv-task-toggle-slider"></span>
+                  </label>
+                  <span class="dv-task-filter-title">Priority Level</span>
+                </div>
+
+                <div
+                  v-if="filters.priorityEnabled"
+                  class="dv-task-filter-card-content"
+                >
+                  <div class="dv-task-priority-badges">
+                    <label
+                      class="dv-task-priority-badge"
+                      :class="{ active: filters.priorityValues.high }"
+                    >
+                      <input
+                        type="checkbox"
+                        v-model="filters.priorityValues.high"
+                        @change="regenerateQuery"
+                      />
+                      <span class="dv-task-priority-badge-high">P1 - High</span>
+                    </label>
+
+                    <label
+                      class="dv-task-priority-badge"
+                      :class="{ active: filters.priorityValues.medium }"
+                    >
+                      <input
+                        type="checkbox"
+                        v-model="filters.priorityValues.medium"
+                        @change="regenerateQuery"
+                      />
+                      <span class="dv-task-priority-badge-medium"
+                        >P2 - Medium</span
+                      >
+                    </label>
+
+                    <label
+                      class="dv-task-priority-badge"
+                      :class="{ active: filters.priorityValues.low }"
+                    >
+                      <input
+                        type="checkbox"
+                        v-model="filters.priorityValues.low"
+                        @change="regenerateQuery"
+                      />
+                      <span class="dv-task-priority-badge-low">P3 - Low</span>
+                    </label>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Organization Panel - Initially Collapsed -->
+          <div class="dv-task-toggle-section">
+            <button
+              @click="showOrganization = !showOrganization"
+              class="dv-task-toggle-section-header"
+            >
+              <i class="fas fa-sliders-h"></i>
+              <span>Organization & Presentation</span>
+              <i
+                :class="[
+                  'fas',
+                  showOrganization ? 'fa-chevron-up' : 'fa-chevron-down',
+                ]"
+              ></i>
+            </button>
+
+            <div v-if="showOrganization" class="dv-task-organization-container">
+              <div class="dv-task-organization-options">
+                <!-- Group By Option -->
+                <div class="dv-task-organization-option">
+                  <label class="dv-task-label">Group tasks by:</label>
+                  <div
+                    class="dv-task-input-wrapper dv-task-input-wrapper--select"
+                  >
+                    <i class="fas fa-layer-group dv-task-input-icon"></i>
+                    <select
+                      class="dv-task-select"
+                      v-model="groupBy"
+                      @change="regenerateQuery"
+                    >
+                      <option value="">No grouping (flat list)</option>
+                      <option value="file.path">Source File</option>
+                      <option value="section">Section in File</option>
+                      <option value="status">Completion Status</option>
+                      <option value="due">Due Date</option>
+                      <option value="priority">Priority Level</option>
+                    </select>
+                  </div>
+                </div>
+
+                <!-- Sort By Option -->
+                <div class="dv-task-organization-option">
+                  <label class="dv-task-label">Sort tasks by:</label>
+                  <div
+                    class="dv-task-input-wrapper dv-task-input-wrapper--select"
+                  >
+                    <i class="fas fa-sort dv-task-input-icon"></i>
+                    <select
+                      class="dv-task-select"
+                      v-model="sortProperty"
+                      @change="handleSortChange"
+                    >
+                      <option value="text">Task Text</option>
+                      <option value="due">Due Date</option>
+                      <option value="priority">Priority</option>
+                      <option value="created">Created Date</option>
+                      <option value="completion">Completion Date</option>
+                      <option value="path">File Path</option>
+                    </select>
+                  </div>
+
+                  <div class="dv-task-direction-toggle">
+                    <button
+                      :class="{ active: sortDirection === 'asc' }"
+                      @click="setSortDirection('asc')"
+                    >
+                      <i class="fas fa-sort-amount-up-alt"></i>
+                      <span>A to Z / Oldest first</span>
+                    </button>
+                    <button
+                      :class="{ active: sortDirection === 'desc' }"
+                      @click="setSortDirection('desc')"
+                    >
+                      <i class="fas fa-sort-amount-down"></i>
+                      <span>Z to A / Newest first</span>
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Limit Option -->
+                <div class="dv-task-organization-option">
+                  <div class="dv-task-field-group dv-task-field-group--inline">
+                    <label class="dv-task-toggle">
+                      <input
+                        type="checkbox"
+                        v-model="useLimit"
+                        @change="handleLimitChange"
+                      />
+                      <span class="dv-task-toggle-slider"></span>
+                    </label>
+                    <span
+                      class="dv-task-toggle-label"
+                      :class="{ 'dv-task-toggle-label--disabled': !useLimit }"
+                    >
+                      Limit the number of tasks shown
+                    </span>
+                  </div>
+
+                  <div
+                    v-if="useLimit"
+                    class="dv-task-input-wrapper dv-task-limit-input"
+                  >
+                    <i class="fas fa-calculator dv-task-input-icon"></i>
+                    <input
+                      type="number"
+                      class="dv-task-input dv-task-input--numeric"
+                      v-model.number="limitCount"
+                      min="1"
+                      max="1000"
+                      @change="handleLimitChange"
+                    />
+                    <span class="dv-task-input-suffix">tasks maximum</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Preview & Help Section - Initially Collapsed -->
+      <div class="dv-task-toggle-section dv-task-toggle-section--preview">
+        <button
+          @click="showPreview = !showPreview"
+          class="dv-task-toggle-section-header"
+        >
+          <i class="fas fa-eye"></i>
+          <span>Preview & Tips</span>
+          <i
+            :class="['fas', showPreview ? 'fa-chevron-up' : 'fa-chevron-down']"
+          ></i>
+        </button>
+
+        <div v-if="showPreview" class="dv-task-preview-section">
+          <div class="dv-task-preview-illustration">
+            <div class="dv-task-preview-task">
+              <span class="dv-task-preview-checkbox"
+                ><i class="far fa-square"></i
+              ></span>
+              <span class="dv-task-preview-content"
+                >Example incomplete task</span
+              >
+            </div>
+            <div class="dv-task-preview-task" v-if="taskStatus !== 'complete'">
+              <span class="dv-task-preview-checkbox"
+                ><i class="far fa-square"></i
+              ></span>
+              <span class="dv-task-preview-content"
+                >Task with a <span class="dv-task-preview-tag">#tag</span></span
+              >
+            </div>
+            <div
+              class="dv-task-preview-task"
+              v-if="taskStatus !== 'incomplete' || filters.priorityEnabled"
+            >
+              <span class="dv-task-preview-checkbox"
+                ><i class="far fa-check-square"></i
+              ></span>
+              <span class="dv-task-preview-content"
+                >Completed task with
+                <span class="dv-task-preview-priority">P1</span></span
+              >
+            </div>
+            <div class="dv-task-preview-task" v-if="taskStatus !== 'complete'">
+              <span class="dv-task-preview-checkbox"
+                ><i class="far fa-square"></i
+              ></span>
+              <span class="dv-task-preview-content"
+                >Due task
+                <span class="dv-task-preview-due">📅 2023-12-31</span></span
+              >
+            </div>
+          </div>
+
+          <div class="dv-task-preview-info">
+            <p>
+              When inserted, this module will create a dynamic task list based
+              on your configuration. Tasks will update as they're completed or
+              modified elsewhere in your vault.
+            </p>
+            <p>
+              <strong>Tips:</strong> Tasks can have priorities (P1, P2, P3) and
+              due dates (📅 YYYY-MM-DD) included in their text.
+            </p>
+          </div>
         </div>
       </div>
     </div>
@@ -560,9 +594,6 @@ const emit = defineEmits<{
 // Reference to the base module component
 const baseModuleRef = ref<InstanceType<typeof BaseModule> | null>(null);
 
-// Advanced toggle
-const showAdvanced = ref(false);
-
 // Task Status
 const taskStatus = ref("incomplete"); // 'incomplete', 'complete', 'all'
 
@@ -585,6 +616,11 @@ const filters = ref({
   },
 });
 
+// UI toggle states
+const showIntro = ref(false);
+const showOrganization = ref(false);
+const showPreview = ref(false);
+
 // Obsidian data
 const availableFolders = ref<{ name: string; path: string; parent: string }[]>([
   { name: "Root", path: "", parent: "" },
@@ -599,8 +635,8 @@ const sortProperty = ref("text");
 const sortDirection = ref("asc");
 
 // Limit options
-const useLimit = ref(false);
-const limitCount = ref(20);
+const useLimit = ref(true);
+const limitCount = ref(5);
 
 // Initialize component
 onMounted(async () => {
@@ -615,6 +651,13 @@ onMounted(async () => {
       // Generate initial query
       regenerateQuery();
     }
+
+    // Check if there are any advanced settings in use
+    showOrganization.value =
+      !!groupBy.value ||
+      sortProperty.value !== "text" ||
+      sortDirection.value !== "asc" ||
+      useLimit.value;
   } catch (error) {
     console.error("Error initializing DataviewTaskModule:", error);
   }
@@ -872,8 +915,12 @@ function parseExistingQuery(query: string) {
       limitCount.value = 20;
     }
 
-    // Set advanced options panel state based on whether any advanced option is used
-    showAdvanced.value = !!groupBy.value || !!sortLine || !!limitLine;
+    // Set organization panel state based on whether advanced options are used
+    showOrganization.value =
+      !!groupBy.value ||
+      sortProperty.value !== "text" ||
+      sortDirection.value !== "asc" ||
+      useLimit.value;
 
     // Regenerate the query to ensure it's formatted correctly
     regenerateQuery();
@@ -892,6 +939,16 @@ function setTaskStatus(status: string) {
 
 function setSourceType(type: string) {
   sourceType.value = type;
+  regenerateQuery();
+}
+
+function setDueType(type: string) {
+  filters.value.dueType = type;
+  regenerateQuery();
+}
+
+function setSortDirection(direction: "asc" | "desc") {
+  sortDirection.value = direction;
   regenerateQuery();
 }
 
@@ -1036,437 +1093,86 @@ function updateContent(content: string[]) {
 </script>
 
 <style scoped>
-.dataview-task-editor {
+/* --- Base & Dark Glassmorphism --- */
+.dv-task-builder {
   width: 100%;
-  color: #e2e8f0;
+  background: rgba(21, 26, 36, 0.7);
+  backdrop-filter: blur(12px) saturate(150%);
+  -webkit-backdrop-filter: blur(12px) saturate(150%);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 20px;
+  color: var(--text-normal-dark, #e1e1e6);
+  font-family: var(--font-interface, sans-serif);
   display: flex;
   flex-direction: column;
   gap: 20px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
 }
 
-/* Header styles */
-.dataview-task-editor__header {
+/* --- Header --- */
+.dv-task-header {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding-bottom: 12px;
+  gap: 12px;
+  padding-bottom: 15px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--text-title-dark, #ffffff);
 }
 
-.dataview-task-editor__header-icon {
-  color: #60a5fa;
+.dv-task-header-icon {
+  font-size: 20px;
+  color: var(--interactive-accent-light, #60a5fa);
+}
+
+.dv-task-header-title {
   font-size: 18px;
+  font-weight: 600;
 }
 
-.dataview-task-editor__header-title {
-  font-size: 16px;
-  font-weight: 500;
-}
-
-/* Section styling */
-.dataview-task-editor__section {
+/* --- Intro (Collapsible) --- */
+.dv-task-intro-wrapper {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 10px;
 }
 
-.dataview-task-editor__section-header {
-  margin-bottom: 4px;
-}
-
-.dataview-task-editor__section-title {
+.dv-task-intro-toggle {
   display: flex;
-  align-items: center;
-  gap: 8px;
-  font-weight: 500;
-  font-size: 16px;
-  color: #e2e8f0;
-}
-
-.dataview-task-editor__section-description {
-  color: #94a3b8;
-  font-size: 14px;
-  margin-top: 4px;
-}
-
-/* Task Status selection */
-.dataview-task-editor__status-selector {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 12px;
-  margin-bottom: 12px;
-}
-
-.dataview-task-editor__status-card {
-  display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  padding: 12px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 8px;
-  color: #cbd5e1;
-  transition: all 0.2s;
-  cursor: pointer;
-}
-
-.dataview-task-editor__status-card:hover {
-  background: rgba(255, 255, 255, 0.1);
-  transform: translateY(-2px);
-}
-
-.dataview-task-editor__status-card--active {
-  background: rgba(59, 130, 246, 0.15);
-  border-color: rgba(59, 130, 246, 0.5);
-  color: #fff;
-}
-
-.dataview-task-editor__status-card-icon {
-  font-size: 22px;
-  margin-bottom: 8px;
+  background: rgba(59, 130, 246, 0.1);
   color: #60a5fa;
-}
-
-.dataview-task-editor__status-card-label {
-  font-size: 14px;
-}
-
-/* Source selection */
-.dataview-task-editor__source-selector {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 12px;
-  margin-bottom: 16px;
-}
-
-.dataview-task-editor__source-card {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 12px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(59, 130, 246, 0.2);
   border-radius: 8px;
-  color: #cbd5e1;
-  transition: all 0.2s;
+  padding: 10px;
   cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s ease;
 }
 
-.dataview-task-editor__source-card:hover {
-  background: rgba(255, 255, 255, 0.1);
-  transform: translateY(-2px);
-}
-
-.dataview-task-editor__source-card--active {
+.dv-task-intro-toggle:hover {
   background: rgba(59, 130, 246, 0.15);
-  border-color: rgba(59, 130, 246, 0.5);
-  color: #fff;
 }
 
-.dataview-task-editor__source-card-icon {
-  font-size: 22px;
-  margin-bottom: 8px;
-  color: #60a5fa;
+.dv-task-intro-toggle i:last-child {
+  font-size: 10px;
+  margin-left: auto;
 }
 
-.dataview-task-editor__source-card-label {
-  font-size: 14px;
-}
-
-/* Configuration Panel */
-.dataview-task-editor__config-panel {
-  background: rgba(0, 0, 0, 0.1);
+.dv-task-intro {
+  background: rgba(59, 130, 246, 0.05);
   border-radius: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  overflow: hidden;
-}
-
-.dataview-task-editor__config-content {
-  padding: 16px;
-}
-
-/* Form field groups */
-.dataview-task-editor__field-group {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin-bottom: 16px;
-}
-
-.dataview-task-editor__field-group:last-child {
-  margin-bottom: 0;
-}
-
-.dataview-task-editor__label {
+  border: 1px solid rgba(59, 130, 246, 0.1);
+  padding: 12px 15px;
+  color: #a0c0ff;
   font-size: 14px;
-  font-weight: 500;
-  color: #e2e8f0;
-  display: flex;
-  align-items: center;
-  gap: 6px;
+  line-height: 1.5;
+  animation: slideDown 0.3s ease-out;
 }
 
-.dataview-task-editor__field-tip {
-  font-size: 12px;
-  color: #94a3b8;
-  margin-top: 4px;
-}
-
-.dataview-task-editor__input-group {
-  display: flex;
-  gap: 8px;
-}
-
-/* Text inputs */
-.dataview-task-editor__text-input {
-  padding: 10px 12px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 6px;
-  color: #e2e8f0;
-  font-size: 14px;
-  width: 100%;
-  transition: all 0.2s;
-}
-
-.dataview-task-editor__text-input:focus {
-  outline: none;
-  border-color: rgba(59, 130, 246, 0.5);
-  box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.25);
-}
-
-.dataview-task-editor__text-input::placeholder {
-  color: rgba(148, 163, 184, 0.5);
-}
-
-/* Select dropdown */
-.dataview-task-editor__select {
-  padding: 10px 12px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 6px;
-  color: #e2e8f0;
-  font-size: 14px;
-  width: 100%;
-  -webkit-appearance: none;
-  appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23cbd5e1' d='M6 8.825L1.175 4 2.05 3.125 6 7.075 9.95 3.125 10.825 4z'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 12px center;
-  padding-right: 36px;
-}
-
-.dataview-task-editor__select:focus {
-  outline: none;
-  border-color: rgba(59, 130, 246, 0.5);
-}
-
-.dataview-task-editor__select-wrapper {
-  margin-bottom: 8px;
-}
-
-/* Button styling */
-.dataview-task-editor__action-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: #94a3b8;
-  width: 38px;
-  height: 38px;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: all 0.2s;
-  flex-shrink: 0;
-}
-
-.dataview-task-editor__action-btn:hover {
-  background: rgba(255, 255, 255, 0.1);
-  color: #e2e8f0;
-}
-
-/* Filters */
-.dataview-task-editor__filters {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.dataview-task-editor__filter-item {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 12px;
-  background: rgba(0, 0, 0, 0.1);
-  border-radius: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.05);
-}
-
-.dataview-task-editor__filter-content {
-  padding-left: 26px;
-  margin-top: 4px;
-}
-
-/* Priority badges */
-.dataview-task-editor__priority-options {
-  display: flex;
-  gap: 12px;
-}
-
-.dataview-task-editor__priority-option {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  cursor: pointer;
-}
-
-.dataview-task-editor__priority-badge {
-  display: inline-block;
-  padding: 2px 8px;
-  border-radius: 4px;
-  font-size: 12px;
-  font-weight: 500;
-}
-
-.dataview-task-editor__priority-badge--high {
-  background: rgba(239, 68, 68, 0.2);
-  color: #f87171;
-}
-
-.dataview-task-editor__priority-badge--medium {
-  background: rgba(251, 191, 36, 0.2);
-  color: #fbbf24;
-}
-
-.dataview-task-editor__priority-badge--low {
-  background: rgba(52, 211, 153, 0.2);
-  color: #34d399;
-}
-
-/* Checkbox styling */
-.dataview-task-editor__checkbox {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.dataview-task-editor__checkbox input[type="checkbox"] {
-  appearance: none;
-  width: 18px;
-  height: 18px;
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 4px;
-  position: relative;
-  cursor: pointer;
-}
-
-.dataview-task-editor__checkbox input[type="checkbox"]:checked {
-  background: rgba(59, 130, 246, 0.8);
-  border-color: rgba(59, 130, 246, 0.8);
-}
-
-.dataview-task-editor__checkbox input[type="checkbox"]:checked::after {
-  content: "✓";
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  color: white;
-  font-size: 12px;
-}
-
-.dataview-task-editor__checkbox label {
-  font-size: 14px;
-  cursor: pointer;
-}
-
-/* Radio buttons */
-.dataview-task-editor__radio-group {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.dataview-task-editor__radio {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  cursor: pointer;
-}
-
-.dataview-task-editor__radio input[type="radio"] {
-  appearance: none;
-  width: 18px;
-  height: 18px;
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 50%;
-  position: relative;
-  cursor: pointer;
-}
-
-.dataview-task-editor__radio input[type="radio"]:checked {
-  border-color: rgba(59, 130, 246, 0.8);
-}
-
-.dataview-task-editor__radio input[type="radio"]:checked::after {
-  content: "";
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 10px;
-  height: 10px;
-  background: rgba(59, 130, 246, 0.8);
-  border-radius: 50%;
-}
-
-.dataview-task-editor__radio-text {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 14px;
-}
-
-/* Advanced panel */
-.dataview-task-editor__advanced-toggle {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 12px 16px;
-  background: rgba(0, 0, 0, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  border-radius: 8px;
-  color: #94a3b8;
-  font-size: 14px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.dataview-task-editor__advanced-toggle:hover {
-  color: #e2e8f0;
-}
-
-.dataview-task-editor__advanced-panel {
-  margin-top: 16px;
-  padding: 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-  background: rgba(0, 0, 0, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  border-radius: 8px;
-  animation: fadeIn 0.2s ease-in-out;
-}
-
-@keyframes fadeIn {
+@keyframes slideDown {
   from {
     opacity: 0;
     transform: translateY(-10px);
@@ -1477,70 +1183,726 @@ function updateContent(content: string[]) {
   }
 }
 
-/* Sort controls */
-.dataview-task-editor__sort-property {
+.dv-task-intro p {
+  margin: 0;
+}
+
+/* --- Sections --- */
+.dv-task-section {
+  background: rgba(30, 36, 50, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  padding: 18px;
+  transition: box-shadow 0.2s ease-in-out;
+}
+
+.dv-task-section-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 15px;
+  color: var(--text-title-dark, #f0f0f5);
+}
+
+.dv-task-step-number {
+  background-color: var(--interactive-accent-light, #60a5fa);
+  color: var(--text-on-accent, #111);
+  font-size: 11px;
+  font-weight: bold;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.dv-task-section-icon {
+  font-size: 16px;
+  color: var(--icon-color-dark, #94a3b8);
+}
+
+.dv-task-section-title {
+  font-size: 16px;
+  font-weight: 500;
+  margin: 0;
+  flex-grow: 1;
+}
+
+.dv-task-section-description {
+  font-size: 13px;
+  color: var(--text-muted-dark, #94a3b8);
+  margin-left: auto;
+  padding-left: 10px;
+}
+
+.dv-task-section-content {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+/* --- Status Cards --- */
+.dv-task-status-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.dv-task-status-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 15px;
+  background: rgba(15, 20, 30, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.dv-task-status-card:hover {
+  background: rgba(50, 60, 80, 0.3);
+}
+
+.dv-task-status-card.active {
+  background: rgba(59, 130, 246, 0.15);
+  border-color: rgba(59, 130, 246, 0.5);
+}
+
+.dv-task-status-icon {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 50%;
+  color: #60a5fa;
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.dv-task-status-info {
+  flex-grow: 1;
+}
+
+.dv-task-status-title {
+  font-weight: 500;
+  font-size: 15px;
+  margin-bottom: 4px;
+}
+
+.dv-task-status-description {
+  font-size: 13px;
+  color: var(--text-muted-dark, #94a3b8);
+}
+
+/* --- Segmented Control --- */
+.dv-task-segmented-control {
+  display: flex;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 8px;
+  padding: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  width: 100%;
+}
+
+.dv-task-segmented-control button {
+  flex: 1;
+  padding: 8px 12px;
+  border: none;
+  background: transparent;
+  border-radius: 6px;
+  color: var(--text-muted-dark, #94a3b8);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s, color 0.2s, box-shadow 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.dv-task-segmented-control button.active {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--interactive-accent-light, #60a5fa);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.dv-task-segmented-control button i {
+  font-size: 13px;
+}
+
+/* --- Inputs & Selects --- */
+.dv-task-input,
+.dv-task-select {
+  padding: 9px 12px;
+  background: rgba(15, 20, 30, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  color: var(--text-normal-dark, #e1e1e6);
+  font-size: 14px;
+  width: 100%;
+  transition: all 0.2s ease-in-out;
+}
+
+.dv-task-input:focus,
+.dv-task-select:focus {
+  outline: none;
+  border-color: var(--interactive-accent-light, #60a5fa);
+  box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.3);
+  background: rgba(30, 36, 50, 0.9);
+}
+
+.dv-task-input::placeholder {
+  color: var(--text-faint-dark, #717a8a);
+}
+
+.dv-task-select {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  padding-right: 35px;
+}
+
+.dv-task-input--numeric {
+  width: 100px;
+  text-align: center;
+}
+
+.dv-task-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.dv-task-input-wrapper--field .dv-task-input,
+.dv-task-input-wrapper--select .dv-task-select {
+  padding-left: 34px;
+  flex-grow: 1;
+}
+
+.dv-task-input-icon {
+  position: absolute;
+  left: 11px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--icon-color-dark, #94a3b8);
+  font-size: 13px;
+  pointer-events: none;
+}
+
+.dv-task-input-suffix {
+  font-size: 14px;
+  color: var(--text-muted-dark, #94a3b8);
+  margin-left: 5px;
+}
+
+.dv-task-limit-input {
+  margin-left: 30px;
+}
+
+/* --- Action Button --- */
+.dv-task-action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #94a3b8;
+  width: 36px;
+  height: 36px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+
+.dv-task-action-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.1);
+  color: #e2e8f0;
+}
+
+.dv-task-action-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.dv-task-action-btn i {
+  font-size: 13px;
+}
+
+/* --- Current Note Message --- */
+.dv-task-current-note-message {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 6px;
+  color: var(--text-muted-dark, #94a3b8);
+  font-size: 13px;
+}
+
+.dv-task-current-note-message i {
+  color: var(--interactive-accent-light, #60a5fa);
+}
+
+/* --- Filter Cards --- */
+.dv-task-filter-container {
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+  padding: 15px;
+  margin-bottom: 20px;
+}
+
+.dv-task-filter-header {
   margin-bottom: 12px;
 }
 
-.dataview-task-editor__sort-direction {
-  margin-top: 4px;
+.dv-task-filter-header h4 {
+  margin: 0 0 5px 0;
+  font-size: 14px;
+  font-weight: 500;
 }
 
-/* Limit controls */
-.dataview-task-editor__limit-field {
+.dv-task-filter-tip {
+  color: var(--text-muted-dark, #94a3b8);
+  font-size: 12px;
+}
+
+.dv-task-filter-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.dv-task-filter-card {
+  background: rgba(15, 20, 30, 0.3);
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+  transition: all 0.2s ease;
+}
+
+.dv-task-filter-card.active {
+  border-color: rgba(96, 165, 250, 0.2);
+  background: rgba(15, 20, 30, 0.5);
+}
+
+.dv-task-filter-card-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 15px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.dv-task-filter-title {
+  font-weight: 500;
+  font-size: 14px;
+}
+
+.dv-task-filter-card-content {
+  padding: 12px 15px;
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* --- Toggle Switch --- */
+.dv-task-toggle {
+  position: relative;
+  display: inline-block;
+  width: 40px;
+  height: 22px;
+  flex-shrink: 0;
+}
+
+.dv-task-toggle input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.dv-task-toggle-slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  transition: 0.3s;
+  border-radius: 22px;
+}
+
+.dv-task-toggle-slider:before {
+  position: absolute;
+  content: "";
+  height: 16px;
+  width: 16px;
+  left: 2px;
+  bottom: 2px;
+  background-color: #ccc;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  transition: 0.3s;
+  border-radius: 50%;
+}
+
+.dv-task-toggle input:checked + .dv-task-toggle-slider {
+  background-color: var(--interactive-accent-light, #60a5fa);
+  border-color: var(--interactive-accent-light, #60a5fa);
+}
+
+.dv-task-toggle input:focus-visible + .dv-task-toggle-slider {
+  box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.3);
+}
+
+.dv-task-toggle input:checked + .dv-task-toggle-slider:before {
+  transform: translateX(18px);
+  background-color: #fff;
+}
+
+.dv-task-toggle-label {
+  font-size: 14px;
+  color: var(--text-normal-dark, #e1e1e6);
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.dv-task-toggle-label--disabled {
+  color: var(--text-faint-dark, #717a8a);
+}
+
+/* --- Chip Selector --- */
+.dv-task-chip-selector {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.dv-task-chip-selector button {
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-size: 13px;
+  color: var(--text-muted-dark, #94a3b8);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.dv-task-chip-selector button:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.dv-task-chip-selector button.active {
+  background: rgba(96, 165, 250, 0.1);
+  border-color: rgba(96, 165, 250, 0.3);
+  color: var(--interactive-accent-light, #60a5fa);
+}
+
+/* --- Priority Badges --- */
+.dv-task-priority-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.dv-task-priority-badge {
+  position: relative;
+  cursor: pointer;
+}
+
+.dv-task-priority-badge input {
+  position: absolute;
+  opacity: 0;
+  cursor: pointer;
+  height: 0;
+  width: 0;
+}
+
+.dv-task-priority-badge span {
+  display: inline-block;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.dv-task-priority-badge-high {
+  background: rgba(239, 68, 68, 0.1);
+  color: #f87171;
+  border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+.dv-task-priority-badge-medium {
+  background: rgba(251, 191, 36, 0.1);
+  color: #fbbf24;
+  border: 1px solid rgba(251, 191, 36, 0.2);
+}
+
+.dv-task-priority-badge-low {
+  background: rgba(52, 211, 153, 0.1);
+  color: #34d399;
+  border: 1px solid rgba(52, 211, 153, 0.2);
+}
+
+.dv-task-priority-badge.active .dv-task-priority-badge-high {
+  background: rgba(239, 68, 68, 0.2);
+  border-color: rgba(239, 68, 68, 0.3);
+}
+
+.dv-task-priority-badge.active .dv-task-priority-badge-medium {
+  background: rgba(251, 191, 36, 0.2);
+  border-color: rgba(251, 191, 36, 0.3);
+}
+
+.dv-task-priority-badge.active .dv-task-priority-badge-low {
+  background: rgba(52, 211, 153, 0.2);
+  border-color: rgba(52, 211, 153, 0.3);
+}
+
+/* --- Toggle Sections --- */
+.dv-task-toggle-section {
+  border-radius: 8px;
+  overflow: hidden;
+  background: rgba(30, 36, 50, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.dv-task-toggle-section--preview {
+  background: rgba(15, 23, 42, 0.3);
+}
+
+.dv-task-toggle-section-header {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 15px 18px;
+  border: none;
+  background: transparent;
+  text-align: left;
+  color: var(--text-normal-dark, #e1e1e6);
+  font-size: 14px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  gap: 10px;
+}
+
+.dv-task-toggle-section-header:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+.dv-task-toggle-section-header i:first-child {
+  color: var(--interactive-accent-light, #60a5fa);
+}
+
+.dv-task-toggle-section-header i:last-child {
+  margin-left: auto;
+  color: var(--text-muted-dark, #94a3b8);
+  font-size: 12px;
+  transition: transform 0.2s;
+}
+
+.dv-task-toggle-section-header i.fa-chevron-up {
+  transform: rotate(180deg);
+}
+
+/* --- Organization Section --- */
+.dv-task-organization-container {
+  padding: 15px 18px;
+  animation: slideDown 0.3s ease-out;
+}
+
+.dv-task-organization-options {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.dv-task-organization-option {
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
 
-.dataview-task-editor__limit-value {
-  margin-top: 8px;
-  margin-left: 26px;
-}
-
-.dataview-task-editor__number-input {
-  width: 100px;
-  text-align: center;
-}
-
-/* Tips section */
-.dataview-task-editor__tips {
-  margin-top: 8px;
-  padding: 16px;
-  background: rgba(15, 23, 42, 0.3);
-  border-radius: 6px;
-  border: 1px solid rgba(255, 255, 255, 0.05);
-}
-
-.dataview-task-editor__tips-header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  color: #60a5fa;
+.dv-task-label {
   font-size: 14px;
   font-weight: 500;
-  margin-bottom: 12px;
+  color: var(--text-normal-dark, #e1e1e6);
 }
 
-.dataview-task-editor__tips-content {
+.dv-task-field-group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.dv-task-field-group--inline {
+  flex-direction: row;
+  align-items: center;
+}
+
+/* --- Direction Toggle --- */
+.dv-task-direction-toggle {
+  display: flex;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 6px;
+  padding: 3px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  margin-top: 5px;
+}
+
+.dv-task-direction-toggle button {
+  flex: 1;
+  padding: 8px 12px;
+  border: none;
+  background: transparent;
+  border-radius: 4px;
+  color: var(--text-muted-dark, #94a3b8);
   font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.dv-task-direction-toggle button.active {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--interactive-accent-light, #60a5fa);
+}
+
+.dv-task-direction-toggle button i {
+  font-size: 13px;
+}
+
+/* --- Preview Section --- */
+.dv-task-preview-section {
+  padding: 15px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  animation: slideDown 0.3s ease-out;
+}
+
+.dv-task-preview-illustration {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 6px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.dv-task-preview-task {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+}
+
+.dv-task-preview-checkbox {
+  flex-shrink: 0;
   color: #94a3b8;
+  font-size: 16px;
+}
+
+.dv-task-preview-content {
+  line-height: 1.4;
+}
+
+.dv-task-preview-tag {
+  background: rgba(96, 165, 250, 0.1);
+  color: #60a5fa;
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+.dv-task-preview-priority {
+  background: rgba(239, 68, 68, 0.1);
+  color: #f87171;
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.dv-task-preview-due {
+  background: rgba(52, 211, 153, 0.1);
+  color: #34d399;
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+.dv-task-preview-info {
+  color: var(--text-muted-dark, #94a3b8);
+  font-size: 13px;
   line-height: 1.5;
 }
 
+.dv-task-preview-info p {
+  margin: 0 0 8px 0;
+}
+
+.dv-task-preview-info p:last-child {
+  margin-bottom: 0;
+}
+
+.dv-task-preview-info strong {
+  color: var(--text-normal-dark, #e1e1e6);
+}
+
 /* Responsive adjustments */
-@media (max-width: 768px) {
-  .dataview-task-editor__status-selector {
-    grid-template-columns: repeat(2, 1fr);
+@media (max-width: 600px) {
+  .dv-task-segmented-control {
+    flex-wrap: wrap;
   }
 
-  .dataview-task-editor__source-selector {
-    grid-template-columns: repeat(2, 1fr);
+  .dv-task-segmented-control button {
+    flex-basis: 50%;
   }
 
-  .dataview-task-editor__priority-options {
+  .dv-task-section-description {
+    display: none;
+  }
+
+  .dv-task-direction-toggle {
     flex-direction: column;
-    gap: 8px;
+    gap: 2px;
+  }
+
+  .dv-task-field-group--inline {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .dv-task-limit-input {
+    margin-left: 0;
+  }
+
+  .dv-task-priority-badges {
+    flex-direction: column;
   }
 }
 </style>

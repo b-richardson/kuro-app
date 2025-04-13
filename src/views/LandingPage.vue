@@ -57,9 +57,8 @@
             <span class="highlight">Without Writing Code</span>
           </h1>
           <p class="hero-subtitle">
-            Transform complex Templater syntax and Dataview queries into simple
-            visual modules. Create dynamic templates with real-time previews and
-            direct vault integration.
+            Finally, a way to use Obsidian's best plugins — without learning a
+            single line of code.
           </p>
           <div class="hero-cta">
             <router-link to="/editor" class="primary-cta">
@@ -205,46 +204,49 @@
         </div>
       </section>
 
-      <!-- Use Cases Section (NEW) -->
+      <!-- User Type Callout (Replaces Use Cases Section) -->
       <section class="use-cases-section">
-        <h2 class="section-title">What Will You Build?</h2>
+        <h2 class="section-title">Who This Is Really Built For</h2>
         <p class="section-subtitle">
-          Our users create powerful templates for every aspect of their Obsidian
-          workflow.
+          Whether you're new to Obsidian or just tired of dealing with plugin
+          syntax, Template Builder makes it easy to build templates that
+          actually work.
         </p>
         <div class="use-cases-grid">
           <div class="use-case-card glass-card">
-            <div class="use-case-icon"><i class="fas fa-tasks"></i></div>
-            <h3>Project Management</h3>
+            <div class="use-case-icon"><i class="fas fa-user-plus"></i></div>
+            <h3>New Obsidian Users</h3>
             <p>
-              Create project dashboards with task tracking, progress
-              visualization, and automated linking to related notes.
+              Just getting started? Skip the confusion and build your first
+              working template in minutes — no syntax, no setup, no overwhelm.
             </p>
           </div>
           <div class="use-case-card glass-card">
-            <div class="use-case-icon"><i class="fas fa-book"></i></div>
-            <h3>Knowledge Management</h3>
+            <div class="use-case-icon"><i class="fas fa-tools"></i></div>
+            <h3>Non-Technical Power Users</h3>
             <p>
-              Build literature notes with consistent metadata, citation
-              formatting, and auto-generated connection indexes.
+              You want to take advantage of plugins like Templater and Dataview,
+              but without the code. We make powerful workflows visual and
+              intuitive.
             </p>
           </div>
           <div class="use-case-card glass-card">
-            <div class="use-case-icon"><i class="fas fa-calendar-alt"></i></div>
-            <h3>Journaling & Reflection</h3>
+            <div class="use-case-icon"><i class="fas fa-pencil-alt"></i></div>
+            <h3>Writers, Students, Professionals</h3>
             <p>
-              Design guided journal templates with mood tracking, habit
-              monitoring, and weekly/monthly insight collection.
+              Whether you're journaling, studying, or managing work — build the
+              exact structure you need and reuse it without technical headaches.
             </p>
           </div>
           <div class="use-case-card glass-card">
             <div class="use-case-icon">
-              <i class="fas fa-graduation-cap"></i>
+              <i class="fas fa-exclamation-triangle"></i>
             </div>
-            <h3>Learning & Study</h3>
+            <h3>Sick of Syntax Errors</h3>
             <p>
-              Create structured notes for courses, reading, and research with
-              automatic cross-referencing and spaced repetition prompts.
+              You've tried building templates before, but got stuck on YAML,
+              brackets, or plugin quirks. This is your shortcut to clean,
+              working templates.
             </p>
           </div>
         </div>
@@ -257,60 +259,43 @@
         <div class="pricing-options">
           <!-- Monthly Plan -->
           <div class="pricing-card glass-card">
-            <h3 class="pricing-tier">Standard</h3>
+            <h3 class="pricing-tier">Personal</h3>
             <div class="pricing-price">
-              <span class="currency">$</span>9<span class="period">/mo</span>
+              <span class="currency">$</span>4.99<span class="period">/mo</span>
             </div>
-            <p class="pricing-billing-note">Billed monthly</p>
+            <p class="pricing-billing-note">
+              14-day free trial · Cancel anytime
+            </p>
             <ul class="pricing-features">
               <li><i class="fas fa-check"></i> Unlimited Templates</li>
+              <li><i class="fas fa-check"></i> Templater & Dataview Modules</li>
+              <li><i class="fas fa-check"></i> Vault Sync + Cloud Storage</li>
+              <li><i class="fas fa-check"></i> Real-Time Preview</li>
               <li>
-                <i class="fas fa-check"></i> All Basic & Templater Modules
+                <i class="fas fa-check"></i> Access to Pre-Built Templates
               </li>
-              <li>
-                <i class="fas fa-check"></i> Essential Dataview Integration
-              </li>
-              <li><i class="fas fa-check"></i> Direct Vault Connection</li>
-              <li><i class="fas fa-check"></i> Cloud Template Storage</li>
-              <li><i class="fas fa-check"></i> Community Support</li>
             </ul>
             <router-link to="/signup?plan=monthly" class="pricing-cta"
-              >Get Started</router-link
+              >Start Free Trial</router-link
             >
           </div>
 
-          <!-- Annual Plan (Featured) -->
+          <!-- Annual Plan -->
           <div class="pricing-card glass-card featured">
-            <div class="featured-badge">Best Value</div>
-            <h3 class="pricing-tier">Pro</h3>
+            <div class="featured-badge">Save 20%</div>
+            <h3 class="pricing-tier">Annual</h3>
             <div class="pricing-price">
-              <span class="currency">$</span>7.50<span class="period">/mo</span>
+              <span class="currency">$</span>3.99<span class="period">/mo</span>
             </div>
-            <p class="pricing-billing-note">Billed annually ($90/year)</p>
+            <p class="pricing-billing-note">Billed annually at $48/year</p>
             <ul class="pricing-features">
-              <li><i class="fas fa-check"></i> Unlimited Templates</li>
-              <li>
-                <i class="fas fa-check"></i> All Basic & Templater Modules
-              </li>
-              <li>
-                <i class="fas fa-check"></i> Advanced Dataview Integration
-              </li>
-              <li><i class="fas fa-check"></i> Direct Vault Connection</li>
-              <li><i class="fas fa-check"></i> Cloud Template Storage</li>
-              <li>
-                <i class="fas fa-star"></i> <strong>Priority Support</strong>
-              </li>
-              <li>
-                <i class="fas fa-star"></i>
-                <strong>Template Library Access</strong>
-              </li>
-              <li>
-                <i class="fas fa-star"></i>
-                <strong>Early Access to New Modules</strong>
-              </li>
+              <li><i class="fas fa-check"></i> Everything in Personal</li>
+              <li><i class="fas fa-star"></i> Priority Support</li>
+              <li><i class="fas fa-star"></i> Template Library Access</li>
+              <li><i class="fas fa-star"></i> Early Access to New Modules</li>
             </ul>
             <router-link to="/signup?plan=annual" class="pricing-cta primary"
-              >Choose Pro</router-link
+              >Choose Annual Plan</router-link
             >
           </div>
         </div>
@@ -404,11 +389,13 @@
 
       <!-- Call to Action Section (NEW) -->
       <section class="cta-section glass-card">
-        <h2>Ready to Transform Your Obsidian Experience?</h2>
+        <h2>Stop Struggling With Obsidian Templates</h2>
         <p>
-          Join thousands of users who've simplified their template creation
-          process and unlocked Obsidian's full potential.
+          Whether you're journaling, managing projects, or building your second
+          brain — Template Builder helps you start fast, stay consistent, and
+          skip the syntax.
         </p>
+
         <div class="cta-buttons">
           <router-link to="/editor" class="cta-primary"
             >Try The Editor Now</router-link

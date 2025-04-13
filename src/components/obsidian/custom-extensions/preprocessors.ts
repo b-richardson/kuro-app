@@ -63,6 +63,12 @@ export function preprocessDataview(content: string): string {
   return processedContent;
 }
 
+export function preprocessDataviewTable(content: string): string {
+  return content.replace(/```dataviewjs\s+([\s\S]*?)```/g, (match, query) => {
+    return `<div class="dataview-table-container"><pre data-language="dataviewjs"><code>${query.trim()}</code></pre></div>`;
+  });
+}
+
 /**
  * Preprocesses Obsidian callouts
  */
@@ -336,6 +342,7 @@ export function preprocessContent(content: string): string {
   processedMarkdown = preprocessHtmlEntities(processedMarkdown);
   processedMarkdown = preprocessMarkdown(processedMarkdown);
   processedMarkdown = preprocessDataview(processedMarkdown);
+  processedMarkdown = preprocessDataviewTable(processedMarkdown);
   processedMarkdown = preprocessDataviewCalendar(processedMarkdown);
   processedMarkdown = preprocessCallouts(processedMarkdown);
   processedMarkdown = preprocessTemplaterDate(processedMarkdown);

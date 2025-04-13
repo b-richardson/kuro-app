@@ -11,28 +11,32 @@
     @select="$emit('select')"
     @duplicate="$emit('duplicate')"
     @module-change="$emit('module-change')"
+    @add-line="regenerateQuery"
     ref="baseModuleRef"
   >
-    <div class="dataview-builder">
-      <!-- Header -->
-      <div class="dv-header">
-        <div class="dv-header-icon">
-          <i class="fas fa-stream"></i>
+    <div class="dv-list-builder">
+      <!-- Module Header -->
+      <div class="dv-list-header">
+        <div class="dv-list-header-icon">
+          <i class="fas fa-list-ul"></i>
         </div>
-        <div class="dv-header-title">Dataview List Builder</div>
+        <div class="dv-list-header-title">Dataview List</div>
       </div>
 
-      <!-- Section 1: Source -->
-      <div class="dv-section">
-        <div class="dv-section-header">
-          <span class="dv-step-number">1</span>
-          <i class="fas fa-search dv-section-icon"></i>
-          <h3 class="dv-section-title">Find Notes</h3>
+      <!-- Step 1: Source Selection -->
+      <div class="dv-list-section">
+        <div class="dv-list-section-header">
+          <span class="dv-list-step-number">1</span>
+          <i class="fas fa-filter dv-list-section-icon"></i>
+          <h3 class="dv-list-section-title">Choose Source</h3>
+          <span class="dv-list-section-description"
+            >Where to find notes to list?</span
+          >
         </div>
-        <div class="dv-section-content">
-          <div class="dv-field-group">
-            <label class="dv-label">Look for notes:</label>
-            <div class="dv-segmented-control">
+
+        <div class="dv-list-section-content">
+          <div class="dv-list-field-group">
+            <div class="dv-list-segmented-control">
               <button
                 :class="{ active: sourceType === 'all' }"
                 @click="setSourceType('all')"
@@ -43,34 +47,35 @@
                 :class="{ active: sourceType === 'folder' }"
                 @click="setSourceType('folder')"
               >
-                <i class="fas fa-folder"></i> In Folder
+                <i class="fas fa-folder"></i> Folder
               </button>
               <button
                 :class="{ active: sourceType === 'tag' }"
                 @click="setSourceType('tag')"
               >
-                <i class="fas fa-tag"></i> With Tag
+                <i class="fas fa-tag"></i> Tag
               </button>
               <button
                 :class="{ active: sourceType === 'property' }"
                 @click="setSourceType('property')"
               >
-                <i class="fas fa-key"></i> With Property
+                <i class="fas fa-key"></i> Property
               </button>
             </div>
-          </div>
 
-          <!-- Folder Source -->
-          <div v-if="sourceType === 'folder'" class="dv-field-group">
-            <label class="dv-label">Select Folder</label>
-            <div class="dv-input-wrapper">
-              <i class="fas fa-folder dv-input-icon"></i>
+            <!-- Folder Selection -->
+            <div
+              v-if="sourceType === 'folder'"
+              class="dv-list-input-wrapper dv-list-input-wrapper--select"
+            >
+              <i class="fas fa-folder dv-list-input-icon"></i>
               <select
-                class="dv-input"
+                class="dv-list-select"
                 v-model="selectedFolder"
                 @change="handleSourceValueChange"
               >
-                <option disabled value="">Select a folder</option>
+                <option disabled value="">Select a folder...</option>
+                <option value="">Root Folder ("")</option>
                 <option
                   v-for="folder in availableFolders"
                   :key="folder.path"
@@ -79,152 +84,184 @@
                   {{ folder.path || "/" }}
                 </option>
               </select>
-              <button class="dv-remove-button" @click="fetchFolders">
+              <button
+                class="dv-list-action-btn dv-list-action-btn--refresh"
+                title="Refresh folder list"
+                @click="fetchFolders"
+              >
                 <i class="fas fa-sync-alt"></i>
               </button>
             </div>
-          </div>
 
-          <!-- Tag Source -->
-          <div v-if="sourceType === 'tag'" class="dv-field-group">
-            <label class="dv-label">Select Tag</label>
-            <div class="dv-input-wrapper">
-              <span class="dv-tag-prefix">#</span>
+            <!-- Tag Selection -->
+            <div
+              v-if="sourceType === 'tag'"
+              class="dv-list-input-wrapper dv-list-input-wrapper--select"
+            >
+              <i class="fas fa-tag dv-list-input-icon"></i>
               <select
-                class="dv-input"
+                class="dv-list-select"
                 v-model="selectedTag"
                 @change="handleSourceValueChange"
               >
-                <option disabled value="">Select a tag</option>
+                <option disabled value="">Select a tag...</option>
                 <option v-for="tag in availableTags" :key="tag" :value="tag">
-                  {{ tag }}
+                  #{{ tag }}
                 </option>
               </select>
-              <button class="dv-remove-button" @click="fetchTags">
+              <button
+                class="dv-list-action-btn dv-list-action-btn--refresh"
+                title="Refresh tag list"
+                @click="fetchTags"
+              >
                 <i class="fas fa-sync-alt"></i>
               </button>
             </div>
-          </div>
 
-          <!-- Property Source -->
-          <div v-if="sourceType === 'property'" class="dv-field-group">
-            <label class="dv-label">Filter by Property</label>
-            <div class="dv-filter-row">
-              <select
-                class="dv-input dv-input--filter-prop"
-                v-model="selectedProperty"
-                @change="handlePropertyChange"
-              >
-                <option disabled value="">Select a property</option>
-                <option
-                  v-for="prop in availableProperties"
-                  :key="prop"
-                  :value="prop"
+            <!-- Property Selection -->
+            <div
+              v-if="sourceType === 'property'"
+              class="dv-list-property-filter"
+            >
+              <div class="dv-list-input-wrapper dv-list-input-wrapper--select">
+                <i class="fas fa-key dv-list-input-icon"></i>
+                <select
+                  class="dv-list-select"
+                  v-model="selectedProperty"
+                  @change="handlePropertyChange"
                 >
-                  {{ prop }}
-                </option>
-              </select>
-              <select
-                class="dv-select dv-select--filter-op"
-                v-model="propertyOperator"
-                @change="handlePropertyOperatorChange"
-              >
-                <option value="=">equals</option>
-                <option value="!=">not equals</option>
-                <option value=">">greater than</option>
-                <option value="<">less than</option>
-                <option value=">=">greater/equal</option>
-                <option value="<=">less/equal</option>
-                <option value="contains">contains</option>
-              </select>
-              <input
-                type="text"
-                class="dv-input dv-input--filter-value"
-                placeholder="Value"
-                v-model="propertyValue"
-                @input="handlePropertyValueChange"
-              />
-              <button class="dv-remove-button" @click="fetchProperties">
-                <i class="fas fa-sync-alt"></i>
-              </button>
+                  <option disabled value="">Select property...</option>
+                  <option
+                    v-for="prop in availableProperties"
+                    :key="prop"
+                    :value="prop"
+                  >
+                    {{ prop }}
+                  </option>
+                </select>
+              </div>
+
+              <div class="dv-list-input-wrapper dv-list-input-wrapper--select">
+                <select
+                  class="dv-list-select"
+                  v-model="propertyOperator"
+                  @change="handlePropertyOperatorChange"
+                >
+                  <option value="=">equals</option>
+                  <option value="!=">not equals</option>
+                  <option value=">">greater than</option>
+                  <option value="<">less than</option>
+                  <option value=">=">greater/equal</option>
+                  <option value="<=">less/equal</option>
+                  <option value="contains">contains</option>
+                </select>
+              </div>
+
+              <div class="dv-list-input-wrapper">
+                <input
+                  type="text"
+                  class="dv-list-input"
+                  placeholder="Value"
+                  v-model="propertyValue"
+                  @input="handlePropertyValueChange"
+                />
+
+                <button
+                  class="dv-list-action-btn"
+                  title="Refresh property list"
+                  @click="fetchProperties"
+                >
+                  <i class="fas fa-sync-alt"></i>
+                </button>
+              </div>
             </div>
           </div>
         </div>
       </div>
 
-      <!-- Section 2: Display Properties -->
-      <div class="dv-section">
-        <div class="dv-section-header">
-          <span class="dv-step-number">2</span>
-          <i class="fas fa-info-circle dv-section-icon"></i>
-          <h3 class="dv-section-title">Show Information</h3>
+      <!-- Step 2: Display Properties -->
+      <div class="dv-list-section">
+        <div class="dv-list-section-header">
+          <span class="dv-list-step-number">2</span>
+          <i class="fas fa-table-columns dv-list-section-icon"></i>
+          <h3 class="dv-list-section-title">Display Properties</h3>
+          <span class="dv-list-section-description"
+            >What to show in results</span
+          >
         </div>
-        <div class="dv-section-content">
-          <div class="dv-display-fields-list">
-            <div
-              v-for="(prop, index) in displayProperties"
-              :key="index"
-              class="dv-display-field"
-            >
-              <i class="fas fa-sticky-note"></i>
-              <span>{{ prop }}</span>
-              <button
-                class="dv-remove-button dv-remove-button--display"
-                @click="removeDisplayProperty(index)"
-              >
-                <i class="fas fa-times"></i>
-              </button>
-            </div>
+
+        <div class="dv-list-section-content">
+          <div class="dv-list-property-tags">
             <div
               v-if="displayProperties.length === 0"
-              class="dv-display-field dv-display-field--default"
+              class="dv-list-property-tags-empty"
             >
-              <i class="fas fa-sticky-note"></i>
-              <span>No properties selected (will show default list)</span>
+              No properties selected (will show default list)
+            </div>
+            <div v-else class="dv-list-property-tags-container">
+              <div
+                v-for="(prop, index) in displayProperties"
+                :key="index"
+                class="dv-list-property-tag"
+              >
+                <span>{{ prop }}</span>
+                <button
+                  class="dv-list-property-tag-remove"
+                  @click="removeDisplayProperty(index)"
+                  aria-label="Remove property"
+                >
+                  <i class="fas fa-times"></i>
+                </button>
+              </div>
             </div>
           </div>
-          <div class="dv-field-group">
-            <div class="dv-input-wrapper">
+
+          <div class="dv-list-add-property">
+            <div class="dv-list-input-wrapper dv-list-input-wrapper--with-btn">
+              <i class="fas fa-plus-circle dv-list-input-icon"></i>
               <input
                 type="text"
-                class="dv-input"
+                class="dv-list-input"
                 placeholder="Add property..."
                 v-model="newDisplayProperty"
                 list="available-properties"
                 @keydown.enter.prevent="addDisplayProperty"
               />
-              <datalist id="available-properties">
-                <option
-                  v-for="prop in availableProperties"
-                  :key="prop"
-                  :value="prop"
-                ></option>
-              </datalist>
               <button
-                class="dv-add-button"
+                class="dv-list-action-btn dv-list-action-btn--add"
                 @click="addDisplayProperty"
                 :disabled="!newDisplayProperty"
+                title="Add property"
               >
-                <i class="fas fa-plus"></i> Add
+                <i class="fas fa-plus"></i>
               </button>
             </div>
+            <datalist id="available-properties">
+              <option
+                v-for="prop in availableProperties"
+                :key="prop"
+                :value="prop"
+              ></option>
+            </datalist>
           </div>
         </div>
       </div>
 
-      <!-- Section 3: Arrange & Limit -->
-      <div class="dv-section">
-        <div class="dv-section-header">
-          <span class="dv-step-number">3</span>
-          <i class="fas fa-sort-amount-down dv-section-icon"></i>
-          <h3 class="dv-section-title">Arrange & Limit</h3>
+      <!-- Step 3: Sorting -->
+      <div class="dv-list-section">
+        <div class="dv-list-section-header">
+          <span class="dv-list-step-number">3</span>
+          <i class="fas fa-sort dv-list-section-icon"></i>
+          <h3 class="dv-list-section-title">Sort Results</h3>
+          <span class="dv-list-section-description">How to order the list</span>
         </div>
-        <div class="dv-section-content dv-section-content--arrange">
-          <div class="dv-field-group dv-field-group--sort">
-            <label class="dv-label">Sort by:</label>
-            <div class="dv-sort-controls">
+
+        <div class="dv-list-section-content">
+          <div class="dv-list-field-group">
+            <div class="dv-list-input-wrapper dv-list-input-wrapper--select">
+              <i class="fas fa-sort-alpha-down dv-list-input-icon"></i>
               <select
-                class="dv-input"
+                class="dv-list-select"
                 v-model="sortProperty"
                 @change="handleSortChange"
               >
@@ -240,49 +277,101 @@
                   {{ prop }}
                 </option>
               </select>
-              <div class="dv-segmented-control dv-segmented-control--sort">
-                <button
-                  :class="{ active: sortDirection === 'asc' }"
-                  @click="setSortDirection('asc')"
-                >
-                  <i class="fas fa-arrow-up"></i> Asc
-                </button>
-                <button
-                  :class="{ active: sortDirection === 'desc' }"
-                  @click="setSortDirection('desc')"
-                >
-                  <i class="fas fa-arrow-down"></i> Desc
-                </button>
-              </div>
+            </div>
+
+            <div class="dv-list-direction-toggle">
+              <button
+                :class="{ active: sortDirection === 'asc' }"
+                @click="setSortDirection('asc')"
+                title="Sort ascending"
+              >
+                <i class="fas fa-sort-amount-up-alt"></i>
+                <span>Ascending</span>
+              </button>
+              <button
+                :class="{ active: sortDirection === 'desc' }"
+                @click="setSortDirection('desc')"
+                title="Sort descending"
+              >
+                <i class="fas fa-sort-amount-down"></i>
+                <span>Descending</span>
+              </button>
             </div>
           </div>
+        </div>
+      </div>
 
-          <div class="dv-field-group dv-field-group--limit">
-            <label class="dv-label">Limit results:</label>
-            <div class="dv-limit-controls">
-              <label class="dv-toggle">
-                <input
-                  type="checkbox"
-                  v-model="useLimit"
-                  @change="handleLimitChange"
-                />
-                <span class="dv-toggle-slider"></span>
-              </label>
+      <!-- Step 4: Optional Settings -->
+      <div class="dv-list-section dv-list-section--optional">
+        <div
+          class="dv-list-section-header dv-list-section-header--toggle"
+          @click="showAdvanced = !showAdvanced"
+        >
+          <span class="dv-list-step-number dv-list-step-number--optional"
+            >?</span
+          >
+          <i class="fas fa-sliders-h dv-list-section-icon"></i>
+          <h3 class="dv-list-section-title">List Options</h3>
+          <i
+            :class="[
+              'fas',
+              showAdvanced ? 'fa-chevron-up' : 'fa-chevron-down',
+              'dv-list-section-toggle-icon',
+            ]"
+          ></i>
+        </div>
+
+        <div
+          v-if="showAdvanced"
+          class="dv-list-section-content dv-list-section-content--collapsible"
+        >
+          <div class="dv-list-field-group dv-list-field-group--inline">
+            <label class="dv-list-toggle">
               <input
-                v-if="useLimit"
-                type="number"
-                class="dv-input dv-input--limit-count"
-                min="1"
-                step="1"
-                v-model.number="limitCount"
+                type="checkbox"
+                v-model="useLimit"
                 @change="handleLimitChange"
               />
-              <span v-if="useLimit" class="dv-limit-label">items</span>
-              <span v-else class="dv-limit-label dv-limit-label--disabled"
-                >Show all</span
-              >
-            </div>
+              <span class="dv-list-toggle-slider"></span>
+            </label>
+            <span
+              class="dv-list-toggle-label"
+              :class="{ 'dv-list-toggle-label--disabled': !useLimit }"
+            >
+              Limit number of results
+            </span>
           </div>
+
+          <div
+            v-if="useLimit"
+            class="dv-list-input-wrapper dv-list-limit-input"
+          >
+            <i class="fas fa-calculator dv-list-input-icon"></i>
+            <input
+              type="number"
+              class="dv-list-input dv-list-input--numeric"
+              v-model.number="limitCount"
+              min="1"
+              max="1000"
+              @change="handleLimitChange"
+            />
+            <span class="dv-list-input-suffix">results</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Help Section -->
+      <div class="dv-list-tips">
+        <div class="dv-list-tips-header">
+          <i class="fas fa-lightbulb"></i>
+          <span>About Dataview Lists</span>
+        </div>
+        <div class="dv-list-tips-content">
+          <p>
+            This creates a list of notes based on your criteria. The results
+            will appear in your note as a list with the properties you've
+            selected.
+          </p>
         </div>
       </div>
     </div>
@@ -602,7 +691,7 @@ function parseExistingQuery(query: string) {
     }
 
     // Set advanced options panel state based on whether sort or limit is used
-    showAdvanced.value = !!sortLine || !!limitLine;
+    showAdvanced.value = !!limitLine;
 
     // Regenerate the query to ensure it's formatted correctly
     regenerateQuery();
@@ -725,17 +814,13 @@ function generateQuery(): string {
     query += `LIMIT ${limitCount.value}\n`;
   }
 
-  console.log("Query before this += thing", query);
-
   query += "```";
-  console.log("Final query:", query);
   return query;
 }
 
 // Generate the query and update the module content
 function regenerateQuery() {
   const query = generateQuery();
-  console.log("Updating content with query:", query);
   updateContent([query]);
 }
 
@@ -746,72 +831,75 @@ function updateContent(content: string[]) {
 </script>
 
 <style scoped>
-/* --- Base & Glassmorphism --- */
-.dataview-builder {
+/* --- Base & Dark Glassmorphism --- */
+.dv-list-builder {
   width: 100%;
-  /* Light glassmorphism base */
-  /* background: rgba(255, 255, 255, 0.3); */
-  /* background: linear-gradient(135deg, rgba(255, 255, 255, 0.2) 0%, rgba(255, 255, 255, 0.1) 100%); */
-  background: var(
-    --background-secondary-alt-om,
-    rgba(235, 237, 242, 0.6)
-  ); /* Use CSS var or fallback */
-  backdrop-filter: blur(10px); /* Apply blur */
-  -webkit-backdrop-filter: blur(10px); /* Safari */
-  border: 1px solid rgba(255, 255, 255, 0.3);
+  /* Dark glassmorphism base */
+  background: rgba(21, 26, 36, 0.7); /* Dark semi-transparent */
+  backdrop-filter: blur(12px) saturate(150%);
+  -webkit-backdrop-filter: blur(12px) saturate(150%);
+  border: 1px solid rgba(255, 255, 255, 0.1); /* Light border */
   border-radius: 12px;
   padding: 20px;
-  color: var(--text-normal, #2e3338); /* Darker text for light background */
+  color: var(--text-normal-dark, #e1e1e6); /* Light text */
   font-family: var(--font-interface, sans-serif);
   display: flex;
   flex-direction: column;
-  gap: 25px;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+  gap: 20px; /* Slightly reduced gap */
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
 }
 
 /* --- Header --- */
-.dv-header {
+.dv-list-header {
   display: flex;
   align-items: center;
   gap: 12px;
   padding-bottom: 15px;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
-  color: var(--text-title, #1a1d21);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--text-title-dark, #ffffff);
 }
 
-.dv-header-icon {
+.dv-list-header-icon {
   font-size: 20px;
-  color: var(--interactive-accent, #4a7de7);
+  color: var(--interactive-accent-light, #60a5fa); /* Bright accent */
 }
 
-.dv-header-title {
+.dv-list-header-title {
   font-size: 18px;
   font-weight: 600;
 }
 
 /* --- Sections --- */
-.dv-section {
-  background: rgba(255, 255, 255, 0.4); /* Slightly more opaque */
-  border: 1px solid rgba(255, 255, 255, 0.5);
+.dv-list-section {
+  background: rgba(30, 36, 50, 0.6); /* Darker section background */
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 10px;
   padding: 18px;
   transition: box-shadow 0.2s ease-in-out;
 }
-/* .dv-section:hover {
-   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
-} */
 
-.dv-section-header {
+.dv-list-section-header {
   display: flex;
   align-items: center;
   gap: 10px;
   margin-bottom: 15px;
-  color: var(--text-title, #1a1d21);
+  color: var(--text-title-dark, #f0f0f5);
+}
+.dv-list-section-header--toggle {
+  cursor: pointer;
+  margin-bottom: 0; /* Remove bottom margin when toggleable */
+  transition: background-color 0.15s ease-out;
+  border-radius: 6px;
+  padding: 5px 8px;
+  margin: -5px -8px 10px -8px; /* Adjust padding/margin to make clickable area nice */
+}
+.dv-list-section-header--toggle:hover {
+  background-color: rgba(255, 255, 255, 0.05);
 }
 
-.dv-step-number {
-  background-color: var(--interactive-accent, #4a7de7);
-  color: white;
+.dv-list-step-number {
+  background-color: var(--interactive-accent-light, #60a5fa);
+  color: var(--text-on-accent, #111);
   font-size: 11px;
   font-weight: bold;
   width: 20px;
@@ -820,118 +908,195 @@ function updateContent(content: string[]) {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
+}
+.dv-list-step-number--optional {
+  background-color: rgba(148, 163, 184, 0.5); /* Grey for optional */
+  color: var(--text-normal-dark, #e1e1e6);
 }
 
-.dv-section-icon {
+.dv-list-section-icon {
   font-size: 16px;
-  color: var(--icon-color, #5c6166);
+  color: var(--icon-color-dark, #94a3b8); /* Muted light icon color */
 }
 
-.dv-section-title {
+.dv-list-section-title {
   font-size: 16px;
   font-weight: 500;
   margin: 0;
+  flex-grow: 1; /* Allow title to take space */
+}
+.dv-list-section-description {
+  font-size: 13px;
+  color: var(--text-muted-dark, #94a3b8);
+  margin-left: auto; /* Push description to the right */
+  padding-left: 10px;
+}
+.dv-list-section-toggle-icon {
+  margin-left: auto;
+  color: var(--icon-color-dark, #94a3b8);
+  transition: transform 0.2s ease-out;
+}
+.dv-list-section-header--toggle i.fa-chevron-up {
+  transform: rotate(180deg);
 }
 
-.dv-section-content {
+.dv-list-section-content {
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 15px; /* Consistent gap */
 }
-.dv-section-content--arrange {
-  flex-direction: row;
-  gap: 25px;
-  align-items: flex-start;
+.dv-list-section-content--collapsible {
+  padding-top: 15px;
+  animation: fadeIn 0.2s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* --- Field Groups & Labels --- */
-.dv-field-group {
+.dv-list-field-group {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 12px;
 }
-.dv-field-group--sort,
-.dv-field-group--limit {
-  flex: 1; /* Share space in arrange section */
+.dv-list-field-group--inline {
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
 }
 
-.dv-label {
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--text-muted, #5c6166);
+.dv-list-field-tip {
+  font-size: 12px;
+  color: var(--text-faint-dark, #717a8a);
+  padding-left: 5px;
 }
 
 /* --- Inputs & Selects --- */
-.dv-input,
-.dv-select {
+.dv-list-input,
+.dv-list-select {
   padding: 9px 12px;
-  background: rgba(255, 255, 255, 0.7);
-  border: 1px solid rgba(0, 0, 0, 0.08);
+  background: rgba(15, 20, 30, 0.7); /* Darker input background */
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 6px;
-  color: var(--text-normal, #2e3338);
+  color: var(--text-normal-dark, #e1e1e6);
   font-size: 14px;
   width: 100%;
   transition: all 0.2s ease-in-out;
-  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.03);
 }
-.dv-input:focus,
-.dv-select:focus {
+.dv-list-input:focus,
+.dv-list-select:focus {
   outline: none;
-  border-color: var(--interactive-accent, #4a7de7);
-  box-shadow: 0 0 0 2px rgba(74, 125, 231, 0.2);
-  background: white;
+  border-color: var(--interactive-accent-light, #60a5fa);
+  box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.3);
+  background: rgba(30, 36, 50, 0.9);
 }
-.dv-input::placeholder {
-  color: var(--text-faint, #989ea4);
+.dv-list-input::placeholder {
+  color: var(--text-faint-dark, #717a8a);
 }
-.dv-select {
+.dv-list-select {
   appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%235c6166' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 10px center;
   padding-right: 35px;
 }
+.dv-list-input--numeric {
+  width: 100px;
+  text-align: center;
+}
 
-.dv-input-wrapper {
+.dv-list-input-wrapper {
   position: relative;
   display: flex;
   align-items: center;
+  gap: 8px; /* Gap between icon/input/button */
 }
-.dv-input-wrapper--source .dv-input {
-  padding-left: 32px;
+.dv-list-input-wrapper--field .dv-list-input,
+.dv-list-input-wrapper--select .dv-list-select {
+  padding-left: 34px; /* Space for icon */
+  flex-grow: 1; /* Allow input/select to grow */
 }
-.dv-input-icon {
+.dv-list-input-icon {
   position: absolute;
-  left: 10px;
-  color: var(--text-muted, #5c6166);
-  font-size: 14px;
+  left: 11px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--icon-color-dark, #94a3b8);
+  font-size: 13px;
+  pointer-events: none; /* Don't interfere with clicks */
 }
-.dv-tag-prefix {
-  position: absolute;
-  left: 10px;
-  color: var(--text-muted, #5c6166);
-  font-size: 14px;
-  font-weight: 500;
+.dv-list-input-wrapper--with-btn .dv-list-input {
+  padding-left: 34px;
 }
-.dv-input-wrapper--source .dv-tag-prefix + .dv-input {
-  padding-left: 25px;
+.dv-list-input-suffix {
+  font-size: 14px;
+  color: var(--text-muted-dark, #94a3b8);
+  margin-left: 5px;
+}
+.dv-list-limit-input {
+  margin-left: 30px;
+}
+
+/* --- Action Button (Refresh/Add) --- */
+.dv-list-action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #94a3b8;
+  width: 36px; /* Match input height */
+  height: 36px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+.dv-list-action-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.1);
+  color: #e2e8f0;
+}
+.dv-list-action-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.dv-list-action-btn i {
+  font-size: 13px;
+}
+.dv-list-action-btn--add {
+  color: var(--interactive-accent-light, #60a5fa);
+  background: rgba(96, 165, 250, 0.1);
+  border-color: rgba(96, 165, 250, 0.2);
+}
+.dv-list-action-btn--add:hover:not(:disabled) {
+  background: rgba(96, 165, 250, 0.2);
 }
 
 /* --- Segmented Controls --- */
-.dv-segmented-control {
-  display: inline-flex;
-  background: rgba(0, 0, 0, 0.04);
+.dv-list-segmented-control {
+  display: flex;
+  background: rgba(0, 0, 0, 0.2); /* Darker base */
   border-radius: 8px;
   padding: 4px;
-  border: 1px solid rgba(0, 0, 0, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  width: 100%; /* Make it take full width */
 }
-.dv-segmented-control button {
-  flex: 1;
-  padding: 6px 12px;
+.dv-list-segmented-control button {
+  flex: 1; /* Make buttons share width equally */
+  padding: 7px 12px; /* Slightly more padding */
   border: none;
   background: transparent;
   border-radius: 6px;
-  color: var(--text-muted, #5c6166);
+  color: var(--text-muted-dark, #94a3b8);
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
@@ -940,274 +1105,215 @@ function updateContent(content: string[]) {
   align-items: center;
   justify-content: center;
   gap: 6px;
-}
-.dv-segmented-control button.active {
-  background: white;
-  color: var(--interactive-accent, #4a7de7);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
-}
-.dv-segmented-control button i {
-  font-size: 12px;
-}
-.dv-segmented-control--sort {
-  padding: 3px;
-}
-.dv-segmented-control--sort button {
-  padding: 4px 10px;
-  font-size: 12px;
-}
-
-/* --- Filters --- */
-.dv-filters-list {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  padding-left: 20px; /* Indent filters */
-  border-left: 2px solid rgba(0, 0, 0, 0.08);
-  margin-left: 10px;
-}
-.dv-filter-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  background: rgba(255, 255, 255, 0.3);
-  padding: 8px 10px;
-  border-radius: 6px;
-}
-.dv-filter-type {
-  font-size: 11px;
-  font-weight: bold;
-  color: var(--text-accent, #4a7de7);
-  background: rgba(74, 125, 231, 0.1);
-  padding: 3px 6px;
-  border-radius: 4px;
   white-space: nowrap;
 }
-.dv-input--filter-prop {
-  width: 150px;
-  flex-shrink: 0;
+.dv-list-segmented-control button.active {
+  background: rgba(255, 255, 255, 0.1); /* Subtle light active state */
+  color: var(--interactive-accent-light, #60a5fa);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
 }
-.dv-select--filter-op {
-  width: 120px;
-  flex-shrink: 0;
-}
-.dv-input--filter-value {
-  flex-grow: 1;
+.dv-list-segmented-control button i {
+  font-size: 13px; /* Slightly larger icons */
 }
 
-.dv-filters-empty {
-  font-size: 13px;
-  color: var(--text-muted, #5c6166);
-  padding: 10px;
-  background: rgba(0, 0, 0, 0.02);
-  border-radius: 6px;
-  text-align: center;
-  border: 1px dashed rgba(0, 0, 0, 0.08);
-}
-
-/* --- Display Fields --- */
-.dv-display-fields-list {
+/* --- Direction Toggle --- */
+.dv-list-direction-toggle {
   display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  padding: 10px;
-  background: rgba(0, 0, 0, 0.02);
+  background: rgba(0, 0, 0, 0.2); /* Darker base */
   border-radius: 6px;
-  min-height: 40px;
-  align-items: center;
+  padding: 3px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  margin-top: 5px;
 }
-.dv-display-field {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  background: white;
-  border: 1px solid rgba(0, 0, 0, 0.1);
-  padding: 4px 4px 4px 8px; /* Less padding left */
-  border-radius: 6px;
-  font-size: 13px;
-}
-.dv-display-field--default {
-  background: transparent;
-  border: 1px dashed rgba(0, 0, 0, 0.1);
-  color: var(--text-muted, #5c6166);
-  padding: 4px 8px;
-}
-.dv-display-field--default i {
-  color: var(--text-faint, #989ea4);
-}
-.dv-display-field i {
-  color: var(--interactive-accent, #4a7de7);
-  font-size: 12px;
-  margin-right: 2px;
-}
-.dv-input--display-field {
-  padding: 2px 6px;
-  font-size: 13px;
-  background: transparent;
+.dv-list-direction-toggle button {
+  flex: 1;
+  padding: 8px 12px;
   border: none;
-  box-shadow: none;
-  width: auto; /* Adjust width based on content */
-  min-width: 100px;
-}
-.dv-input--display-field:focus {
-  background: rgba(74, 125, 231, 0.05);
-}
-
-/* --- Remove Buttons --- */
-.dv-remove-button {
+  background: transparent;
+  border-radius: 4px;
+  color: var(--text-muted-dark, #94a3b8);
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  background: rgba(0, 0, 0, 0.05);
-  border: none;
-  color: var(--text-muted, #5c6166);
-  cursor: pointer;
-  transition: background-color 0.2s, color 0.2s;
-  font-size: 10px;
-}
-.dv-remove-button:hover {
-  background: var(--background-modifier-error, #da5858);
-  color: white;
-}
-.dv-remove-button--display {
-  width: 18px;
-  height: 18px;
-  font-size: 9px;
-}
-
-/* --- Add Button --- */
-.dv-add-button {
-  align-self: flex-start; /* Don't stretch full width */
-  padding: 6px 12px;
-  background: rgba(74, 125, 231, 0.1);
-  border: 1px solid rgba(74, 125, 231, 0.2);
-  color: var(--interactive-accent, #4a7de7);
-  font-size: 13px;
-  font-weight: 500;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: all 0.2s;
-  display: inline-flex;
-  align-items: center;
   gap: 6px;
 }
-.dv-add-button:hover {
-  background: rgba(74, 125, 231, 0.2);
-  border-color: rgba(74, 125, 231, 0.4);
+.dv-list-direction-toggle button.active {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--interactive-accent-light, #60a5fa);
 }
-.dv-add-button i {
-  font-size: 11px;
+.dv-list-direction-toggle button i {
+  font-size: 13px;
 }
 
-/* --- Arrange & Limit --- */
-.dv-sort-controls {
-  display: flex;
+/* --- Property Filter --- */
+.dv-list-property-filter {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr 1.5fr;
   gap: 8px;
   align-items: center;
+  margin-top: 5px;
 }
-.dv-input--sort-prop {
-  flex-grow: 1;
+
+/* --- Property Tags --- */
+.dv-list-property-tags {
+  background: rgba(15, 20, 30, 0.5);
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 8px;
+  min-height: 60px;
 }
-.dv-limit-controls {
+.dv-list-property-tags-empty {
   display: flex;
   align-items: center;
-  gap: 10px;
+  justify-content: center;
+  height: 44px;
+  color: var(--text-faint-dark, #717a8a);
+  font-style: italic;
+  font-size: 14px;
 }
-.dv-input--limit-count {
-  width: 70px;
-  text-align: center;
-  padding-right: 12px; /* Adjust for number arrows */
+.dv-list-property-tags-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
-.dv-limit-label {
+.dv-list-property-tag {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(96, 165, 250, 0.15);
+  color: var(--interactive-accent-light, #60a5fa);
+  padding: 5px 10px;
+  border-radius: 4px;
   font-size: 13px;
-  color: var(--text-muted, #5c6166);
 }
-.dv-limit-label--disabled {
-  color: var(--text-faint, #989ea4);
+.dv-list-property-tag-remove {
+  background: none;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.7;
+  transition: opacity 0.15s;
+  font-size: 11px;
+}
+.dv-list-property-tag-remove:hover {
+  opacity: 1;
+}
+
+/* --- Add Property --- */
+.dv-list-add-property {
+  margin-top: 5px;
 }
 
 /* Custom Toggle Switch */
-.dv-toggle {
+.dv-list-toggle {
   position: relative;
   display: inline-block;
-  width: 40px; /* Slightly smaller */
-  height: 22px; /* Slightly smaller */
+  width: 40px;
+  height: 22px;
+  flex-shrink: 0; /* Prevent toggle from shrinking */
 }
-.dv-toggle input {
+.dv-list-toggle input {
   opacity: 0;
   width: 0;
   height: 0;
 }
-.dv-toggle-slider {
+.dv-list-toggle-slider {
   position: absolute;
   cursor: pointer;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: rgba(0, 0, 0, 0.1);
-  border: 1px solid rgba(0, 0, 0, 0.1);
+  background-color: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   transition: 0.3s;
   border-radius: 22px;
 }
-.dv-toggle-slider:before {
+.dv-list-toggle-slider:before {
   position: absolute;
   content: "";
-  height: 16px; /* Smaller knob */
+  height: 16px;
   width: 16px;
   left: 2px;
   bottom: 2px;
-  background-color: white;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  background-color: #ccc; /* Lighter grey knob */
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
   transition: 0.3s;
   border-radius: 50%;
 }
-.dv-toggle input:checked + .dv-toggle-slider {
-  background-color: var(--interactive-accent, #4a7de7);
-  border-color: var(--interactive-accent, #4a7de7);
+.dv-list-toggle input:checked + .dv-list-toggle-slider {
+  background-color: var(--interactive-accent-light, #60a5fa);
+  border-color: var(--interactive-accent-light, #60a5fa);
 }
-.dv-toggle input:focus + .dv-toggle-slider {
-  box-shadow: 0 0 0 2px rgba(74, 125, 231, 0.2);
+.dv-list-toggle input:focus-visible + .dv-list-toggle-slider {
+  /* Use focus-visible */
+  box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.3);
 }
-.dv-toggle input:checked + .dv-toggle-slider:before {
+.dv-list-toggle input:checked + .dv-list-toggle-slider:before {
   transform: translateX(18px);
+  background-color: #fff; /* White knob when active */
+}
+.dv-list-toggle-label {
+  font-size: 14px;
+  color: var(--text-normal-dark, #e1e1e6);
+  cursor: pointer; /* Make label clickable too */
+  transition: color 0.2s;
+}
+.dv-list-toggle-label--disabled {
+  color: var(--text-faint-dark, #717a8a);
 }
 
-/* --- Preview Section --- */
-.dv-preview-section {
-  margin-top: 10px;
-  background: rgba(0, 0, 0, 0.03);
-  border: 1px solid rgba(0, 0, 0, 0.06);
-  border-radius: 8px;
-  padding: 12px 15px;
+/* Tips section */
+.dv-list-tips {
+  background: rgba(15, 23, 42, 0.3);
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  padding: 16px;
 }
-.dv-preview-header {
+
+.dv-list-tips-header {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 12px;
+  color: var(--interactive-accent-light, #60a5fa);
+  font-size: 14px;
   font-weight: 500;
-  color: var(--text-muted, #5c6166);
-  margin-bottom: 8px;
+  margin-bottom: 12px;
 }
-.dv-preview-code {
-  background: rgba(0, 0, 0, 0.05);
-  border-radius: 4px;
-  padding: 10px;
-  font-family: var(--font-monospace, monospace);
+
+.dv-list-tips-content {
   font-size: 13px;
-  color: var(--text-normal, #2e3338);
-  white-space: pre-wrap;
-  word-break: break-all;
+  color: var(--text-muted-dark, #94a3b8);
+  line-height: 1.5;
+}
+
+.dv-list-tips-content p {
   margin: 0;
 }
-.dv-preview-code code {
-  background: none;
-  padding: 0;
-  font-size: inherit;
-  color: inherit;
+
+/* Responsive adjustments */
+@media (max-width: 600px) {
+  .dv-list-segmented-control {
+    flex-wrap: wrap;
+  }
+  .dv-list-segmented-control button {
+    flex-basis: 50%; /* Two buttons per row */
+  }
+  .dv-list-property-filter {
+    grid-template-columns: 1fr;
+  }
+  .dv-list-section-description {
+    display: none; /* Hide description on small screens */
+  }
+  .dv-list-direction-toggle {
+    flex-direction: column;
+  }
 }
 </style>

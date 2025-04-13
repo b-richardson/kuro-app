@@ -180,107 +180,127 @@
           ></i>
         </div>
 
-        <div
-          v-if="showAdvanced"
-          class="dv-cal-section-content dv-cal-section-content--collapsible"
-        >
-          <!-- Date Filter -->
-          <div class="dv-cal-field-group">
-            <div class="dv-cal-field-group--inline">
-              <label class="dv-cal-toggle">
-                <input
-                  type="checkbox"
-                  v-model="dateFilter.enabled"
-                  @change="handleDateFilterChange"
-                />
-                <span class="dv-cal-toggle-slider"></span>
-              </label>
-              <span
-                class="dv-cal-toggle-label"
-                :class="{
-                  'dv-cal-toggle-label--disabled': !dateFilter.enabled,
-                }"
-              >
-                Only show notes within a specific date range
-              </span>
+        <transition name="dv-cal-collapse">
+          <div
+            v-if="showAdvanced"
+            class="dv-cal-section-content dv-cal-section-content--collapsible"
+          >
+            <!-- Date Filter -->
+            <div class="dv-cal-field-group">
+              <div class="dv-cal-field-group--inline">
+                <label class="dv-cal-toggle">
+                  <input
+                    type="checkbox"
+                    v-model="dateFilter.enabled"
+                    @change="handleDateFilterChange"
+                  />
+                  <span class="dv-cal-toggle-slider"></span>
+                </label>
+                <span
+                  class="dv-cal-toggle-label"
+                  :class="{
+                    'dv-cal-toggle-label--disabled': !dateFilter.enabled,
+                  }"
+                >
+                  Only show notes within a specific date range
+                </span>
+              </div>
+
+              <div v-if="dateFilter.enabled" class="dv-cal-date-range-inputs">
+                <div class="dv-cal-input-wrapper">
+                  <label
+                    for="cal-start-date"
+                    class="dv-cal-label dv-cal-label--inline"
+                    >Start:</label
+                  >
+                  <input
+                    id="cal-start-date"
+                    type="date"
+                    class="dv-cal-input dv-cal-input--date"
+                    v-model="dateFilter.startDate"
+                    @change="handleDateFilterChange"
+                  />
+                </div>
+                <div class="dv-cal-input-wrapper">
+                  <label
+                    for="cal-end-date"
+                    class="dv-cal-label dv-cal-label--inline"
+                    >End:</label
+                  >
+                  <input
+                    id="cal-end-date"
+                    type="date"
+                    class="dv-cal-input dv-cal-input--date"
+                    v-model="dateFilter.endDate"
+                    @change="handleDateFilterChange"
+                  />
+                </div>
+              </div>
+              <div v-if="dateFilter.enabled" class="dv-cal-field-tip">
+                Leave start or end blank to filter only before or after a date.
+              </div>
             </div>
 
-            <div v-if="dateFilter.enabled" class="dv-cal-date-range-inputs">
-              <div class="dv-cal-input-wrapper">
-                <label
-                  for="cal-start-date"
-                  class="dv-cal-label dv-cal-label--inline"
-                  >Start:</label
+            <!-- Display Options -->
+            <div class="dv-cal-field-group">
+              <div class="dv-cal-field-group--inline">
+                <label class="dv-cal-toggle">
+                  <input
+                    type="checkbox"
+                    v-model="displayOptions.showAsText"
+                    @change="handleDisplayOptionsChange"
+                  />
+                  <span class="dv-cal-toggle-slider"></span>
+                </label>
+                <span
+                  class="dv-cal-toggle-label"
+                  :class="{
+                    'dv-cal-toggle-label--disabled': !displayOptions.showAsText,
+                  }"
                 >
-                <input
-                  id="cal-start-date"
-                  type="date"
-                  class="dv-cal-input dv-cal-input--date"
-                  v-model="dateFilter.startDate"
-                  @change="handleDateFilterChange"
-                />
-              </div>
-              <div class="dv-cal-input-wrapper">
-                <label
-                  for="cal-end-date"
-                  class="dv-cal-label dv-cal-label--inline"
-                  >End:</label
-                >
-                <input
-                  id="cal-end-date"
-                  type="date"
-                  class="dv-cal-input dv-cal-input--date"
-                  v-model="dateFilter.endDate"
-                  @change="handleDateFilterChange"
-                />
+                  Show as text (instead of links)
+                </span>
               </div>
             </div>
-            <div v-if="dateFilter.enabled" class="dv-cal-field-tip">
-              Leave start or end blank to filter only before or after a date.
-            </div>
           </div>
-
-          <!-- Display Options -->
-          <div class="dv-cal-field-group">
-            <div class="dv-cal-field-group--inline">
-              <label class="dv-cal-toggle">
-                <input
-                  type="checkbox"
-                  v-model="displayOptions.showAsText"
-                  @change="handleDisplayOptionsChange"
-                />
-                <span class="dv-cal-toggle-slider"></span>
-              </label>
-              <span
-                class="dv-cal-toggle-label"
-                :class="{
-                  'dv-cal-toggle-label--disabled': !displayOptions.showAsText,
-                }"
-              >
-                Show as text (instead of links)
-              </span>
-            </div>
-          </div>
-        </div>
+        </transition>
       </div>
 
-      <!-- Calendar Preview Information -->
-      <div class="dv-cal-tips">
-        <div class="dv-cal-tips-header">
-          <i class="fas fa-lightbulb"></i>
-          <span>About Calendar View</span>
+      <!-- Calendar Preview Information (Collapsible) -->
+      <div class="dv-cal-section dv-cal-section--tips">
+        <div
+          class="dv-cal-section-header dv-cal-section-header--toggle"
+          @click="showTips = !showTips"
+        >
+          <i class="fas fa-lightbulb dv-cal-section-icon"></i>
+          <h3 class="dv-cal-section-title">About Calendar View</h3>
+          <i
+            :class="[
+              'fas',
+              showTips ? 'fa-chevron-up' : 'fa-chevron-down',
+              'dv-cal-section-toggle-icon',
+            ]"
+          ></i>
         </div>
-        <div class="dv-cal-tips-content">
-          <p>
-            This creates a monthly calendar view showing your notes on their
-            corresponding dates. Notes will appear on the date matching the
-            selected date field.
-          </p>
-          <p>
-            The calendar will be generated when this template is inserted into
-            your note.
-          </p>
-        </div>
+
+        <transition name="dv-cal-collapse">
+          <div
+            v-if="showTips"
+            class="dv-cal-section-content dv-cal-section-content--collapsible"
+          >
+            <div class="dv-cal-tips-content">
+              <p>
+                This creates a monthly calendar view showing your notes on their
+                corresponding dates. Notes will appear on the date matching the
+                selected date field.
+              </p>
+              <p>
+                The calendar will be generated when this template is inserted
+                into your note.
+              </p>
+            </div>
+          </div>
+        </transition>
       </div>
     </div>
   </BaseModule>
@@ -310,6 +330,8 @@ const emit = defineEmits<{
   (e: "duplicate"): void;
   (e: "module-change"): void;
 }>();
+
+const showTips = ref(false); // Default to collapsed
 
 // Reference to the base module component
 const baseModuleRef = ref<InstanceType<typeof BaseModule> | null>(null);
@@ -765,10 +787,14 @@ function updateContent(content: string[]) {
 .dv-cal-section-toggle-icon {
   margin-left: auto;
   color: var(--icon-color-dark, #94a3b8);
-  transition: transform 0.2s ease-out;
+  transition: transform 0.3s ease;
 }
 .dv-cal-section-header--toggle i.fa-chevron-up {
-  transform: rotate(180deg);
+  transform: rotate(0); /* Correct the rotation logic */
+}
+/* When section is collapsed, rotate the chevron to point down */
+.dv-cal-section-header--toggle i.fa-chevron-down {
+  transform: rotate(0); /* No rotation needed - icon already points down */
 }
 
 .dv-cal-section-content {
@@ -776,9 +802,31 @@ function updateContent(content: string[]) {
   flex-direction: column;
   gap: 15px; /* Consistent gap */
 }
+/* Add transition animation to collapsible sections */
+/* Base styling for collapsible content - keep this */
 .dv-cal-section-content--collapsible {
   padding-top: 15px;
-  /* Add subtle animation? Maybe just appear/disappear */
+  transform-origin: top;
+}
+
+/* Create a v-enter/v-leave animation setup */
+.dv-cal-collapse-enter-active,
+.dv-cal-collapse-leave-active {
+  transition: max-height 0.4s ease, opacity 0.3s ease;
+  max-height: 500px;
+  overflow: hidden;
+}
+
+.dv-cal-collapse-enter-from,
+.dv-cal-collapse-leave-to {
+  max-height: 0;
+  opacity: 0;
+}
+
+.dv-cal-collapse-enter-to,
+.dv-cal-collapse-leave-from {
+  max-height: 500px;
+  opacity: 1;
 }
 
 /* --- Field Groups & Labels --- */

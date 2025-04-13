@@ -1,11 +1,4 @@
 <template>
-  <!-- 
-  IMPORTANT NOTE FOR DEVELOPERS:
-  - This component should NOT implement any connection checks to Obsidian
-  - This component should NOT display any toast messages
-  - All connection validation and user feedback should be handled by parent components
-  - Keep this component focused solely on building Dataview queries
-  -->
   <BaseModule
     :module="module"
     :index="index"
@@ -21,301 +14,273 @@
     @add-line="regenerateQuery"
     ref="baseModuleRef"
   >
-    <div class="dataview-table-editor">
+    <div class="dv-table-builder">
       <!-- Module Header -->
-      <div class="dataview-table-editor__header">
-        <div class="dataview-table-editor__header-icon">
+      <div class="dv-table-header">
+        <div class="dv-table-header-icon">
           <i class="fas fa-table"></i>
         </div>
-        <div class="dataview-table-editor__header-title">Dataview Table</div>
+        <div class="dv-table-header-title">Dataview Table</div>
       </div>
 
-      <!-- Source Selection Section -->
-      <div class="dataview-table-editor__section">
-        <div class="dataview-table-editor__section-header">
-          <div class="dataview-table-editor__section-title">
-            <i class="fas fa-filter"></i>
-            <span>Choose Source</span>
-          </div>
-          <div class="dataview-table-editor__section-description">
-            Select where to find your notes
-          </div>
+      <!-- Step 1: Source Selection -->
+      <div class="dv-table-section">
+        <div class="dv-table-section-header">
+          <span class="dv-table-step-number">1</span>
+          <i class="fas fa-filter dv-table-section-icon"></i>
+          <h3 class="dv-table-section-title">Choose Source</h3>
+          <span class="dv-table-section-description"
+            >Where to find notes for the table</span
+          >
         </div>
 
-        <div class="dataview-table-editor__source-selector">
-          <button
-            class="dataview-table-editor__source-card"
-            :class="{
-              'dataview-table-editor__source-card--active':
-                sourceType === 'all',
-            }"
-            @click="setSourceType('all')"
-          >
-            <div class="dataview-table-editor__source-card-icon">
-              <i class="fas fa-file-alt"></i>
-            </div>
-            <div class="dataview-table-editor__source-card-label">
-              All Notes
-            </div>
-          </button>
-
-          <button
-            class="dataview-table-editor__source-card"
-            :class="{
-              'dataview-table-editor__source-card--active':
-                sourceType === 'folder',
-            }"
-            @click="setSourceType('folder')"
-          >
-            <div class="dataview-table-editor__source-card-icon">
-              <i class="fas fa-folder"></i>
-            </div>
-            <div class="dataview-table-editor__source-card-label">
-              From Folder
-            </div>
-          </button>
-
-          <button
-            class="dataview-table-editor__source-card"
-            :class="{
-              'dataview-table-editor__source-card--active':
-                sourceType === 'tag',
-            }"
-            @click="setSourceType('tag')"
-          >
-            <div class="dataview-table-editor__source-card-icon">
-              <i class="fas fa-hashtag"></i>
-            </div>
-            <div class="dataview-table-editor__source-card-label">With Tag</div>
-          </button>
-
-          <button
-            class="dataview-table-editor__source-card"
-            :class="{
-              'dataview-table-editor__source-card--active':
-                sourceType === 'property',
-            }"
-            @click="setSourceType('property')"
-          >
-            <div class="dataview-table-editor__source-card-icon">
-              <i class="fas fa-key"></i>
-            </div>
-            <div class="dataview-table-editor__source-card-label">
-              With Property
-            </div>
-          </button>
-        </div>
-
-        <!-- Configuration Panel -->
-        <div class="dataview-table-editor__config-panel">
-          <!-- Folder Selection -->
-          <div
-            v-if="sourceType === 'folder'"
-            class="dataview-table-editor__config-content"
-          >
-            <div class="dataview-table-editor__field-group">
-              <label class="dataview-table-editor__label">Select Folder</label>
-              <div class="dataview-table-editor__input-group">
-                <select
-                  class="dataview-table-editor__select"
-                  v-model="selectedFolder"
-                  @change="handleSourceValueChange"
-                >
-                  <option disabled value="">Select a folder</option>
-                  <option
-                    v-for="folder in availableFolders"
-                    :key="folder.path"
-                    :value="folder.path"
-                  >
-                    {{ folder.path || "/" }}
-                  </option>
-                </select>
-                <button
-                  class="dataview-table-editor__action-btn"
-                  title="Refresh folder list"
-                  @click="fetchFolders"
-                >
-                  <i class="fas fa-sync-alt"></i>
-                </button>
-              </div>
-              <div class="dataview-table-editor__field-tip">
-                Only include notes from this folder
-              </div>
-            </div>
-          </div>
-
-          <!-- Tag Selection -->
-          <div
-            v-if="sourceType === 'tag'"
-            class="dataview-table-editor__config-content"
-          >
-            <div class="dataview-table-editor__field-group">
-              <label class="dataview-table-editor__label">Select Tag</label>
-              <div class="dataview-table-editor__input-group">
-                <select
-                  class="dataview-table-editor__select"
-                  v-model="selectedTag"
-                  @change="handleSourceValueChange"
-                >
-                  <option disabled value="">Select a tag</option>
-                  <option v-for="tag in availableTags" :key="tag" :value="tag">
-                    #{{ tag }}
-                  </option>
-                </select>
-                <button
-                  class="dataview-table-editor__action-btn"
-                  title="Refresh tag list"
-                  @click="fetchTags"
-                >
-                  <i class="fas fa-sync-alt"></i>
-                </button>
-              </div>
-              <div class="dataview-table-editor__field-tip">
-                Only include notes with this tag
-              </div>
-            </div>
-          </div>
-
-          <!-- Property Selection -->
-          <div
-            v-if="sourceType === 'property'"
-            class="dataview-table-editor__config-content"
-          >
-            <div class="dataview-table-editor__field-group">
-              <label class="dataview-table-editor__label"
-                >Filter by Property</label
+        <div class="dv-table-section-content">
+          <div class="dv-table-field-group">
+            <div class="dv-table-segmented-control">
+              <button
+                :class="{ active: sourceType === 'all' }"
+                @click="setSourceType('all')"
               >
+                <i class="fas fa-globe-americas"></i> Everywhere
+              </button>
+              <button
+                :class="{ active: sourceType === 'folder' }"
+                @click="setSourceType('folder')"
+              >
+                <i class="fas fa-folder"></i> Folder
+              </button>
+              <button
+                :class="{ active: sourceType === 'tag' }"
+                @click="setSourceType('tag')"
+              >
+                <i class="fas fa-tag"></i> Tag
+              </button>
+              <button
+                :class="{ active: sourceType === 'property' }"
+                @click="setSourceType('property')"
+              >
+                <i class="fas fa-key"></i> Property
+              </button>
+            </div>
 
-              <div class="dataview-table-editor__property-field">
-                <div class="dataview-table-editor__property-name">
-                  <select
-                    class="dataview-table-editor__select"
-                    v-model="selectedProperty"
-                    @change="handlePropertyChange"
+            <!-- Folder Selection -->
+            <div
+              v-if="sourceType === 'folder'"
+              class="dv-table-input-wrapper dv-table-input-wrapper--select"
+            >
+              <i class="fas fa-folder dv-table-input-icon"></i>
+              <select
+                class="dv-table-select"
+                v-model="selectedFolder"
+                @change="handleSourceValueChange"
+              >
+                <option disabled value="">Select a folder...</option>
+                <option value="">Root Folder ("")</option>
+                <option
+                  v-for="folder in availableFolders"
+                  :key="folder.path"
+                  :value="folder.path"
+                >
+                  {{ folder.path || "/" }}
+                </option>
+              </select>
+              <button
+                class="dv-table-action-btn dv-table-action-btn--refresh"
+                title="Refresh folder list"
+                @click="fetchFolders"
+              >
+                <i class="fas fa-sync-alt"></i>
+              </button>
+            </div>
+
+            <!-- Tag Selection -->
+            <div
+              v-if="sourceType === 'tag'"
+              class="dv-table-input-wrapper dv-table-input-wrapper--select"
+            >
+              <i class="fas fa-tag dv-table-input-icon"></i>
+              <select
+                class="dv-table-select"
+                v-model="selectedTag"
+                @change="handleSourceValueChange"
+              >
+                <option disabled value="">Select a tag...</option>
+                <option v-for="tag in availableTags" :key="tag" :value="tag">
+                  #{{ tag }}
+                </option>
+              </select>
+              <button
+                class="dv-table-action-btn dv-table-action-btn--refresh"
+                title="Refresh tag list"
+                @click="fetchTags"
+              >
+                <i class="fas fa-sync-alt"></i>
+              </button>
+            </div>
+
+            <!-- Property Selection -->
+            <div
+              v-if="sourceType === 'property'"
+              class="dv-table-property-filter"
+            >
+              <div
+                class="dv-table-input-wrapper dv-table-input-wrapper--select"
+              >
+                <i class="fas fa-key dv-table-input-icon"></i>
+                <select
+                  class="dv-table-select"
+                  v-model="selectedProperty"
+                  @change="handlePropertyChange"
+                >
+                  <option disabled value="">Select property...</option>
+                  <option
+                    v-for="prop in availableProperties"
+                    :key="prop"
+                    :value="prop"
                   >
-                    <option disabled value="">Select a property</option>
-                    <option
-                      v-for="prop in availableProperties"
-                      :key="prop"
-                      :value="prop"
-                    >
-                      {{ prop }}
-                    </option>
-                  </select>
-                </div>
+                    {{ prop }}
+                  </option>
+                </select>
+              </div>
 
-                <div class="dataview-table-editor__property-operator">
-                  <select
-                    class="dataview-table-editor__select"
-                    v-model="propertyOperator"
-                    @change="handlePropertyOperatorChange"
-                  >
-                    <option value="=">equals</option>
-                    <option value="!=">not equals</option>
-                    <option value=">">greater than</option>
-                    <option value="<">less than</option>
-                    <option value=">=">greater/equal</option>
-                    <option value="<=">less/equal</option>
-                    <option value="contains">contains</option>
-                  </select>
-                </div>
+              <div
+                class="dv-table-input-wrapper dv-table-input-wrapper--select"
+              >
+                <select
+                  class="dv-table-select"
+                  v-model="propertyOperator"
+                  @change="handlePropertyOperatorChange"
+                >
+                  <option value="=">equals</option>
+                  <option value="!=">not equals</option>
+                  <option value=">">greater than</option>
+                  <option value="<">less than</option>
+                  <option value=">=">greater/equal</option>
+                  <option value="<=">less/equal</option>
+                  <option value="contains">contains</option>
+                </select>
+              </div>
 
-                <div class="dataview-table-editor__property-value">
-                  <input
-                    type="text"
-                    class="dataview-table-editor__text-input"
-                    placeholder="Value"
-                    v-model="propertyValue"
-                    @input="handlePropertyValueChange"
-                  />
-                </div>
+              <div class="dv-table-input-wrapper">
+                <input
+                  type="text"
+                  class="dv-table-input"
+                  placeholder="Value"
+                  v-model="propertyValue"
+                  @input="handlePropertyValueChange"
+                />
 
                 <button
-                  class="dataview-table-editor__action-btn"
+                  class="dv-table-action-btn"
                   title="Refresh property list"
                   @click="fetchProperties"
                 >
                   <i class="fas fa-sync-alt"></i>
                 </button>
               </div>
-
-              <div class="dataview-table-editor__field-tip">
-                Only include notes where this property matches the condition
-              </div>
             </div>
           </div>
         </div>
       </div>
 
-      <!-- Table Columns Section -->
-      <div class="dataview-table-editor__section">
-        <div class="dataview-table-editor__section-header">
-          <div class="dataview-table-editor__section-title">
-            <i class="fas fa-columns"></i>
-            <span>Table Columns</span>
-          </div>
-          <div class="dataview-table-editor__section-description">
-            Define columns and how they should display
-          </div>
+      <!-- Step 2: Define Table Columns -->
+      <div class="dv-table-section">
+        <div class="dv-table-section-header">
+          <span class="dv-table-step-number">2</span>
+          <i class="fas fa-columns dv-table-section-icon"></i>
+          <h3 class="dv-table-section-title">Table Columns</h3>
+          <span class="dv-table-section-description"
+            >Data to show in your table</span
+          >
         </div>
 
-        <!-- Column configurations -->
-        <div class="dataview-table-editor__columns">
-          <div
-            v-if="tableColumns.length === 0"
-            class="dataview-table-editor__columns-empty"
-          >
-            <div class="dataview-table-editor__empty-message">
+        <div class="dv-table-section-content">
+          <div class="dv-table-field-group dv-table-field-group--inline">
+            <label class="dv-table-toggle">
+              <input
+                type="checkbox"
+                v-model="withoutId"
+                @change="handleStyleChange"
+              />
+              <span class="dv-table-toggle-slider"></span>
+            </label>
+            <span
+              class="dv-table-toggle-label"
+              :class="{ 'dv-table-toggle-label--disabled': !withoutId }"
+            >
+              Hide default ID column
+            </span>
+            <span class="dv-table-field-tip dv-table-field-tip--inline">
+              (Default Dataview tables include a link to each note as the first
+              column)
+            </span>
+          </div>
+
+          <div class="dv-table-columns">
+            <div
+              v-if="tableColumns.length === 0"
+              class="dv-table-columns-empty"
+            >
               <i class="fas fa-info-circle"></i>
               <span>Add at least one column to your table</span>
             </div>
-          </div>
 
-          <div
-            v-for="(column, index) in tableColumns"
-            :key="index"
-            class="dataview-table-editor__column-item"
-          >
-            <div class="dataview-table-editor__column-content">
-              <div class="dataview-table-editor__column-header">
-                <div class="dataview-table-editor__column-drag">
+            <div
+              v-for="(column, index) in tableColumns"
+              :key="index"
+              class="dv-table-column-card"
+            >
+              <div class="dv-table-column-header">
+                <div class="dv-table-column-drag">
                   <i class="fas fa-grip-lines"></i>
                 </div>
-                <div class="dataview-table-editor__column-name">
+                <div class="dv-table-column-tag">Column {{ index + 1 }}</div>
+                <button
+                  class="dv-table-column-remove"
+                  @click="removeColumn(index)"
+                  :disabled="tableColumns.length <= 1"
+                  title="Remove column"
+                >
+                  <i class="fas fa-times"></i>
+                </button>
+              </div>
+
+              <div class="dv-table-column-content">
+                <div
+                  class="dv-table-input-wrapper dv-table-input-wrapper--field"
+                >
+                  <i class="fas fa-font dv-table-input-icon"></i>
                   <input
                     type="text"
-                    class="dataview-table-editor__text-input"
+                    class="dv-table-input"
                     placeholder="Column header (optional)"
                     v-model="column.header"
                     @input="handleColumnChange"
                   />
                 </div>
-                <div class="dataview-table-editor__column-actions">
-                  <button
-                    class="dataview-table-editor__action-btn"
-                    title="Remove column"
-                    @click="removeColumn(index)"
-                  >
-                    <i class="fas fa-times"></i>
-                  </button>
-                </div>
-              </div>
 
-              <div class="dataview-table-editor__column-property">
-                <div class="dataview-table-editor__column-property-label">
-                  Property:
-                </div>
-                <div class="dataview-table-editor__column-property-field">
+                <div
+                  class="dv-table-input-wrapper dv-table-input-wrapper--select"
+                >
+                  <i class="fas fa-database dv-table-input-icon"></i>
                   <select
-                    class="dataview-table-editor__select"
+                    class="dv-table-select"
                     v-model="column.property"
                     @change="handleColumnChange"
                   >
-                    <option disabled value="">Select a property</option>
+                    <option disabled value="">Select property...</option>
+                    <option value="file.name">File name</option>
+                    <option value="file.ctime">Creation date</option>
+                    <option value="file.mtime">Modified date</option>
                     <option
                       v-for="prop in availableProperties"
                       :key="prop"
                       :value="prop"
+                      v-show="
+                        !['file.name', 'file.ctime', 'file.mtime'].includes(
+                          prop
+                        )
+                      "
                     >
                       {{ prop }}
                     </option>
@@ -324,46 +289,41 @@
               </div>
             </div>
           </div>
-        </div>
 
-        <!-- Add Column Button -->
-        <div class="dataview-table-editor__add-column">
-          <button class="dataview-table-editor__add-btn" @click="addColumn">
+          <button
+            class="dv-table-add-column-btn"
+            @click="addColumn"
+            title="Add a new column"
+          >
             <i class="fas fa-plus"></i>
             <span>Add Column</span>
           </button>
         </div>
       </div>
 
-      <!-- Advanced Options Section -->
-      <div class="dataview-table-editor__section">
-        <button
-          class="dataview-table-editor__advanced-toggle"
-          @click="showAdvanced = !showAdvanced"
-        >
-          <span>{{
-            showAdvanced ? "Hide advanced options" : "Show advanced options"
-          }}</span>
-          <i
-            :class="showAdvanced ? 'fas fa-chevron-up' : 'fas fa-chevron-down'"
-          ></i>
-        </button>
+      <!-- Step 3: Sorting & Limits -->
+      <div class="dv-table-section">
+        <div class="dv-table-section-header">
+          <span class="dv-table-step-number">3</span>
+          <i class="fas fa-sort dv-table-section-icon"></i>
+          <h3 class="dv-table-section-title">Sorting & Limits</h3>
+          <span class="dv-table-section-description"
+            >Control result order and count</span
+          >
+        </div>
 
-        <div v-if="showAdvanced" class="dataview-table-editor__advanced-panel">
-          <!-- Sort Section -->
-          <div class="dataview-table-editor__field-group">
-            <label class="dataview-table-editor__label">
-              <i class="fas fa-sort"></i>
-              Sort Results
-            </label>
-
-            <div class="dataview-table-editor__sort-property">
+        <div class="dv-table-section-content">
+          <!-- Sort options -->
+          <div class="dv-table-field-group">
+            <label class="dv-table-label">Sort Results By</label>
+            <div class="dv-table-input-wrapper dv-table-input-wrapper--select">
+              <i class="fas fa-sort-alpha-down dv-table-input-icon"></i>
               <select
-                class="dataview-table-editor__select"
+                class="dv-table-select"
                 v-model="sortProperty"
                 @change="handleSortChange"
               >
-                <option disabled value="">Sort by...</option>
+                <option disabled value="">Choose property to sort by...</option>
                 <option value="file.name">File name</option>
                 <option value="file.ctime">Creation time</option>
                 <option value="file.mtime">Modified time</option>
@@ -371,111 +331,85 @@
                   v-for="prop in availableProperties"
                   :key="prop"
                   :value="prop"
+                  v-show="
+                    !['file.name', 'file.ctime', 'file.mtime'].includes(prop)
+                  "
                 >
                   {{ prop }}
                 </option>
               </select>
             </div>
 
-            <div class="dataview-table-editor__sort-direction">
-              <div class="dataview-table-editor__radio-group">
-                <label class="dataview-table-editor__radio">
-                  <input
-                    type="radio"
-                    name="sortDirection"
-                    :value="'asc'"
-                    v-model="sortDirection"
-                    @change="handleSortChange"
-                  />
-                  <span class="dataview-table-editor__radio-text">
-                    <i class="fas fa-sort-amount-down-alt"></i>
-                    Ascending
-                  </span>
-                </label>
-
-                <label class="dataview-table-editor__radio">
-                  <input
-                    type="radio"
-                    name="sortDirection"
-                    :value="'desc'"
-                    v-model="sortDirection"
-                    @change="handleSortChange"
-                  />
-                  <span class="dataview-table-editor__radio-text">
-                    <i class="fas fa-sort-amount-down"></i>
-                    Descending
-                  </span>
-                </label>
-              </div>
+            <div class="dv-table-direction-toggle">
+              <button
+                :class="{ active: sortDirection === 'asc' }"
+                @click="setSortDirection('asc')"
+                title="Sort ascending"
+              >
+                <i class="fas fa-sort-amount-up-alt"></i>
+                <span>Ascending</span>
+              </button>
+              <button
+                :class="{ active: sortDirection === 'desc' }"
+                @click="setSortDirection('desc')"
+                title="Sort descending"
+              >
+                <i class="fas fa-sort-amount-down"></i>
+                <span>Descending</span>
+              </button>
             </div>
           </div>
 
-          <!-- Limit Section -->
-          <div class="dataview-table-editor__field-group">
-            <div class="dataview-table-editor__limit-field">
-              <div class="dataview-table-editor__checkbox">
-                <input
-                  type="checkbox"
-                  id="limit-toggle"
-                  v-model="useLimit"
-                  @change="handleLimitChange"
-                />
-                <label for="limit-toggle">Limit number of results</label>
-              </div>
-
-              <div class="dataview-table-editor__limit-value" v-if="useLimit">
-                <input
-                  type="number"
-                  class="dataview-table-editor__text-input dataview-table-editor__number-input"
-                  v-model.number="limitCount"
-                  min="1"
-                  max="1000"
-                  @change="handleLimitChange"
-                />
-                <div class="dataview-table-editor__field-tip">
-                  Maximum number of results to display
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Table Formatting -->
-          <div class="dataview-table-editor__field-group">
-            <label class="dataview-table-editor__label">
-              <i class="fas fa-paint-brush"></i>
-              Table Style
+          <!-- Limit options -->
+          <div class="dv-table-field-group dv-table-field-group--inline">
+            <label class="dv-table-toggle">
+              <input
+                type="checkbox"
+                v-model="useLimit"
+                @change="handleLimitChange"
+              />
+              <span class="dv-table-toggle-slider"></span>
             </label>
+            <span
+              class="dv-table-toggle-label"
+              :class="{ 'dv-table-toggle-label--disabled': !useLimit }"
+            >
+              Limit number of results
+            </span>
+          </div>
 
-            <div class="dataview-table-editor__style-options">
-              <div class="dataview-table-editor__checkbox">
-                <input
-                  type="checkbox"
-                  id="without-id"
-                  v-model="withoutId"
-                  @change="handleStyleChange"
-                />
-                <label for="without-id">Hide ID column</label>
-              </div>
-
-              <div class="dataview-table-editor__field-tip">
-                Default Dataview tables include a link to the note as the first
-                column
-              </div>
-            </div>
+          <div
+            v-if="useLimit"
+            class="dv-table-input-wrapper dv-table-limit-input"
+          >
+            <i class="fas fa-calculator dv-table-input-icon"></i>
+            <input
+              type="number"
+              class="dv-table-input dv-table-input--numeric"
+              v-model.number="limitCount"
+              min="1"
+              max="1000"
+              @change="handleLimitChange"
+            />
+            <span class="dv-table-input-suffix">rows maximum</span>
           </div>
         </div>
       </div>
 
       <!-- Help Section -->
-      <div class="dataview-table-editor__tips">
-        <div class="dataview-table-editor__tips-header">
+      <div class="dv-table-tips">
+        <div class="dv-table-tips-header">
           <i class="fas fa-lightbulb"></i>
           <span>About Dataview Tables</span>
         </div>
-        <div class="dataview-table-editor__tips-content">
+        <div class="dv-table-tips-content">
           <p>
             This creates a table view of notes based on your criteria. The
             columns you define will appear as specified in the table.
+          </p>
+          <p>
+            Tip: Use clean column headers for better readability in your final
+            table.
           </p>
         </div>
       </div>
@@ -510,9 +444,6 @@ const emit = defineEmits<{
 
 // Reference to the base module component
 const baseModuleRef = ref<InstanceType<typeof BaseModule> | null>(null);
-
-// Advanced toggle
-const showAdvanced = ref(false);
 
 // Source selection
 const sourceType = ref("all");
@@ -556,8 +487,8 @@ const sortProperty = ref("file.name");
 const sortDirection = ref("asc");
 
 // Limit options
-const useLimit = ref(false);
-const limitCount = ref(20);
+const useLimit = ref(true);
+const limitCount = ref(5);
 
 // Style options
 const withoutId = ref(false);
@@ -734,7 +665,7 @@ function parseExistingQuery(query: string) {
         if (asMatch) {
           return {
             property: asMatch[1].trim(),
-            header: asMatch[2].trim(),
+            header: asMatch[2].trim().replace(/^"|"$/g, ""), // Remove quotes if present
           };
         } else {
           return {
@@ -824,9 +755,6 @@ function parseExistingQuery(query: string) {
       limitCount.value = 20;
     }
 
-    // Set advanced options panel state based on whether sort or limit is used
-    showAdvanced.value = !!sortLine || !!limitLine || withoutId.value;
-
     // Regenerate the query to ensure it's formatted correctly
     regenerateQuery();
   } catch (error) {
@@ -839,6 +767,11 @@ function parseExistingQuery(query: string) {
 // Event Handlers
 function setSourceType(type: string) {
   sourceType.value = type;
+  regenerateQuery();
+}
+
+function setSortDirection(direction: "asc" | "desc") {
+  sortDirection.value = direction;
   regenerateQuery();
 }
 
@@ -892,75 +825,110 @@ function handleColumnChange() {
 }
 
 // Query generation
+
+// This module dynamically generates correct markdown for Dataview or DataviewJS depending on whether `withoutId` is enabled.
+//
+// This is setup for `generateQuery()` to output a DataviewJS block when `withoutId` is true, since standard Dataview syntax cannot suppress the ID/File column.
+
 function generateQuery(): string {
-  let query = "```dataview\n";
-
-  // TABLE part
-  query += withoutId.value ? "TABLE WITHOUT ID " : "TABLE ";
-
-  // Add columns
-  if (tableColumns.value.length > 0) {
-    const columnDefinitions = tableColumns.value.map((column) => {
-      if (column.header) {
-        return `${column.property} AS "${column.header}"`;
-      } else {
-        return column.property;
-      }
+  // If the user chooses to hide the ID column, we must use DataviewJS
+  if (withoutId.value) {
+    const headers = tableColumns.value.map((c) => c.header || c.property);
+    const propertyAccessors = tableColumns.value.map((c) => {
+      const accessor = c.property.startsWith("file.")
+        ? `p.${c.property}`
+        : `p[\"${c.property}\"]`;
+      return accessor;
     });
 
-    query += columnDefinitions.join(", ");
-  } else {
-    // Fallback if no columns defined
-    query += "file.name";
+    // Build chained dv.pages() call
+    let dvPagesCall = `dv.pages(\"`;
+    if (sourceType.value === "folder" && selectedFolder.value) {
+      dvPagesCall += selectedFolder.value;
+    }
+    dvPagesCall += `\")`;
+
+    // WHERE filter
+    if (
+      sourceType.value === "property" &&
+      selectedProperty.value &&
+      propertyValue.value
+    ) {
+      const operator = propertyOperator.value;
+      const val = JSON.stringify(propertyValue.value);
+      if (operator === "contains") {
+        dvPagesCall += `.where(p => p.${selectedProperty.value} && p.${selectedProperty.value}.includes(${val}))`;
+      } else {
+        dvPagesCall += `.where(p => p.${selectedProperty.value} ${operator} ${val})`;
+      }
+    }
+
+    // SORT
+    if (sortProperty.value) {
+      dvPagesCall += `.sort(p => p.${sortProperty.value}, \"${sortDirection.value}\")`;
+    }
+
+    // LIMIT
+    if (useLimit.value) {
+      dvPagesCall += `.limit(${limitCount.value})`;
+    }
+
+    const js =
+      `\`\`\`dataviewjs\n` +
+      `dv.table(${JSON.stringify(headers)}, ${dvPagesCall}` +
+      `.map(p => [${propertyAccessors.join(", ")}])` +
+      `);\n\`\`\``;
+
+    console.log("Generated DataviewJS query:", js);
+    return js;
   }
 
-  query += "\n";
+  // Standard Dataview block
+  let query = "```dataview\n";
+  query += "TABLE ";
 
-  // FROM part
+  const columnDefs = tableColumns.value.map((col) =>
+    col.header ? `${col.property} AS \"${col.header}\"` : col.property
+  );
+  query += columnDefs.join(", ") + "\n";
+
+  // FROM
   if (sourceType.value === "folder" && selectedFolder.value) {
-    query += `FROM "${selectedFolder.value}"\n`;
+    query += `FROM \"${selectedFolder.value}\"\n`;
   } else if (sourceType.value === "tag" && selectedTag.value) {
     query += `FROM #${selectedTag.value}\n`;
-  } else if (sourceType.value === "all") {
-    query += 'FROM ""\n';
+  } else {
+    query += `FROM \"\"\n`;
   }
 
-  // WHERE part
+  // WHERE
   if (
     sourceType.value === "property" &&
     selectedProperty.value &&
     propertyValue.value
   ) {
-    let formattedValue = propertyValue.value;
-
-    // Add quotes for string values unless using contains operator
-    if (
-      isNaN(Number(formattedValue)) &&
-      propertyOperator.value !== "contains"
-    ) {
-      formattedValue = `"${formattedValue}"`;
-    }
-
+    const formattedVal = isNaN(Number(propertyValue.value))
+      ? `\"${propertyValue.value}\"`
+      : propertyValue.value;
     if (propertyOperator.value === "contains") {
-      query += `WHERE contains(${selectedProperty.value}, "${propertyValue.value}")\n`;
+      query += `WHERE contains(${selectedProperty.value}, \"${propertyValue.value}\")\n`;
     } else {
-      query += `WHERE ${selectedProperty.value} ${propertyOperator.value} ${formattedValue}\n`;
+      query += `WHERE ${selectedProperty.value} ${propertyOperator.value} ${formattedVal}\n`;
     }
   }
 
-  // SORT part
   if (sortProperty.value) {
     query += `SORT ${
       sortProperty.value
     } ${sortDirection.value.toUpperCase()}\n`;
   }
 
-  // LIMIT part
-  if (useLimit.value && limitCount.value > 0) {
+  if (useLimit.value) {
     query += `LIMIT ${limitCount.value}\n`;
   }
 
   query += "```";
+  console.log("Generated query:", query);
   return query;
 }
 
@@ -977,524 +945,545 @@ function updateContent(content: string[]) {
 </script>
 
 <style scoped>
-.dataview-table-editor {
+/* --- Base & Dark Glassmorphism --- */
+.dv-table-builder {
   width: 100%;
-  color: #e2e8f0;
+  /* Dark glassmorphism base */
+  background: rgba(21, 26, 36, 0.7);
+  backdrop-filter: blur(12px) saturate(150%);
+  -webkit-backdrop-filter: blur(12px) saturate(150%);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 20px;
+  color: var(--text-normal-dark, #e1e1e6);
+  font-family: var(--font-interface, sans-serif);
   display: flex;
   flex-direction: column;
   gap: 20px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
 }
 
-/* Header styles */
-.dataview-table-editor__header {
+/* --- Header --- */
+.dv-table-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-bottom: 15px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--text-title-dark, #ffffff);
+}
+
+.dv-table-header-icon {
+  font-size: 20px;
+  color: var(--interactive-accent-light, #60a5fa);
+}
+
+.dv-table-header-title {
+  font-size: 18px;
+  font-weight: 600;
+}
+
+/* --- Sections --- */
+.dv-table-section {
+  background: rgba(30, 36, 50, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  padding: 18px;
+  transition: box-shadow 0.2s ease-in-out;
+}
+
+.dv-table-section-header {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding-bottom: 12px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  margin-bottom: 15px;
+  color: var(--text-title-dark, #f0f0f5);
 }
 
-.dataview-table-editor__header-icon {
-  color: #60a5fa;
-  font-size: 18px;
+.dv-table-step-number {
+  background-color: var(--interactive-accent-light, #60a5fa);
+  color: var(--text-on-accent, #111);
+  font-size: 11px;
+  font-weight: bold;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
 }
 
-.dataview-table-editor__header-title {
+.dv-table-section-icon {
+  font-size: 16px;
+  color: var(--icon-color-dark, #94a3b8);
+}
+
+.dv-table-section-title {
   font-size: 16px;
   font-weight: 500;
+  margin: 0;
+  flex-grow: 1;
 }
 
-/* Section styling */
-.dataview-table-editor__section {
+.dv-table-section-description {
+  font-size: 13px;
+  color: var(--text-muted-dark, #94a3b8);
+  margin-left: auto;
+  padding-left: 10px;
+}
+
+.dv-table-section-content {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 15px;
 }
 
-.dataview-table-editor__section-header {
+/* --- Field Groups & Labels --- */
+.dv-table-field-group {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.dv-table-field-group--inline {
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+}
+
+.dv-table-label {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-normal-dark, #e1e1e6);
   margin-bottom: 4px;
 }
 
-.dataview-table-editor__section-title {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-weight: 500;
-  font-size: 16px;
-  color: #e2e8f0;
-}
-
-.dataview-table-editor__section-description {
-  color: #94a3b8;
-  font-size: 14px;
-  margin-top: 4px;
-}
-
-/* Source selection */
-.dataview-table-editor__source-selector {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 12px;
-  margin-bottom: 16px;
-}
-
-.dataview-table-editor__source-card {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 12px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 8px;
-  color: #cbd5e1;
-  transition: all 0.2s;
-  cursor: pointer;
-}
-
-.dataview-table-editor__source-card:hover {
-  background: rgba(255, 255, 255, 0.1);
-  transform: translateY(-2px);
-}
-
-.dataview-table-editor__source-card--active {
-  background: rgba(59, 130, 246, 0.15);
-  border-color: rgba(59, 130, 246, 0.5);
-  color: #fff;
-}
-
-.dataview-table-editor__source-card-icon {
-  font-size: 22px;
-  margin-bottom: 8px;
-  color: #60a5fa;
-}
-
-.dataview-table-editor__source-card-label {
-  font-size: 14px;
-}
-
-/* Configuration Panel */
-.dataview-table-editor__config-panel {
-  background: rgba(0, 0, 0, 0.1);
-  border-radius: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  overflow: hidden;
-}
-
-.dataview-table-editor__config-content {
-  padding: 16px;
-}
-
-/* Form field groups */
-.dataview-table-editor__field-group {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin-bottom: 16px;
-}
-
-.dataview-table-editor__field-group:last-child {
-  margin-bottom: 0;
-}
-
-.dataview-table-editor__label {
-  font-size: 14px;
-  font-weight: 500;
-  color: #e2e8f0;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.dataview-table-editor__field-tip {
+.dv-table-field-tip {
   font-size: 12px;
-  color: #94a3b8;
-  margin-top: 4px;
+  color: var(--text-faint-dark, #717a8a);
+  padding-left: 5px;
 }
 
-.dataview-table-editor__input-group {
+.dv-table-field-tip--inline {
+  margin-left: 5px;
+}
+
+/* --- Inputs & Selects --- */
+.dv-table-input,
+.dv-table-select {
+  padding: 9px 12px;
+  background: rgba(15, 20, 30, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  color: var(--text-normal-dark, #e1e1e6);
+  font-size: 14px;
+  width: 100%;
+  transition: all 0.2s ease-in-out;
+}
+
+.dv-table-input:focus,
+.dv-table-select:focus {
+  outline: none;
+  border-color: var(--interactive-accent-light, #60a5fa);
+  box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.3);
+  background: rgba(30, 36, 50, 0.9);
+}
+
+.dv-table-input::placeholder {
+  color: var(--text-faint-dark, #717a8a);
+}
+
+.dv-table-select {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  padding-right: 35px;
+}
+
+.dv-table-input--numeric {
+  width: 100px;
+  text-align: center;
+}
+
+.dv-table-input-wrapper {
+  position: relative;
   display: flex;
+  align-items: center;
   gap: 8px;
 }
 
-/* Text inputs */
-.dataview-table-editor__text-input {
-  padding: 10px 12px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 6px;
-  color: #e2e8f0;
+.dv-table-input-wrapper--field .dv-table-input,
+.dv-table-input-wrapper--select .dv-table-select {
+  padding-left: 34px;
+  flex-grow: 1;
+}
+
+.dv-table-input-icon {
+  position: absolute;
+  left: 11px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--icon-color-dark, #94a3b8);
+  font-size: 13px;
+  pointer-events: none;
+}
+
+.dv-table-input-suffix {
   font-size: 14px;
-  width: 100%;
-  transition: all 0.2s;
+  color: var(--text-muted-dark, #94a3b8);
+  margin-left: 5px;
 }
 
-.dataview-table-editor__text-input:focus {
-  outline: none;
-  border-color: rgba(59, 130, 246, 0.5);
-  box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.25);
+.dv-table-limit-input {
+  margin-left: 30px;
 }
 
-.dataview-table-editor__text-input::placeholder {
-  color: rgba(148, 163, 184, 0.5);
-}
-
-/* Select dropdown */
-.dataview-table-editor__select {
-  padding: 10px 12px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 6px;
-  color: #e2e8f0;
-  font-size: 14px;
-  width: 100%;
-  -webkit-appearance: none;
-  appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23cbd5e1' d='M6 8.825L1.175 4 2.05 3.125 6 7.075 9.95 3.125 10.825 4z'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 12px center;
-  padding-right: 36px;
-}
-
-.dataview-table-editor__select:focus {
-  outline: none;
-  border-color: rgba(59, 130, 246, 0.5);
-}
-
-/* Button styling */
-.dataview-table-editor__action-btn {
+/* --- Action Button (Refresh) --- */
+.dv-table-action-btn {
   display: flex;
   align-items: center;
   justify-content: center;
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.1);
   color: #94a3b8;
-  width: 38px;
-  height: 38px;
+  width: 36px;
+  height: 36px;
   border-radius: 6px;
   cursor: pointer;
   transition: all 0.2s;
   flex-shrink: 0;
 }
 
-.dataview-table-editor__action-btn:hover {
+.dv-table-action-btn:hover:not(:disabled) {
   background: rgba(255, 255, 255, 0.1);
   color: #e2e8f0;
 }
 
-/* Property fields */
-.dataview-table-editor__property-field {
-  display: grid;
-  grid-template-columns: 1.5fr 1fr 1.5fr auto;
-  gap: 8px;
-  align-items: center;
-}
-
-/* Table columns */
-.dataview-table-editor__columns {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  margin-bottom: 16px;
-}
-
-.dataview-table-editor__columns-empty {
-  padding: 20px;
-  display: flex;
-  justify-content: center;
-  background: rgba(0, 0, 0, 0.1);
-  border-radius: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.05);
-}
-
-.dataview-table-editor__empty-message {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  color: #94a3b8;
-  font-size: 14px;
-}
-
-.dataview-table-editor__column-item {
-  background: rgba(0, 0, 0, 0.1);
-  border-radius: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  overflow: hidden;
-}
-
-.dataview-table-editor__column-content {
-  padding: 12px;
-}
-
-.dataview-table-editor__column-header {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 12px;
-}
-
-.dataview-table-editor__column-drag {
-  color: #64748b;
-  cursor: move;
-  padding: 4px;
-}
-
-.dataview-table-editor__column-name {
-  flex: 1;
-}
-
-.dataview-table-editor__column-actions {
-  display: flex;
-  gap: 6px;
-}
-
-.dataview-table-editor__column-property {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.dataview-table-editor__column-property-label {
-  font-size: 14px;
-  color: #94a3b8;
-  min-width: 60px;
-}
-
-.dataview-table-editor__column-property-field {
-  flex: 1;
-}
-
-.dataview-table-editor__add-column {
-  display: flex;
-  justify-content: center;
-}
-
-.dataview-table-editor__add-btn {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  background: rgba(59, 130, 246, 0.15);
-  color: #60a5fa;
-  border: 1px solid rgba(59, 130, 246, 0.3);
-  padding: 10px 16px;
-  border-radius: 6px;
-  font-size: 14px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.dataview-table-editor__add-btn:hover:not(:disabled) {
-  background: rgba(59, 130, 246, 0.25);
-}
-
-.dataview-table-editor__add-btn:disabled {
+.dv-table-action-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
 
-/* Advanced panel */
-.dataview-table-editor__advanced-toggle {
+.dv-table-action-btn i {
+  font-size: 13px;
+}
+
+/* --- Segmented Controls --- */
+.dv-table-segmented-control {
+  display: flex;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 8px;
+  padding: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
   width: 100%;
+}
+
+.dv-table-segmented-control button {
+  flex: 1;
+  padding: 7px 12px;
+  border: none;
+  background: transparent;
+  border-radius: 6px;
+  color: var(--text-muted-dark, #94a3b8);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s, color 0.2s, box-shadow 0.2s;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 12px 16px;
-  background: rgba(0, 0, 0, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  border-radius: 8px;
-  color: #94a3b8;
-  font-size: 14px;
+  justify-content: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.dv-table-segmented-control button.active {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--interactive-accent-light, #60a5fa);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.dv-table-segmented-control button i {
+  font-size: 13px;
+}
+
+/* --- Direction Toggle --- */
+.dv-table-direction-toggle {
+  display: flex;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 6px;
+  padding: 3px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  margin-top: 5px;
+}
+
+.dv-table-direction-toggle button {
+  flex: 1;
+  padding: 8px 12px;
+  border: none;
+  background: transparent;
+  border-radius: 4px;
+  color: var(--text-muted-dark, #94a3b8);
+  font-size: 13px;
   cursor: pointer;
   transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
 }
 
-.dataview-table-editor__advanced-toggle:hover {
-  color: #e2e8f0;
+.dv-table-direction-toggle button.active {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--interactive-accent-light, #60a5fa);
 }
 
-.dataview-table-editor__advanced-panel {
-  margin-top: 16px;
-  padding: 16px;
+.dv-table-direction-toggle button i {
+  font-size: 13px;
+}
+
+/* --- Property Filter --- */
+.dv-table-property-filter {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr 1.5fr;
+  gap: 8px;
+  align-items: center;
+  margin-top: 5px;
+}
+
+/* --- Table Columns --- */
+.dv-table-columns {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 12px;
+  margin-bottom: 5px;
+}
+
+.dv-table-columns-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 20px;
   background: rgba(0, 0, 0, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.05);
   border-radius: 8px;
-  animation: fadeIn 0.2s ease-in-out;
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(-10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-/* Sort controls */
-.dataview-table-editor__sort-property {
-  margin-bottom: 12px;
-}
-
-.dataview-table-editor__sort-direction {
-  margin-top: 4px;
-}
-
-.dataview-table-editor__radio-group {
-  display: flex;
-  gap: 16px;
-}
-
-.dataview-table-editor__radio {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  cursor: pointer;
-}
-
-.dataview-table-editor__radio input[type="radio"] {
-  appearance: none;
-  width: 18px;
-  height: 18px;
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 50%;
-  position: relative;
-  cursor: pointer;
-}
-
-.dataview-table-editor__radio input[type="radio"]:checked {
-  border-color: rgba(59, 130, 246, 0.8);
-}
-
-.dataview-table-editor__radio input[type="radio"]:checked::after {
-  content: "";
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 10px;
-  height: 10px;
-  background: rgba(59, 130, 246, 0.8);
-  border-radius: 50%;
-}
-
-.dataview-table-editor__radio-text {
-  display: flex;
-  align-items: center;
-  gap: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  color: var(--text-muted-dark, #94a3b8);
   font-size: 14px;
+  font-style: italic;
 }
 
-/* Checkbox styling */
-.dataview-table-editor__checkbox {
+.dv-table-column-card {
+  background: rgba(20, 25, 35, 0.5);
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+
+.dv-table-column-header {
   display: flex;
   align-items: center;
   gap: 8px;
+  padding: 8px 12px;
+  background: rgba(0, 0, 0, 0.15);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
 }
 
-.dataview-table-editor__checkbox input[type="checkbox"] {
-  appearance: none;
-  width: 18px;
-  height: 18px;
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 4px;
-  position: relative;
-  cursor: pointer;
-}
-
-.dataview-table-editor__checkbox input[type="checkbox"]:checked {
-  background: rgba(59, 130, 246, 0.8);
-  border-color: rgba(59, 130, 246, 0.8);
-}
-
-.dataview-table-editor__checkbox input[type="checkbox"]:checked::after {
-  content: "✓";
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  color: white;
+.dv-table-column-drag {
+  color: #64748b;
+  cursor: move;
+  padding: 4px;
   font-size: 12px;
 }
 
-.dataview-table-editor__checkbox label {
-  font-size: 14px;
+.dv-table-column-tag {
+  background: rgba(96, 165, 250, 0.15);
+  color: var(--interactive-accent-light, #60a5fa);
+  font-size: 12px;
+  padding: 3px 8px;
+  border-radius: 4px;
+}
+
+.dv-table-column-remove {
+  margin-left: auto;
+  background: none;
+  border: none;
+  color: #94a3b8;
   cursor: pointer;
+  padding: 5px;
+  border-radius: 4px;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.dataview-table-editor__limit-value {
-  margin-top: 8px;
-  margin-left: 26px;
+.dv-table-column-remove:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.05);
+  color: #e2e8f0;
 }
 
-.dataview-table-editor__number-input {
-  width: 100px;
-  text-align: center;
+.dv-table-column-remove:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
 }
 
-/* Style options */
-.dataview-table-editor__style-options {
+.dv-table-column-content {
+  padding: 12px;
   display: flex;
   flex-direction: column;
+  gap: 12px;
+}
+
+.dv-table-add-column-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   gap: 8px;
+  background: rgba(96, 165, 250, 0.1);
+  color: var(--interactive-accent-light, #60a5fa);
+  border: 1px solid rgba(96, 165, 250, 0.2);
+  padding: 10px;
+  border-radius: 6px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-top: 5px;
+}
+
+.dv-table-add-column-btn:hover {
+  background: rgba(96, 165, 250, 0.2);
+}
+
+/* Custom Toggle Switch */
+.dv-table-toggle {
+  position: relative;
+  display: inline-block;
+  width: 40px;
+  height: 22px;
+  flex-shrink: 0;
+}
+
+.dv-table-toggle input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.dv-table-toggle-slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  transition: 0.3s;
+  border-radius: 22px;
+}
+
+.dv-table-toggle-slider:before {
+  position: absolute;
+  content: "";
+  height: 16px;
+  width: 16px;
+  left: 2px;
+  bottom: 2px;
+  background-color: #ccc;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  transition: 0.3s;
+  border-radius: 50%;
+}
+
+.dv-table-toggle input:checked + .dv-table-toggle-slider {
+  background-color: var(--interactive-accent-light, #60a5fa);
+  border-color: var(--interactive-accent-light, #60a5fa);
+}
+
+.dv-table-toggle input:focus-visible + .dv-table-toggle-slider {
+  box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.3);
+}
+
+.dv-table-toggle input:checked + .dv-table-toggle-slider:before {
+  transform: translateX(18px);
+  background-color: #fff;
+}
+
+.dv-table-toggle-label {
+  font-size: 14px;
+  color: var(--text-normal-dark, #e1e1e6);
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.dv-table-toggle-label--disabled {
+  color: var(--text-faint-dark, #717a8a);
 }
 
 /* Tips section */
-.dataview-table-editor__tips {
-  margin-top: 8px;
-  padding: 16px;
+.dv-table-tips {
   background: rgba(15, 23, 42, 0.3);
-  border-radius: 6px;
+  border-radius: 10px;
   border: 1px solid rgba(255, 255, 255, 0.05);
+  padding: 16px;
 }
 
-.dataview-table-editor__tips-header {
+.dv-table-tips-header {
   display: flex;
   align-items: center;
   gap: 8px;
-  color: #60a5fa;
+  color: var(--interactive-accent-light, #60a5fa);
   font-size: 14px;
   font-weight: 500;
   margin-bottom: 12px;
 }
 
-.dataview-table-editor__tips-content {
+.dv-table-tips-content {
   font-size: 13px;
-  color: #94a3b8;
+  color: var(--text-muted-dark, #94a3b8);
   line-height: 1.5;
 }
 
+.dv-table-tips-content p {
+  margin: 0 0 8px 0;
+}
+
+.dv-table-tips-content p:last-child {
+  margin-bottom: 0;
+}
+
 /* Responsive adjustments */
-@media (max-width: 768px) {
-  .dataview-table-editor__source-selector {
-    grid-template-columns: repeat(2, 1fr);
+@media (max-width: 600px) {
+  .dv-table-segmented-control {
+    flex-wrap: wrap;
   }
 
-  .dataview-table-editor__property-field {
+  .dv-table-segmented-control button {
+    flex-basis: 50%;
+  }
+
+  .dv-table-property-filter {
     grid-template-columns: 1fr;
-    gap: 8px;
   }
 
-  .dataview-table-editor__radio-group {
+  .dv-table-section-description {
+    display: none;
+  }
+
+  .dv-table-direction-toggle {
     flex-direction: column;
-    gap: 12px;
   }
 
-  .dataview-table-editor__column-property {
+  .dv-table-field-group--inline {
     flex-direction: column;
     align-items: flex-start;
-    gap: 8px;
   }
 
-  .dataview-table-editor__column-property-label {
-    min-width: auto;
+  .dv-table-field-tip--inline {
+    margin-left: 0;
+    margin-top: 4px;
   }
 }
 </style>

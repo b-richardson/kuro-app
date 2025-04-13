@@ -32,19 +32,18 @@ export const ObsidianDataviewTable = Node.create({
         tag: "pre",
         preserveWhitespace: "full",
         getAttrs: (node) => {
+          if (typeof node !== "object" || node === null) return false;
+          const el = node as HTMLElement;
+          const lang = el.getAttribute("data-language");
+          const text = el.textContent?.trim();
+
           if (
-            typeof node === "object" &&
-            node !== null &&
-            (node as HTMLElement).getAttribute("data-language") ===
-              "dataview" &&
-            // Explicitly check that this IS a TABLE query
-            (node as HTMLElement).textContent
-              ?.trim()
-              .toUpperCase()
-              .startsWith("TABLE ")
+            (lang === "dataview" && text?.toUpperCase().startsWith("TABLE ")) ||
+            (lang === "dataviewjs" && text?.includes("dv.table("))
           ) {
-            return { language: "dataview" };
+            return { language: lang };
           }
+
           return false;
         },
       },

@@ -87,6 +87,7 @@ export class DataviewQueryService {
    * @param filter - Optional filter function or tag string
    * @param sortBy - Optional field to sort by
    * @param sortDirection - Sort direction ('asc' or 'desc')
+   * @param limit - Optional result limit
    * @returns Formatted table data from notes matching the criteria
    */
   public async tableQuery(
@@ -94,7 +95,8 @@ export class DataviewQueryService {
     columns: string[] = [],
     filter?: DataviewQueryFilter,
     sortBy?: string,
-    sortDirection: "asc" | "desc" = "asc"
+    sortDirection: "asc" | "desc" = "asc",
+    limit?: number
   ): Promise<DataviewTableResult[]> {
     // Try to use native API if possible (only for simple tag filters)
     if (typeof filter === "string" && filter.startsWith("#")) {
@@ -104,7 +106,13 @@ export class DataviewQueryService {
         if (sortBy) {
           queryString += ` SORT ${sortBy} ${sortDirection.toUpperCase()}`;
         }
+        if (limit && limit > 0) {
+          queryString += ` LIMIT ${limit}`;
+        }
 
+        console.log(
+          `[DataviewQueryService] Executing native query: ${queryString}`
+        );
         const results = await this.apiService.searchWithDataview(queryString);
         return results.map((item) => {
           const result: Record<string, any> = {
@@ -144,7 +152,8 @@ export class DataviewQueryService {
       sortDirection
     );
 
-    return notes.map((note) => {
+    // Map the notes to table rows
+    let tableResults = notes.map((note) => {
       const row: Record<string, any> = {
         file: note.file,
       };
@@ -156,6 +165,16 @@ export class DataviewQueryService {
 
       return row as DataviewTableResult;
     });
+
+    // Apply limit if specified
+    if (limit && limit > 0 && tableResults.length > limit) {
+      console.log(
+        `[DataviewQueryService] Limiting results from ${tableResults.length} to ${limit}`
+      );
+      tableResults = tableResults.slice(0, limit);
+    }
+
+    return tableResults;
   }
 
   /**
