@@ -1,3 +1,4 @@
+<!-- RenderDataviewTable.vue -->
 <template>
   <node-view-wrapper class="dataview-wrapper">
     <div class="dataview-preview">
