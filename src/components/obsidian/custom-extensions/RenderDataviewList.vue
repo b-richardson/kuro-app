@@ -1,27 +1,40 @@
+<!-- src/components/obsidian/custom-extensions/RenderDataviewList.vue -->
 <template>
   <node-view-wrapper class="dataview-wrapper">
     <div class="dataview-preview">
       <div class="dataview-header">
-        <strong>Dataview Query</strong>
+        <strong>Dataview List</strong>
         <div v-if="error" class="error-message">{{ error }}</div>
+        <div v-if="isInitializingStore" class="loading-message">
+          Loading vault data: {{ initProgress }}%
+        </div>
       </div>
 
       <!-- LIST view -->
-      <div class="query-output list-result">
-        <div
-          v-for="(item, index) in queryResults"
-          :key="index"
-          class="note-link"
-        >
-          • <span class="note-title">{{ getItemTitle(item) }}</span>
-          <span v-if="getItemMetadata(item)" class="metadata">{{
-            getItemMetadata(item)
-          }}</span>
-        </div>
+      <div
+        class="query-output list-result"
+        :class="{ loading: isLoading || isInitializingStore }"
+      >
+        <ul v-if="queryResults.length > 0">
+          <li
+            v-for="(item, index) in queryResults"
+            :key="index"
+            class="note-link"
+          >
+            <span class="note-title">{{ getItemDisplayName(item) }}</span>
+            <span v-if="hasDisplayableProperties(item)" class="note-properties">
+              {{ formatProperties(item) }}
+            </span>
+          </li>
+        </ul>
 
         <!-- Empty state -->
-        <div v-if="queryResults.length === 0 && !isLoading" class="empty-state">
-          No results found
+        <div v-else class="empty-state">
+          {{
+            isLoading || isInitializingStore
+              ? "Loading results..."
+              : "No results found"
+          }}
         </div>
       </div>
 
@@ -33,309 +46,570 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from "vue";
 import { NodeViewWrapper, NodeViewContent, NodeViewProps } from "@tiptap/vue-3";
-import { obsidianApiService } from "@/services/obsidian";
 import { debounce } from "lodash-es";
+import { format } from "date-fns";
 
-// Props for the node view
+// Import the query engine components
+import { QueryParser } from "@/obsidian/engine/queryParser";
+import { QueryEngine } from "@/obsidian/engine/queryEngine";
+
+// Import the DataStoreManager
+import { useDataStoreManager } from "@/stores/dataStoreManager";
+
+// Debug logging for the component lifecycle
+console.log("[DataviewList] Component initializing");
+
 const props = defineProps<NodeViewProps>();
 
-// State
+// Log the initial node content
+console.log("[DataviewList] Initial node content:", props.node?.textContent);
+
+// Create query engine instances
+const queryParser = new QueryParser();
+const queryEngine = new QueryEngine();
+
+// Use the DataStoreManager instead of creating a new DataStore
+const dataStoreManager = useDataStoreManager();
+const isInitializingStore = computed(() => dataStoreManager.isLoading);
+const initProgress = computed(() => dataStoreManager.initializationProgress);
+
+// Store both simple paths and detailed results
 const queryResults = ref<any[]>([]);
+const requestedProperties = ref<string[]>([]);
 const isLoading = ref(false);
-const lastExecutedQuery = ref("");
 const error = ref("");
 
-// Extract query from node content
-const query = computed(() => {
-  return props.node.textContent.trim();
-});
-
-// Determine query type
-const queryType = computed(() => {
-  const queryText = query.value.toUpperCase();
-  if (queryText.startsWith("LIST")) return "list";
-  return "unknown";
-});
-
-// Extract FROM clause and other parts from the query
-const queryParts = computed(() => {
-  const fromMatch = query.value.match(
-    /FROM\s+(["']?[^"'\s]+["']?|\[[^\]]+\])/i
-  );
-  const fromClause = fromMatch ? fromMatch[1] : '""';
-
-  const whereMatch = query.value.match(/WHERE\s+([^SORT|^LIMIT|^GROUP]+)/i);
-  const whereClause = whereMatch ? whereMatch[1].trim() : "";
-
-  const sortMatch = query.value.match(
-    /SORT\s+(.*?)(?:\s+LIMIT|\s+WHERE|\s+GROUP|$)/i
-  );
-  const sortClause = sortMatch ? sortMatch[1].trim() : "";
-
-  const limitMatch = query.value.match(/LIMIT\s+(\d+)/i);
-  const limitClause = limitMatch ? parseInt(limitMatch[1]) : null;
-
-  return { fromClause, whereClause, sortClause, limitClause };
-});
-
-// Convert LIST query to equivalent TABLE query for API compatibility
-const getApiCompatibleQuery = () => {
-  // Extract query parts
-  const { fromClause, whereClause, sortClause, limitClause } = queryParts.value;
-
-  let tableQuery = `TABLE file.name AS "File", file.ctime AS "Created", file.mtime AS "Modified", file.size AS "Size", tags AS "Tags" `;
-
-  // Add FROM clause
-  tableQuery += `FROM ${fromClause} `;
-
-  // Add WHERE clause if present
-  if (whereClause) {
-    tableQuery += `WHERE ${whereClause} `;
-  }
-
-  // Add SORT clause if present
-  if (sortClause) {
-    tableQuery += `SORT ${sortClause} `;
-  }
-
-  // Add LIMIT clause if present
-  if (limitClause) {
-    tableQuery += `LIMIT ${limitClause}`;
-  }
-
-  return tableQuery;
+// Property mappings (matching the UI module)
+const propertyMappings: Record<string, string> = {
+  "file.name": "Title",
+  "file.ctime": "Creation Date",
+  "file.mtime": "Modified Date",
+  "file.size": "Size",
+  "file.path": "Path",
+  "file.folder": "Folder",
+  tags: "Tags",
 };
 
-// Execute the dataview query against the user's vault
+// Log whenever the node content changes directly
+const nodeContentChanged = () => {
+  console.log(
+    "[DataviewList] Node content changed to:",
+    props.node?.textContent
+  );
+};
+
+const query = computed(() => {
+  const content = props.node?.textContent?.trim() || "";
+  console.log("[DataviewList] Current query computed:", content);
+  return content;
+});
+
+// Parse the LIST query to extract what properties to display
+const parseRequestedProperties = (queryString: string): string[] => {
+  // Extract properties from the LIST line
+  const lines = queryString.split("\n");
+  const listLine = lines.find((line) => line.trim().startsWith("LIST"));
+
+  if (!listLine || listLine.trim() === "LIST") {
+    return []; // No specific properties requested
+  }
+
+  // Get the properties after "LIST"
+  const propsText = listLine.replace(/^LIST\s+/, "").trim();
+  if (!propsText) return [];
+
+  // Split by comma and clean up
+  return propsText.split(",").map((p) => p.trim());
+};
+
 const executeQuery = async () => {
   const currentQuery = query.value;
+  console.log(
+    "[RenderDataviewList] executeQuery called with query:",
+    currentQuery
+  );
 
-  // Skip if query is empty or unchanged
-  if (!currentQuery || currentQuery === lastExecutedQuery.value) {
+  if (!currentQuery) {
+    console.log("[RenderDataviewList] Query is empty, not executing");
     return;
   }
 
   try {
+    console.log("[RenderDataviewList] Starting query execution");
     isLoading.value = true;
     error.value = "";
-    lastExecutedQuery.value = currentQuery;
 
-    // Convert to TABLE query for API compatibility
-    const apiQuery = getApiCompatibleQuery();
+    // Parse requested properties from the query
+    requestedProperties.value = parseRequestedProperties(currentQuery);
+    console.log(
+      "[RenderDataviewList] Requested properties:",
+      requestedProperties.value
+    );
 
-    // Call the Obsidian API service
-    const results = await obsidianApiService.searchWithDataview(apiQuery);
+    // Initialize data store if needed
+    if (!dataStoreManager.isInitialized) {
+      console.log("[RenderDataviewList] Initializing data store...");
+      await dataStoreManager.initializeDataStore();
+    }
 
-    // Transform results for LIST view
-    if (Array.isArray(results)) {
-      // Process each result to extract title and metadata
-      queryResults.value = results.map((item) => {
-        if (typeof item === "object" && item !== null) {
-          // Use TypeScript safe property access
-          const dataItem = item as Record<string, any>;
-          if (dataItem.File) {
-            return { title: dataItem.File, originalData: dataItem };
-          }
+    // Check if initialization was successful
+    if (!dataStoreManager.isDataStoreReady) {
+      console.log(
+        "[RenderDataviewList] Data store initialization failed or is still in progress"
+      );
+      error.value = "Data store is not ready. Please try again.";
+      return;
+    }
 
-          // Try to find a suitable title property
-          for (const key of ["path", "file", "name", "title", "fileName"]) {
-            if (dataItem[key]) {
-              return { title: dataItem[key], originalData: dataItem };
-            }
-          }
-        }
-        console.log("Final query results:", queryResults.value);
-        return item;
+    // Parse the query string to a structured QueryRequest
+    const queryRequest = queryParser.parseQuery(currentQuery);
+    console.log("[RenderDataviewList] Parsed query request:", queryRequest);
+
+    // Ensure we're dealing with a LIST query
+    if (queryRequest.queryType !== "LIST") {
+      queryRequest.queryType = "LIST"; // Force it to be a LIST query
+    }
+
+    // Execute the query using the QueryEngine and the data store from our manager
+    console.log(
+      "[RenderDataviewList] DataStore debug info:\n",
+      dataStoreManager.dataStore.getStoreDebugInfo()
+    );
+
+    const result = await queryEngine.execute(
+      queryRequest,
+      dataStoreManager.dataStore as any
+    );
+
+    console.log(
+      "[RenderDataviewList] Query execution result type:",
+      result.type
+    );
+
+    // Handle the result based on type
+    if (result.type === "LIST") {
+      console.log("[RenderDataviewList] LIST result details:", {
+        dataCount: result.data.length,
+        firstItem: result.data.length > 0 ? result.data[0] : null,
       });
+
+      // If result.data contains objects with the requested properties, use it directly
+      if (result.data.length > 0 && typeof result.data[0] === "object") {
+        queryResults.value = result.data;
+      }
+      // If it's just an array of strings, map them to objects with path property
+      else if (result.data.length > 0 && typeof result.data[0] === "string") {
+        queryResults.value = result.data.map((path) => {
+          // Try to get the full note data from the data store
+          const note = dataStoreManager.dataStore.getNote(path);
+          if (note) {
+            return {
+              path,
+              note: note.note, // The original note JSON
+              parsed: note.parsed, // Any parsed data
+              // Add additional properties for display convenience
+              "file.name": path.split("/").pop() || path,
+              "file.path": path,
+              "file.mtime": note.note.stat?.mtime
+                ? new Date(note.note.stat.mtime)
+                : null,
+              "file.ctime": note.note.stat?.ctime
+                ? new Date(note.note.stat.ctime)
+                : null,
+              "file.size": note.note.stat?.size || 0,
+              tags: note.note.tags || [],
+            };
+          } else {
+            // Fallback for notes not in the data store
+            return {
+              path,
+              "file.name": path.split("/").pop() || path,
+            };
+          }
+        });
+      }
+
+      console.log("[RenderDataviewList] Final results:", queryResults.value);
+    } else if (
+      result.type === "TABLE" &&
+      requestedProperties.value.length > 0
+    ) {
+      // If we got a TABLE result (which can happen with properties in LIST),
+      // convert it to a list-friendly format
+      console.log(
+        "[RenderDataviewList] Converting TABLE result to LIST format"
+      );
+      queryResults.value = result.data;
+    } else if (result.type === "ERROR") {
+      console.error(
+        "[RenderDataviewList] Query returned error:",
+        result.message
+      );
+      error.value = result.message || "Error executing query";
+      queryResults.value = [];
     } else {
+      // Unexpected result type
+      console.warn(
+        `[RenderDataviewList] Unexpected result type: ${result.type}`
+      );
+      error.value = `Unexpected result type: ${result.type}`;
       queryResults.value = [];
     }
   } catch (err: any) {
-    console.error("Error executing dataview query:", err);
+    console.error("[RenderDataviewList] Error executing dataview query:", err);
+    console.error("[RenderDataviewList] Error stack:", err.stack);
     queryResults.value = [];
-
-    // Handle specific errors
-    if (err.message?.includes("Only TABLE dataview queries")) {
-      error.value = "Error: Only TABLE queries are supported by the API";
-    } else if (err.code === "CONNECTION_ERROR") {
-      error.value = "Cannot connect to Obsidian. Is it running?";
-    } else if (err.code === "AUTH_ERROR") {
-      error.value = "Authentication error connecting to Obsidian";
-    } else {
-      error.value = err.message || "Error executing query";
-    }
-
-    // Fall back to mock data
-    provideMockData();
+    error.value = err.message || "Error executing query";
   } finally {
     isLoading.value = false;
+    console.log("[RenderDataviewList] Query execution completed");
+    console.log(
+      "[RenderDataviewList] Final queryResults count:",
+      queryResults.value.length
+    );
   }
 };
 
-// Provide mock data when API call fails
-const provideMockData = () => {
-  const { fromClause } = queryParts.value;
-  const source = fromClause.replace(/['"]/g, "");
-
-  queryResults.value = [
-    { title: `${source}/Sample Note 1`, metadata: "Last modified 2023-09-15" },
-    { title: `${source}/Sample Note 2`, metadata: "Last modified 2023-08-22" },
-    { title: `${source}/Sample Note 3`, metadata: "Last modified 2023-07-10" },
-  ];
-};
-
-// Create debounced version of executeQuery to avoid excessive API calls
-const debouncedExecuteQuery = debounce(executeQuery, 500);
-
-// Helper functions for formatting results
-const getItemTitle = (item: any): string => {
-  // Just return the filename directly
-  return item?.filename || "Untitled";
-};
-
-const getItemMetadata = (item: any): string => {
-  if (!item || !item.result) {
-    return "";
+// Helper function to display item name (either raw path or from object)
+const getItemDisplayName = (item: any): string => {
+  // If item is just a string (file path), return it directly
+  if (typeof item === "string") {
+    return item;
   }
 
-  // Extract the property names from the LIST line in the original query
-  const listLine = query.value
-    .split("\n")
-    .find((line) => line.trim().startsWith("LIST"));
-  if (!listLine || listLine === "LIST") {
-    // If no specific properties were requested, show nothing
-    return "";
-  }
+  // If item is an object, try to get the file name
+  if (item && typeof item === "object") {
+    // Try to extract name in this priority order
+    if (item["file.name"]) return item["file.name"];
+    if (item.File) return item.File;
+    if (item.file?.name) return item.file.name;
+    if (item.path) {
+      const parts = item.path.split("/");
+      return parts[parts.length - 1];
+    }
+    if (item.name) return item.name;
 
-  // Get the requested properties
-  const propString = listLine.replace("LIST", "").trim();
-  if (!propString) return "";
-
-  const requestedProps = propString.split(",").map((p) => p.trim());
-
-  // Build metadata string only showing requested properties
-  const metadata = [];
-  const data = item.result;
-
-  // Map from Dataview property names to API result keys
-  const propertyMap: Record<string, string> = {
-    "file.ctime": "Created",
-    "file.mtime": "Modified",
-    "file.size": "Size",
-    tags: "Tags",
-    // Add more mappings as needed
-  };
-
-  for (const prop of requestedProps) {
-    // Look up the corresponding property in the API result
-    const resultKey = propertyMap[prop] || prop;
-
-    if (data[resultKey] !== undefined) {
-      let value = data[resultKey];
-
-      // Format arrays
-      if (Array.isArray(value)) {
-        value = value.join(", ");
+    // Fallback to first string property
+    for (const key in item) {
+      if (typeof item[key] === "string") {
+        return item[key];
       }
-
-      metadata.push(`${prop}: ${value}`);
     }
   }
 
-  return metadata.join(" | ");
+  return "Untitled";
 };
 
-// Execute query when component mounts or query changes
+// Check if the item has any requested properties that should be displayed
+const hasDisplayableProperties = (item: any): boolean => {
+  if (!requestedProperties.value.length || typeof item !== "object") {
+    return false;
+  }
+
+  return requestedProperties.value.some((prop) => {
+    const value = getPropertyValue(item, prop);
+    return value !== undefined && value !== null;
+  });
+};
+
+// Get the value of a property from an item
+const getPropertyValue = (item: any, prop: string): any => {
+  // Direct property access
+  if (prop in item) {
+    return item[prop];
+  }
+
+  // For special properties like file.mtime, try alternative formats
+  if (prop === "file.mtime") {
+    return (
+      item["file.mtime"] ||
+      item.Modified ||
+      item.file?.mtime ||
+      (item.stat?.mtime ? new Date(item.stat.mtime) : null)
+    );
+  }
+
+  if (prop === "file.ctime") {
+    return (
+      item["file.ctime"] ||
+      item.Created ||
+      item.file?.ctime ||
+      (item.stat?.ctime ? new Date(item.stat.ctime) : null)
+    );
+  }
+
+  if (prop === "file.name") {
+    return (
+      item["file.name"] ||
+      item.File ||
+      item.file?.name ||
+      (item.path ? item.path.split("/").pop() : null)
+    );
+  }
+
+  // Nested property access (e.g., file.size)
+  if (prop.includes(".")) {
+    const parts = prop.split(".");
+    let value = item;
+    for (const part of parts) {
+      if (value && typeof value === "object" && part in value) {
+        value = value[part];
+      } else {
+        // Try handling common cases
+        if (parts[0] === "file" && parts[1] === "size" && item.stat?.size) {
+          return item.stat.size;
+        }
+        if (parts[0] === "file" && parts[1] === "path" && item.path) {
+          return item.path;
+        }
+        return undefined;
+      }
+    }
+    return value;
+  }
+
+  // Check frontmatter or parsed fields
+  if (item.note?.frontmatter && prop in item.note.frontmatter) {
+    return item.note.frontmatter[prop];
+  }
+
+  if (item.parsed?.inlineFields && prop in item.parsed.inlineFields) {
+    return item.parsed.inlineFields[prop];
+  }
+
+  return undefined;
+};
+
+// Format the properties for display
+const formatProperties = (item: any): string => {
+  if (!requestedProperties.value.length || !item) return "";
+
+  const formattedProps: string[] = [];
+
+  requestedProperties.value.forEach((prop) => {
+    const value = getPropertyValue(item, prop);
+
+    if (value !== undefined && value !== null) {
+      let formattedValue = value;
+
+      // Format based on property type
+      if (value instanceof Date) {
+        formattedValue = format(value, "MMM d, yyyy");
+      } else if (Array.isArray(value)) {
+        formattedValue = value.join(", ");
+      } else if (typeof value === "object") {
+        formattedValue = JSON.stringify(value);
+      }
+
+      // Get display name for the property (using mapping or just the last part)
+      const displayName =
+        propertyMappings[prop] || prop.split(".").pop() || prop;
+      formattedProps.push(`${displayName}: ${formattedValue}`);
+    }
+  });
+
+  return formattedProps.length ? `[${formattedProps.join(" | ")}]` : "";
+};
+
+// Set up watchers
 onMounted(() => {
-  debouncedExecuteQuery();
+  console.log("[DataviewList] Component mounted, executing initial query");
+  // Initialize the DataStore when the component mounts
+  dataStoreManager.initializeDataStore().then(() => {
+    // Execute the query once the data store is initialized
+    executeQuery();
+  });
+
+  // Debug logs about available node properties
+  console.log("[DataviewList] Node props:", {
+    hasAttributes: !!props.node?.attrs,
+    hasExtension: !!props.extension,
+    editorAvailable: !!props.editor,
+  });
 });
 
+// Watch for query changes
 watch(
-  () => props.node.textContent,
-  (newVal) => {
-    console.log("Updated query:", newVal);
-    debouncedExecuteQuery();
+  () => query.value,
+  (newQuery, oldQuery) => {
+    console.log("[DataviewList] Query changed:", {
+      from: oldQuery,
+      to: newQuery,
+      changed: newQuery !== oldQuery,
+    });
+
+    if (newQuery) {
+      console.log("[DataviewList] Executing query due to change");
+      debouncedExecuteQuery();
+    }
   }
 );
-</script>
 
-<style scoped>
+// Also watch node content directly
+watch(
+  () => props.node?.textContent,
+  (newContent, oldContent) => {
+    console.log("[DataviewList] Node textContent changed:", {
+      from: oldContent,
+      to: newContent,
+      changed: newContent !== oldContent,
+    });
+    nodeContentChanged();
+  }
+);
+
+// Watch node attributes for changes
+watch(
+  () => props.node?.attrs,
+  () => {
+    console.log("[DataviewList] Node attributes changed");
+    debouncedExecuteQuery();
+  },
+  { deep: true }
+);
+
+const debouncedExecuteQuery = debounce(() => {
+  console.log("[DataviewList] Debounced query execution triggered");
+  // Only execute if the data store is ready
+  if (dataStoreManager.isDataStoreReady) {
+    executeQuery();
+  } else if (!dataStoreManager.isLoading) {
+    // If it's not ready and not loading, try to initialize it first
+    dataStoreManager.initializeDataStore().then(() => {
+      executeQuery();
+    });
+  }
+}, 300);
+</script>
+<style>
+/* Add some styles for the loading indicator */
+.loading-message {
+  font-size: 0.85em;
+  color: #666;
+  margin-left: 10px;
+}
+</style>
+
+<style>
 .dataview-wrapper {
   display: block;
   margin: 1rem 0;
+  border-radius: 4px;
+  overflow: hidden;
 }
 
 .content-container {
-  display: none; /* Hide the actual content, but keep it in the DOM for TipTap */
+  display: none;
 }
 
 .dataview-preview {
-  background-color: transparent;
-  padding: 0;
-  margin: 0.5rem 0;
-  font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family: var(
+    --font-interface,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    Roboto,
+    Helvetica,
+    Arial,
+    sans-serif
+  );
+  font-size: 0.9em;
+  color: var(--text-normal, #dcddde);
+  background-color: var(--background-primary, #272727);
+  border-radius: 4px;
 }
 
 .dataview-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 0.5rem;
-  padding-bottom: 0.25rem;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+  font-weight: 600;
+  padding: 0.5rem 0.75rem;
+  margin-bottom: 0.25rem;
+  border-bottom: 1px solid var(--background-modifier-border, #333);
+  background-color: var(--background-secondary, #1e1e1e);
+  color: var(--text-normal, #dcddde);
 }
 
 .error-message {
-  color: #e53935;
-  font-size: 0.9em;
-  margin-left: 8px;
+  color: #ff5252;
+  font-size: 0.85em;
+  font-weight: normal;
 }
 
 .query-output {
-  padding: 8px 0;
+  padding: 0.5rem 0.75rem;
+  position: relative;
 }
 
-.empty-state {
-  color: #888;
-  font-style: italic;
-  padding: 8px 0;
+/* Loading indicator */
+.query-output::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background: linear-gradient(
+    90deg,
+    var(--text-accent, #a389f4) 0%,
+    transparent 50%,
+    var(--text-accent, #a389f4) 100%
+  );
+  background-size: 200% 100%;
+  animation: loading-animation 1.5s infinite;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  z-index: 10;
 }
 
-.note-link {
-  padding: 0.15rem 0;
+.query-output.loading::before {
+  opacity: 1;
+}
+
+@keyframes loading-animation {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: 0 0;
+  }
+}
+
+/* List styling to match Obsidian native */
+.list-result ul {
+  margin: 0.25rem 0;
+  padding-left: 1.5rem;
+}
+
+.list-result li {
+  margin-bottom: 0.5rem;
+  color: var(--text-normal, #dcddde);
   line-height: 1.4;
 }
 
+/* Note link styling */
 .note-title {
-  color: #106ba3; /* Obsidian link color in light mode */
-  text-decoration: none;
+  color: var(--text-accent, #a389f4);
   cursor: pointer;
+  text-decoration: none;
 }
 
-.metadata {
-  color: #666;
-  margin-left: 8px;
-  font-size: 0.9em;
+.note-title:hover {
+  text-decoration: underline;
 }
 
-/* Dark mode support */
-:global(.dark-theme) .dataview-header {
-  border-bottom-color: rgba(255, 255, 255, 0.1);
+.empty-state {
+  font-style: italic;
+  color: var(--text-muted, #888);
+  padding: 1rem;
+  text-align: center;
 }
 
-:global(.dark-theme) .note-title {
-  color: #56c8fa; /* Obsidian link color in dark mode */
-}
-
-:global(.dark-theme) .metadata {
-  color: #aaa;
-}
-
-:global(.dark-theme) .empty-state {
-  color: #aaa;
-}
-
-:global(.dark-theme) .error-message {
-  color: #ff6b6b;
+/* Mobile responsiveness */
+@media (max-width: 768px) {
+  .list-result {
+    max-width: 100%;
+  }
 }
 </style>

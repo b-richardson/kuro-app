@@ -92,6 +92,11 @@
           <span>{{ isDarkTheme ? "Light Mode" : "Dark Mode" }}</span>
         </button>
 
+        <!-- Add this button somewhere in your UI for testing -->
+        <button @click="refreshStore" class="refresh-button">
+          <i class="fas fa-sync-alt"></i> Refresh Data
+        </button>
+
         <button
           class="control-button logout-button"
           @click="logout"
@@ -121,6 +126,7 @@ import { useRoute, useRouter } from "vue-router";
 import { useUIStore, usePreferencesStore } from "@/stores";
 import { useAuthStore } from "@/stores/auth";
 import { useObsidianStore } from "@/stores/obsidian";
+import { useDataStoreManager } from "@/stores/dataStoreManager";
 
 // Stores
 const uiStore = useUIStore();
@@ -129,6 +135,11 @@ const authStore = useAuthStore();
 const router = useRouter();
 const route = useRoute();
 const obsidianStore = useObsidianStore();
+const dataStoreManager = useDataStoreManager();
+
+const refreshStore = async () => {
+  await dataStoreManager.refreshDataStore();
+};
 
 // Theme state
 const isDarkTheme = ref(true);
@@ -648,6 +659,19 @@ onMounted(() => {
 .logout-button:hover {
   background: rgba(248, 113, 113, 0.1);
   border-color: rgba(248, 113, 113, 0.4);
+}
+
+.refresh-button {
+  background: #60a5fa;
+  color: white;
+  border: none;
+  padding: 8px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 /* Mobile close button */

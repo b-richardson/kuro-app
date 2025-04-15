@@ -2,7 +2,9 @@
 import { defineStore } from "pinia";
 import { DataStore } from "@/obsidian/store/dataStore";
 import { obsidianApiService } from "@/services/obsidian";
-import type { ParsedData } from "@/obsidian/types/queryEngine";
+import { ContentParser } from "@/obsidian/parser/contentParser";
+
+const contentParser = new ContentParser();
 
 export const useDataStoreManager = defineStore("dataStoreManager", {
   state: () => ({
@@ -59,14 +61,18 @@ export const useDataStoreManager = defineStore("dataStoreManager", {
             // Add to the data store
             this.dataStore.addOrUpdateNoteMetadata(filePath, noteJson);
 
-            // For now, just add empty parsed data
-            // In a full implementation, you would use a ContentParser here
-            const emptyParsedData: ParsedData = {
-              inlineFields: {},
-              tasks: [],
-            };
+            // Parse the content to extract tasks and inline fields
+            const parsedData = await contentParser.parse(
+              noteJson.content,
+              filePath
+            );
+            console.log(
+              `DataStoreManager: Parsed data for ${filePath}:`,
+              parsedData
+            );
+            // Add parsed data to the data store
 
-            this.dataStore.addOrUpdateNoteParsedData(filePath, emptyParsedData);
+            this.dataStore.addOrUpdateNoteParsedData(filePath, parsedData);
 
             // Update progress
             loadedCount++;
@@ -92,6 +98,22 @@ export const useDataStoreManager = defineStore("dataStoreManager", {
       } finally {
         this.isLoading = false;
       }
+    },
+
+    async refreshDataStore() {
+      // Clear the existing data store
+      this.dataStore.clearAll();
+
+      // Reset state
+      this.isInitialized = false;
+      this.isLoading = false;
+      this.error = null;
+      this.initializationProgress = 0;
+
+      // Re-initialize the data store
+      await this.initializeDataStore();
+
+      console.log("DataStoreManager: Data store refreshed");
     },
   },
 

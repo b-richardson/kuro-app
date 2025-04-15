@@ -39,6 +39,7 @@ import { ObsidianLink } from "./custom-extensions/obsidianInternalLink";
 import { ObsidianDataviewList } from "./custom-extensions/obsidianDataviewList";
 import { ObsidianDataviewTable } from "./custom-extensions/obsidianDataviewTable";
 import { ObsidianDataviewCalendar } from "./custom-extensions/obsidianDataviewCalendar";
+import { ObsidianDataviewTask } from "./custom-extensions/obsidianDataviewTask";
 import { ObsidianTemplaterDate } from "./custom-extensions/obsidianTemplaterDate";
 import { ObsidianTemplaterFile } from "./custom-extensions/obsidianTemplaterFile";
 import { ObsidianTemplaterTransform } from "./custom-extensions/obsidianTemplaterTransform";
@@ -203,6 +204,7 @@ onMounted(() => {
       ObsidianFrontmatter,
       // Add ObsidianDataview first to give it priority
       ObsidianDataviewTable,
+      ObsidianDataviewTask,
       ObsidianDataviewList,
       ObsidianDataviewCalendar,
       ObsidianTemplaterDate,

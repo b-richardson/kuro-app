@@ -1,3 +1,4 @@
+<!-- src/components/TemplateCreator/modules/plugins/dataview/DataviewCalendarQueryModule.vue -->
 <template>
   <BaseModule
     :module="module"

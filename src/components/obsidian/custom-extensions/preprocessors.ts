@@ -311,6 +311,33 @@ export function preprocessDataviewCalendar(content: string): string {
 }
 
 /**
+ * Preprocesses Dataview task blocks
+ */
+export function preprocessDataviewTask(content: string): string {
+  let processedContent = content;
+
+  processedContent = processedContent.replace(
+    /```dataview\s+([\s\S]*?)```/g,
+    (match, query) => {
+      const trimmedQuery = query.trim();
+      // Check if the query starts with TASK or contains AS TASKS
+      const isTask =
+        trimmedQuery.toUpperCase().startsWith("TASK") ||
+        trimmedQuery.toUpperCase().includes("AS TASKS");
+
+      if (isTask) {
+        return `<div class="dataview-task-container"><pre data-language="dataview"><code>${trimmedQuery}</code></pre></div>`;
+      }
+
+      // If not a task query, return the match unchanged
+      return match;
+    }
+  );
+
+  return processedContent;
+}
+
+/**
  * Preprocesses HTML entities
  */
 export function preprocessHtmlEntities(content: string): string {
@@ -344,6 +371,7 @@ export function preprocessContent(content: string): string {
   processedMarkdown = preprocessDataview(processedMarkdown);
   processedMarkdown = preprocessDataviewTable(processedMarkdown);
   processedMarkdown = preprocessDataviewCalendar(processedMarkdown);
+  processedMarkdown = preprocessDataviewTask(processedMarkdown);
   processedMarkdown = preprocessCallouts(processedMarkdown);
   processedMarkdown = preprocessTemplaterDate(processedMarkdown);
   processedMarkdown = preprocessTemplaterFile(processedMarkdown);

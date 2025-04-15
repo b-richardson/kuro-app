@@ -1,3 +1,4 @@
+<!-- src/components/TemplateCreator/modules/plugins/dataview/DataviewTaskQueryModule.vue -->
 <template>
   <BaseModule
     :module="module"

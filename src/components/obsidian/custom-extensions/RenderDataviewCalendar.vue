@@ -1,12 +1,18 @@
+<!-- src/components/obsidian/custom-extensions/RenderDataviewCalendar.vue -->
 <template>
   <node-view-wrapper class="dataview-wrapper">
     <div class="dataview-preview calendar-view">
       <div class="dataview-header">
         <strong>Dataview Calendar</strong>
         <div v-if="error" class="error-message">{{ error }}</div>
+        <div v-if="isInitializingStore" class="loading-message">
+          Loading vault data: {{ initProgress }}%
+        </div>
       </div>
 
-      <div v-if="isLoading" class="loading-state">Loading calendar...</div>
+      <div v-if="isLoading || isInitializingStore" class="loading-state">
+        Loading calendar...
+      </div>
 
       <div v-else class="calendar-grid-wrapper">
         <div class="calendar-header">
@@ -15,13 +21,11 @@
             <span class="year">{{ currentYear }}</span>
           </div>
           <div class="calendar-controls">
-            <button @click="changeMonth(-1)" :disabled="!isEditable">
+            <button @click="changeMonth(-1)" class="calendar-control-btn">
               <i class="fas fa-chevron-left"></i>
             </button>
-            <span class="today-label" @click="isEditable && goToToday()">
-              TODAY
-            </span>
-            <button @click="changeMonth(1)" :disabled="!isEditable">
+            <span class="today-label"> TODAY </span>
+            <button @click="changeMonth(1)" class="calendar-control-btn">
               <i class="fas fa-chevron-right"></i>
             </button>
           </div>
@@ -44,9 +48,13 @@
             }"
           >
             <div class="cell-date">{{ cell.date.getDate() }}</div>
-            <ul class="cell-notes">
-              <li v-for="(_, idx) in cell.notes" :key="idx" class="note-dot" />
-            </ul>
+            <div class="cell-notes">
+              <div
+                v-for="(_, idx) in cell.notes"
+                :key="idx"
+                class="note-dot"
+              ></div>
+            </div>
           </div>
         </div>
       </div>
@@ -59,32 +67,63 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from "vue";
 import { NodeViewWrapper, NodeViewContent, NodeViewProps } from "@tiptap/vue-3";
-import { executeCalendarQuery as executeCustomCalendarQuery } from "@/services/obsidian/calendarQueryAdapter.ts";
+import { debounce } from "lodash-es";
 import {
   startOfMonth,
   endOfMonth,
   startOfWeek,
   endOfWeek,
   addDays,
-  isToday as isTodayFn,
+  isSameDay,
+  parseISO,
   format,
+  isSameMonth,
 } from "date-fns";
+
+// Import the query engine components
+import { QueryParser } from "@/obsidian/engine/queryParser";
+import { QueryEngine } from "@/obsidian/engine/queryEngine";
+
+// Import the DataStoreManager
+import { useDataStoreManager } from "@/stores/dataStoreManager";
+
+// Debug logging
+console.log("[DataviewCalendar] Component initializing");
 
 const props = defineProps<NodeViewProps>();
 
-// Reactive state
+// Log the initial node content
+console.log(
+  "[DataviewCalendar] Initial node content:",
+  props.node?.textContent
+);
+
+// Create query engine instances
+const queryParser = new QueryParser();
+const queryEngine = new QueryEngine();
+
+// Use the DataStoreManager
+const dataStoreManager = useDataStoreManager();
+const isInitializingStore = computed(() => dataStoreManager.isLoading);
+const initProgress = computed(() => dataStoreManager.initializationProgress);
+
+// State
 const isLoading = ref(true);
 const error = ref("");
-const calendarCells = ref<{ date: Date; notes: { title: string }[] }[]>([]);
+const calendarCells = ref<{ date: Date; notes: any[] }[]>([]);
 const currentDate = ref(new Date());
+const calendarDateField = ref<string | null>(null);
 
-// Computed properties
-const isEditable = computed(() => props.editor?.isEditable ?? false);
+// Computed
 const currentMonth = computed(() => format(currentDate.value, "MMM"));
 const currentYear = computed(() => currentDate.value.getFullYear());
-const query = computed(() => props.node.textContent.trim());
+const query = computed(() => {
+  const content = props.node?.textContent?.trim() || "";
+  console.log("[DataviewCalendar] Current query computed:", content);
+  return content;
+});
 
-// Generate weekday headers using date-fns for consistency
+// Generate weekday headers - match the original style
 const startOfWeekDay = new Date();
 startOfWeekDay.setDate(startOfWeekDay.getDate() - startOfWeekDay.getDay());
 const weekDays = Array.from({ length: 7 }, (_, i) =>
@@ -92,74 +131,295 @@ const weekDays = Array.from({ length: 7 }, (_, i) =>
 );
 
 // Helper functions
-const isToday = (date: Date) => isTodayFn(date);
-const isCurrentMonth = (date: Date) =>
-  date.getMonth() === currentDate.value.getMonth();
+const isToday = (date: Date) => {
+  const today = new Date();
+  return isSameDay(date, today);
+};
 
+const isCurrentMonth = (date: Date) => {
+  return isSameMonth(date, currentDate.value);
+};
+
+// Calendar navigation functions
 function changeMonth(offset: number) {
   const newDate = new Date(currentDate.value);
   newDate.setMonth(newDate.getMonth() + offset);
   currentDate.value = newDate;
-  executeCalendarQuery();
+  console.log(
+    `[DataviewCalendar] Changed month to: ${format(
+      currentDate.value,
+      "MMMM yyyy"
+    )}`
+  );
+  generateCalendarCells();
 }
 
 function goToToday() {
   currentDate.value = new Date();
-  executeCalendarQuery();
+  console.log("[DataviewCalendar] Reset to current month");
+  generateCalendarCells();
 }
 
-/**
- * Fetch and display calendar data based on the current query
- */
-async function executeCalendarQuery() {
+// Parse the query to extract the date field
+function parseCalendarQuery(queryString: string): string | null {
+  const lines = queryString.split("\n");
+  const calendarLine = lines.find((line) => line.trim().startsWith("CALENDAR"));
+
+  if (!calendarLine) return null;
+
+  const match = calendarLine.match(/^CALENDAR\s+(.+)$/i);
+  if (match && match[1]) {
+    return match[1].trim();
+  }
+
+  return null;
+}
+
+function generateCalendarCells() {
+  // Generate empty calendar cells for the current month
+  const monthStart = startOfMonth(currentDate.value);
+  const monthEnd = endOfMonth(currentDate.value);
+  const calStart = startOfWeek(monthStart);
+  const calEnd = endOfWeek(monthEnd);
+
+  const cells: { date: Date; notes: any[] }[] = [];
+
+  let day = calStart;
+  while (day <= calEnd) {
+    cells.push({
+      date: new Date(day),
+      notes: [],
+    });
+    day = addDays(day, 1);
+  }
+
+  calendarCells.value = cells;
+
+  // If we have data, populate the calendar
+  populateCalendarWithNotes();
+}
+
+// Populate calendar with notes based on their dates
+function populateCalendarWithNotes() {
+  if (!dataStoreManager.isDataStoreReady || !calendarDateField.value) {
+    return;
+  }
+
+  console.log("[DataviewCalendar] Populating calendar with notes");
+
+  // Get all notes from the data store
+  const allNotes = Array.from(dataStoreManager.dataStore.getAllNotes());
+
+  // Process each note to find the ones that should appear on the calendar
+  allNotes.forEach((noteData) => {
+    try {
+      // Extract the date value from the note using the calendar date field
+      let dateValue: Date | null = null;
+
+      // Handle different date field paths
+      if (
+        calendarDateField.value === "file.ctime" &&
+        noteData.note.stat?.ctime
+      ) {
+        dateValue = new Date(noteData.note.stat.ctime);
+      } else if (
+        calendarDateField.value === "file.mtime" &&
+        noteData.note.stat?.mtime
+      ) {
+        dateValue = new Date(noteData.note.stat.mtime);
+      } else {
+        // For custom date fields, check frontmatter or inline fields
+        const fieldParts = calendarDateField.value.split(".");
+        let value = null;
+
+        // Check in frontmatter
+        if (
+          noteData.note.frontmatter &&
+          fieldParts[0] in noteData.note.frontmatter
+        ) {
+          value = noteData.note.frontmatter[fieldParts[0]];
+        }
+        // Check in parsed inline fields
+        else if (
+          noteData.parsed?.inlineFields &&
+          fieldParts[0] in noteData.parsed.inlineFields
+        ) {
+          value = noteData.parsed.inlineFields[fieldParts[0]];
+        }
+
+        // Parse the date value
+        if (value && typeof value === "string") {
+          try {
+            dateValue = parseISO(value);
+          } catch (e) {
+            // Skip notes with invalid dates
+          }
+        } else if (value instanceof Date) {
+          dateValue = value;
+        }
+      }
+
+      // If we found a valid date, add this note to the corresponding calendar cell
+      if (dateValue && !isNaN(dateValue.getTime())) {
+        // Find the calendar cell for this date
+        const cell = calendarCells.value.find((cell) =>
+          isSameDay(cell.date, dateValue!)
+        );
+        if (cell) {
+          cell.notes.push(noteData);
+        }
+      }
+    } catch (e) {
+      console.error("[DataviewCalendar] Error processing note:", e);
+    }
+  });
+
+  console.log("[DataviewCalendar] Calendar populated with notes");
+}
+
+// Execute query and update calendar
+const executeQuery = async () => {
+  const currentQuery = query.value;
+  console.log(
+    "[DataviewCalendar] executeQuery called with query:",
+    currentQuery
+  );
+
+  if (!currentQuery) {
+    console.log("[DataviewCalendar] Query is empty, not executing");
+    return;
+  }
+
   try {
+    console.log("[DataviewCalendar] Starting query execution");
     isLoading.value = true;
     error.value = "";
-    calendarCells.value = [];
 
-    console.log("[CalendarView] Executing query:", query.value);
-
-    // Use our custom adapter to execute the query and get formatted results
-    const notesByDate = await executeCustomCalendarQuery(query.value);
-
-    console.log("[CalendarView] Generated calendar cells from query results");
+    // Extract the calendar date field from the query
+    calendarDateField.value = parseCalendarQuery(currentQuery);
     console.log(
-      "[CalendarView] Number of dates with entries:",
-      Object.keys(notesByDate).length
+      "[DataviewCalendar] Calendar date field:",
+      calendarDateField.value
     );
 
-    // Create calendar cells from the start of month to end of month
-    const start = startOfWeek(startOfMonth(currentDate.value));
-    const end = endOfWeek(endOfMonth(currentDate.value));
-    const cells: { date: Date; notes: { title: string }[] }[] = [];
-
-    let day = start;
-    while (day <= end) {
-      const key = day.toDateString();
-      cells.push({ date: new Date(day), notes: notesByDate[key] || [] });
-      day = addDays(day, 1);
+    if (!calendarDateField.value) {
+      error.value = "Invalid calendar query: missing date field";
+      console.error("[DataviewCalendar] Missing date field in query");
+      return;
     }
 
-    calendarCells.value = cells;
-    console.log(
-      "[CalendarView] Calendar view updated with",
-      cells.length,
-      "cells"
-    );
-  } catch (err) {
-    console.error("[CalendarView] Calendar query failed:", err);
-    error.value = "Could not load calendar entries.";
+    // Initialize data store if needed
+    if (!dataStoreManager.isInitialized) {
+      console.log("[DataviewCalendar] Initializing data store...");
+      await dataStoreManager.initializeDataStore();
+    }
+
+    // Check if initialization was successful
+    if (!dataStoreManager.isDataStoreReady) {
+      console.log(
+        "[DataviewCalendar] Data store initialization failed or is still in progress"
+      );
+      error.value = "Data store is not ready. Please try again.";
+      return;
+    }
+
+    // Generate calendar cells
+    generateCalendarCells();
+  } catch (err: any) {
+    console.error("[DataviewCalendar] Error executing dataview query:", err);
+    console.error("[DataviewCalendar] Error stack:", err.stack);
+    error.value = err.message || "Error executing query";
   } finally {
     isLoading.value = false;
+    console.log("[DataviewCalendar] Query execution completed");
   }
-}
+};
 
-// Initialize and update calendar
-onMounted(executeCalendarQuery);
-watch(() => props.node.textContent, executeCalendarQuery);
+// Set up watchers
+onMounted(() => {
+  console.log("[DataviewCalendar] Component mounted, executing initial query");
+  // Initialize the DataStore when the component mounts
+  dataStoreManager.initializeDataStore().then(() => {
+    // Execute the query once the data store is initialized
+    executeQuery();
+  });
+});
+
+// Watch for query changes
+watch(
+  () => query.value,
+  (newQuery, oldQuery) => {
+    console.log("[DataviewCalendar] Query changed:", {
+      from: oldQuery,
+      to: newQuery,
+      changed: newQuery !== oldQuery,
+    });
+
+    if (newQuery) {
+      console.log("[DataviewCalendar] Executing query due to change");
+      debouncedExecuteQuery();
+    }
+  }
+);
+
+// Also watch node content directly
+watch(
+  () => props.node?.textContent,
+  (newContent, oldContent) => {
+    console.log("[DataviewCalendar] Node textContent changed:", {
+      from: oldContent,
+      to: newContent,
+      changed: newContent !== oldContent,
+    });
+  }
+);
+
+// Watch for data store changes that might affect our calendar
+watch(
+  () => dataStoreManager.isDataStoreReady,
+  (isReady) => {
+    if (isReady && calendarDateField.value) {
+      console.log("[DataviewCalendar] DataStore is ready, populating calendar");
+      populateCalendarWithNotes();
+    }
+  }
+);
+
+const debouncedExecuteQuery = debounce(() => {
+  console.log("[DataviewCalendar] Debounced query execution triggered");
+  // Only execute if the data store is ready
+  if (dataStoreManager.isDataStoreReady) {
+    executeQuery();
+  } else if (!dataStoreManager.isLoading) {
+    // If it's not ready and not loading, try to initialize it first
+    dataStoreManager.initializeDataStore().then(() => {
+      executeQuery();
+    });
+  }
+}, 300);
 </script>
 
+<style>
+/* Add some styles for the loading indicator */
+.loading-message {
+  font-size: 0.85em;
+  color: #666;
+  margin-left: 10px;
+}
+</style>
+
 <style scoped>
+.dataview-wrapper {
+  display: block;
+  margin: 1rem 0;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.content-container {
+  display: none;
+}
+
 .dataview-preview.calendar-view {
   font-family: system-ui, sans-serif;
   background: #1e1e1e;
@@ -203,7 +463,7 @@ watch(() => props.node.textContent, executeCalendarQuery);
   gap: 12px;
 }
 
-.calendar-controls button {
+.calendar-control-btn {
   background: transparent;
   color: #ccc;
   border: none;
@@ -211,14 +471,7 @@ watch(() => props.node.textContent, executeCalendarQuery);
   cursor: pointer;
 }
 
-.calendar-controls button:disabled {
-  opacity: 0.3;
-  pointer-events: none;
-  cursor: default;
-}
-
 .today-label {
-  cursor: pointer;
   font-size: 0.9em;
   color: #ccc;
 }
@@ -263,16 +516,17 @@ watch(() => props.node.textContent, executeCalendarQuery);
 .cell-notes {
   display: flex;
   flex-wrap: wrap;
-  gap: 2px;
-  margin-top: 4px;
-  justify-content: flex-start;
+  gap: 3px;
+  margin-top: 6px;
+  justify-content: center; /* Center the dots horizontally */
+  align-items: center; /* Center vertically */
 }
 
 .note-dot {
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: #a78bfa;
+  background: #fff;
 }
 
 .today {
@@ -291,7 +545,15 @@ watch(() => props.node.textContent, executeCalendarQuery);
   font-size: 0.9em;
 }
 
-.content-container {
-  display: none;
+.dataview-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-weight: 600;
+  padding: 0.5rem 0.75rem;
+  margin-bottom: 0.25rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  background-color: var(--background-secondary, #1e1e1e);
+  color: var(--text-normal, #dcddde);
 }
 </style>
