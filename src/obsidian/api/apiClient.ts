@@ -15,7 +15,7 @@ import type {
   SimpleSearchResult,
   StructuredQueryResult,
   // Add other types as needed
-} from "../types";
+} from "../types/queryEngine";
 
 // Define a custom error type for API errors (can reuse from previous attempt or refine)
 export class ApiError extends Error {

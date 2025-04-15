@@ -1,4 +1,5 @@
 /**
+ * src/types/obsidian.ts
  * Type definitions for Obsidian REST API integration
  * Based on the Local REST API plugin specification
  */
@@ -115,7 +116,7 @@ export interface NoteJson {
 export interface FolderStructureNode {
   name: string;
   path: string;
-  type: 'folder';
+  type: "folder";
   children: (FolderStructureNode | FileStructureNode)[];
 }
 
@@ -125,7 +126,7 @@ export interface FolderStructureNode {
 export interface FileStructureNode {
   name: string;
   path: string;
-  type: 'file';
+  type: "file";
 }
 
 /**
@@ -180,19 +181,24 @@ export interface SimpleSearchResult {
  * Parameters for patching a note
  */
 export interface PatchNoteParams {
-  operation: 'append' | 'prepend' | 'replace';
-  targetType: 'heading' | 'block' | 'frontmatter';
+  operation: "append" | "prepend" | "replace";
+  targetType: "heading" | "block" | "frontmatter";
   target: string;
   content: string;
   targetDelimiter?: string;
   trimTargetWhitespace?: boolean;
-  contentType?: 'text/markdown' | 'application/json';
+  contentType?: "text/markdown" | "application/json";
 }
 
 /**
  * Type of periodic note
  */
-export type PeriodicNoteType = 'daily' | 'weekly' | 'monthly' | 'quarterly' | 'yearly';
+export type PeriodicNoteType =
+  | "daily"
+  | "weekly"
+  | "monthly"
+  | "quarterly"
+  | "yearly";
 
 /**
  * Configuration for API connection
@@ -207,15 +213,15 @@ export interface ApiConfig {
  * Available API endpoints
  */
 export enum ApiEndpoint {
-  Status = '/',
-  Vault = '/vault/',
-  VaultFile = '/vault/:path',
-  VaultDirectory = '/vault/:path/',
-  Active = '/active/',
-  Commands = '/commands/',
-  Command = '/commands/:commandId/',
-  Open = '/open/:filename',
-  PeriodicNote = '/periodic/:period/',
-  Search = '/search/',
-  SimpleSearch = '/search/simple/'
+  Status = "/",
+  Vault = "/vault/",
+  VaultFile = "/vault/:path",
+  VaultDirectory = "/vault/:path/",
+  Active = "/active/",
+  Commands = "/commands/",
+  Command = "/commands/:commandId/",
+  Open = "/open/:filename",
+  PeriodicNote = "/periodic/:period/",
+  Search = "/search/",
+  SimpleSearch = "/search/simple/",
 }

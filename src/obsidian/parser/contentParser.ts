@@ -1,6 +1,6 @@
 // src/obsidian/parser/contentParser.ts
 
-import type { ParsedData, TaskInfo } from "../types";
+import type { ParsedData, TaskInfo } from "../types/queryEngine";
 
 // Regular Expressions for parsing
 // Explanation:

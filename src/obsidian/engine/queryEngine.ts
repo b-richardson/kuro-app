@@ -9,12 +9,109 @@ import type {
   SortCriterion,
   QuerySource,
   TaskInfo,
-} from "../types";
+} from "../types/queryEngine";
 import { parseISO, compareAsc, compareDesc, isValid } from "date-fns"; // Date utility library
 
 // Helper function for getting nested properties safely
 // Example: getProperty(note, 'frontmatter.status')
 function getProperty(obj: any, path: string): any {
+  // Special handling for common Dataview properties
+  if (path.startsWith("file.")) {
+    // Handle file.xxx properties that need special mapping from the API data
+    const fileProp = path.substring(5); // Remove "file." prefix
+
+    // Handle CombinedNoteData objects (most common case)
+    if (obj && typeof obj === "object" && "note" in obj) {
+      const note = obj.note;
+
+      // Map common file properties to their API equivalents
+      switch (fileProp) {
+        case "name":
+          // Extract filename from path
+          if (note.path) {
+            const pathParts = note.path.split("/");
+            return pathParts[pathParts.length - 1];
+          }
+          return undefined;
+
+        case "path":
+          return note.path;
+
+        case "folder":
+          // Extract folder from path
+          if (note.path) {
+            const lastSlashIndex = note.path.lastIndexOf("/");
+            return lastSlashIndex >= 0
+              ? note.path.substring(0, lastSlashIndex)
+              : "";
+          }
+          return "";
+
+        case "size":
+          return note.stat?.size;
+
+        case "ctime":
+          return note.stat?.ctime;
+
+        case "mtime":
+          return note.stat?.mtime;
+
+        case "tags":
+          return note.tags;
+
+        // Add more mappings as needed for other file properties
+        default:
+          console.warn(`Unmapped file property: ${fileProp}`);
+          return undefined;
+      }
+    }
+
+    // Handle direct access to NoteJson objects
+    if (obj && typeof obj === "object" && "path" in obj && "stat" in obj) {
+      const note = obj;
+
+      switch (fileProp) {
+        case "name":
+          if (note.path) {
+            const pathParts = note.path.split("/");
+            return pathParts[pathParts.length - 1];
+          }
+          return undefined;
+
+        case "path":
+          return note.path;
+
+        case "folder":
+          if (note.path) {
+            const lastSlashIndex = note.path.lastIndexOf("/");
+            return lastSlashIndex >= 0
+              ? note.path.substring(0, lastSlashIndex)
+              : "";
+          }
+          return "";
+
+        case "size":
+          return note.stat?.size;
+
+        case "ctime":
+          return note.stat?.ctime;
+
+        case "mtime":
+          return note.stat?.mtime;
+
+        case "tags":
+          return note.tags;
+
+        default:
+          console.warn(`Unmapped file property: ${fileProp}`);
+          return undefined;
+      }
+    }
+
+    return undefined;
+  }
+
+  // Standard path handling for non-file properties
   return path.split(".").reduce((o, key) => {
     // Handle direct access vs accessing nested 'note' or 'parsed'
     if (key === "note" && o && typeof o === "object" && "note" in o) {
@@ -30,10 +127,6 @@ function getProperty(obj: any, path: string): any {
     if (key === "path" && o?.path) return o.path;
     if (key === "inlineFields" && o?.inlineFields) return o.inlineFields;
     if (key === "tasks" && o?.tasks) return o.tasks; // Returns array of tasks
-
-    // Handle specific task properties if the path indicates it (e.g., 'tasks.status')
-    // Note: This simple version doesn't handle filtering *within* tasks directly here.
-    // Filtering on 'tasks.status' would likely happen after filtering notes.
 
     // Access nested property
     return o && typeof o === "object" ? o[key] : undefined;

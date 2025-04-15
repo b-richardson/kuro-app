@@ -194,6 +194,7 @@ export interface QueryRequest {
   // General options:
   sortBy?: SortCriterion[];
   limit?: number;
+  displayHeaders?: string[];
 }
 
 /**

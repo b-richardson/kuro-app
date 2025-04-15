@@ -14,7 +14,7 @@ import type {
   QueryResult,
   NoteJson,
   CombinedNoteData, // If needed for getters etc.
-} from "@/obsidian/types"; // Adjust path
+} from "@/obsidian/types/queryEngine"; // Adjust path
 
 export const useObsidianQueryStore = defineStore("obsidianQuery", () => {
   // --- State ---

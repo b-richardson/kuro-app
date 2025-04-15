@@ -1,13 +1,19 @@
-<!-- RenderDataviewTable.vue -->
+<!-- src/components/obsidian/custom-extensions/RenderDataviewTable.vue -->
 <template>
   <node-view-wrapper class="dataview-wrapper">
     <div class="dataview-preview">
       <div class="dataview-header">
         <strong>Dataview Table</strong>
         <div v-if="error" class="error-message">{{ error }}</div>
+        <div v-if="isInitializingStore" class="loading-message">
+          Loading vault data: {{ initProgress }}%
+        </div>
       </div>
 
-      <div class="query-output table-result" :class="{ loading: isLoading }">
+      <div
+        class="query-output table-result"
+        :class="{ loading: isLoading || isInitializingStore }"
+      >
         <!-- Dataview table -->
         <table v-if="queryResults.length > 0">
           <thead>
@@ -27,7 +33,11 @@
         </table>
 
         <div v-else class="empty-state">
-          {{ isLoading ? "Loading results..." : "No results found" }}
+          {{
+            isLoading || isInitializingStore
+              ? "Loading results..."
+              : "No results found"
+          }}
         </div>
       </div>
 
@@ -40,8 +50,13 @@
 import { ref, computed, watch, onMounted } from "vue";
 import { NodeViewWrapper, NodeViewContent, NodeViewProps } from "@tiptap/vue-3";
 import { debounce } from "lodash-es";
-// Import the DataviewQueryService instead of the direct API
-import { dataviewQueryService } from "@/services/obsidian/dataviewQueryService";
+
+// Import the query engine components
+import { QueryParser } from "@/obsidian/engine/queryParser";
+import { QueryEngine } from "@/obsidian/engine/queryEngine";
+
+// Import the DataStoreManager
+import { useDataStoreManager } from "@/stores/dataStoreManager";
 
 // Debug logging for the component lifecycle
 console.log("[DataviewTable] Component initializing");
@@ -50,6 +65,15 @@ const props = defineProps<NodeViewProps>();
 
 // Log the initial node content
 console.log("[DataviewTable] Initial node content:", props.node?.textContent);
+
+// Create query engine instances
+const queryParser = new QueryParser();
+const queryEngine = new QueryEngine();
+
+// Use the DataStoreManager instead of creating a new DataStore
+const dataStoreManager = useDataStoreManager();
+const isInitializingStore = computed(() => dataStoreManager.isLoading);
+const initProgress = computed(() => dataStoreManager.initializationProgress);
 
 const queryResults = ref<any[]>([]);
 const isLoading = ref(false);
@@ -69,66 +93,11 @@ const query = computed(() => {
   return content;
 });
 
-const queryType = computed(() => {
-  const upper = query.value.toUpperCase();
-  if (upper.startsWith("TABLE")) return "dataview";
-  if (query.value.includes("dv.table(")) return "dataviewjs";
-  return "unknown";
-});
-
-// Parse column information from the query
-const parsedColumns = computed(() => {
-  if (queryType.value !== "dataview") return [];
-
-  // Better regex to match the TABLE clause
-  const tableRegex =
-    /TABLE\s+(.*?)(?:\s+FROM|\s+WHERE|\s+SORT|\s+LIMIT|\s+GROUP BY|$)/is;
-  const tableMatch = query.value.match(tableRegex);
-
-  if (!tableMatch) return [];
-
-  const columnText = tableMatch[1].trim();
-
-  // Split by commas, but be careful about commas inside quotes
-  const columnParts = columnText.split(/,(?=(?:[^"]*"[^"]*")*[^"]*$)/);
-
-  // Extract each column and its alias
-  return columnParts.map((part) => {
-    const asMatch = part.trim().match(/(.*?)\s+AS\s+["']([^"']+)["']/i);
-    if (asMatch) {
-      return {
-        name: asMatch[1].trim(),
-        alias: asMatch[2].trim(),
-      };
-    } else {
-      const nameParts = part.trim().split(".");
-      return {
-        name: part.trim(),
-        alias: nameParts[nameParts.length - 1],
-      };
-    }
-  });
-});
-
 const tableColumns = computed(() => {
   console.log("[DataviewTable] Computing table columns");
 
-  // For DataviewJS, use the headers from the parsed JS
-  if (queryType.value === "dataviewjs") {
-    return []; // Handle dataviewjs case as needed
-  }
-
-  // For Dataview queries, use our parsed columns
-  if (queryType.value === "dataview" && parsedColumns.value.length > 0) {
-    // Extract just the aliases for column headers
-    const columns = parsedColumns.value.map((col) => col.alias);
-    console.log("[DataviewTable] Using parsed columns:", columns);
-    return columns;
-  }
-
-  // If we have query results but no parsed columns, extract from results
+  // If query results exist, extract column names from first result
   if (queryResults.value.length > 0) {
-    // Extract column keys from the first row
     const columns = Object.keys(queryResults.value[0]);
     console.log("[DataviewTable] Using columns from results:", columns);
     return columns;
@@ -139,111 +108,199 @@ const tableColumns = computed(() => {
   return ["File"];
 });
 
-// Extract query parameters for dataviewQueryService
-const extractQueryParams = () => {
-  console.log("[DataviewTable] Extracting query parameters");
-
-  // Default values
-  let directory = "";
-  let filter = undefined;
-  let sortBy = undefined;
-  let sortDirection: "asc" | "desc" = "asc";
-  let columns = parsedColumns.value.map((col) => col.name);
-  let limit = undefined;
-
-  // Extract FROM clause
-  const fromMatch = query.value.match(
-    /FROM\s+(["']?[^"'\s]+["']?|\[[^\]]+\])/i
-  );
-  if (fromMatch) {
-    const fromValue = fromMatch[1].trim().replace(/^["']|["']$/g, "");
-    if (fromValue.startsWith("#")) {
-      // It's a tag filter
-      filter = fromValue;
-    } else {
-      // It's a directory
-      directory = fromValue;
-    }
-  }
-
-  // Extract SORT clause
-  const sortMatch = query.value.match(/SORT\s+([^\s]+)(?:\s+(ASC|DESC))?/i);
-  if (sortMatch) {
-    sortBy = sortMatch[1].trim();
-    if (sortMatch[2] && sortMatch[2].toUpperCase() === "DESC") {
-      sortDirection = "desc";
-    }
-  }
-
-  // Extract LIMIT clause
-  const limitMatch = query.value.match(/LIMIT\s+(\d+)/i);
-  if (limitMatch) {
-    limit = parseInt(limitMatch[1], 10);
-    console.log(`[DataviewTable] Found LIMIT in query: ${limit}`);
-  }
-
-  const result = { directory, filter, sortBy, sortDirection, columns, limit };
-  console.log("[DataviewTable] Extracted params:", result);
-  return result;
-};
-
 const executeQuery = async () => {
   const currentQuery = query.value;
-  console.log("[DataviewTable] executeQuery called with query:", currentQuery);
+  console.log(
+    "[RenderDataviewTable] executeQuery called with query:",
+    currentQuery
+  );
 
   if (!currentQuery) {
-    console.log("[DataviewTable] Query is empty, not executing");
+    console.log("[RenderDataviewTable] Query is empty, not executing");
     return;
   }
 
   try {
-    console.log("[DataviewTable] Starting query execution");
+    console.log("[RenderDataviewTable] Starting query execution");
     isLoading.value = true;
     error.value = "";
 
-    // For TABLE queries, use the DataviewQueryService
-    if (queryType.value === "dataview") {
-      const params = extractQueryParams();
-      console.log(
-        "[DataviewTable] Calling dataviewQueryService.tableQuery with params:",
-        JSON.stringify(params, null, 2)
-      );
-
-      // Use the tableQuery method to handle the query properly
-      const results = await dataviewQueryService.tableQuery(
-        params.directory,
-        params.columns,
-        params.filter,
-        params.sortBy,
-        params.sortDirection,
-        params.limit
-      );
-
-      console.log(
-        "[DataviewTable] Query returned results:",
-        results ? results.length : 0
-      );
-      queryResults.value = results;
-    } else if (queryType.value === "dataviewjs") {
-      console.log("[DataviewTable] DataviewJS queries not directly supported");
-      error.value =
-        "DataviewJS queries are not directly supported in the preview";
-      queryResults.value = [];
-    } else {
-      console.log("[DataviewTable] Unknown query type");
-      error.value = "Unknown query type";
-      queryResults.value = [];
+    // Initialize data store if needed
+    if (!dataStoreManager.isInitialized) {
+      console.log("[RenderDataviewTable] Initializing data store...");
+      await dataStoreManager.initializeDataStore();
     }
 
-    // Log the columns after we get results to debug column issues
-    console.log("[DataviewTable] Table columns:", tableColumns.value);
+    // Check if initialization was successful
+    if (!dataStoreManager.isDataStoreReady) {
+      console.log(
+        "[RenderDataviewTable] Data store initialization failed or is still in progress"
+      );
+      error.value = "Data store is not ready. Please try again.";
+      return;
+    }
+
+    // Parse the query string to a structured QueryRequest
+    const queryRequest = queryParser.parseQuery(currentQuery);
+    console.log("[RenderDataviewTable] Parsed query request:", queryRequest);
+
+    // Ensure we're dealing with a TABLE query
+    if (queryRequest.queryType !== "TABLE") {
+      queryRequest.queryType = "TABLE"; // Force it to be a TABLE query
+    }
+
+    // Execute the query using the QueryEngine and the data store from our manager
+    // In RenderDataviewTable.vue - executeQuery function
+    console.log(
+      "[RenderDataviewTable] DataStore debug info:\n",
+      dataStoreManager.dataStore.getStoreDebugInfo()
+    );
+
+    const result = await queryEngine.execute(
+      queryRequest,
+      dataStoreManager.dataStore as any
+    );
+
+    console.log(
+      "[RenderDataviewTable] Query execution result type:",
+      result.type
+    );
+
+    // Type-safe logging based on result type
+    if (result.type === "TABLE") {
+      console.log("[RenderDataviewTable] TABLE result details:", {
+        headers: result.headers,
+        dataCount: result.data.length,
+        firstRow:
+          result.data.length > 0 ? JSON.stringify(result.data[0]) : "No rows",
+        allData:
+          result.data.length > 0
+            ? JSON.stringify(result.data)
+            : "Empty data array",
+      });
+    } else if (result.type === "LIST") {
+      console.log("[RenderDataviewTable] LIST result details:", {
+        dataCount: result.data.length,
+        paths: result.data,
+      });
+    } else if (result.type === "TASK") {
+      console.log("[RenderDataviewTable] TASK result details:", {
+        taskCount: result.data.length,
+        firstTask:
+          result.data.length > 0 ? JSON.stringify(result.data[0]) : "No tasks",
+      });
+    } else if (result.type === "CALENDAR") {
+      console.log("[RenderDataviewTable] CALENDAR result details:", {
+        dateCount: Object.keys(result.data).length,
+        dates: Object.keys(result.data),
+      });
+    } else if (result.type === "ERROR") {
+      console.log("[RenderDataviewTable] ERROR result details:", {
+        message: result.message,
+      });
+    }
+
+    // Handle the TABLE results
+    if (result.type === "TABLE") {
+      console.log("[RenderDataviewTable] Processing TABLE result");
+
+      // Log the structure of the first row to help with debugging
+      if (result.data.length > 0) {
+        console.log(
+          "[RenderDataviewTable] First row keys:",
+          Object.keys(result.data[0])
+        );
+        console.log(
+          "[RenderDataviewTable] First row values:",
+          Object.values(result.data[0])
+        );
+      }
+
+      // Examine if display headers are present
+      if (queryRequest.displayHeaders) {
+        console.log(
+          "[RenderDataviewTable] Using display headers:",
+          queryRequest.displayHeaders
+        );
+      } else {
+        console.log(
+          "[RenderDataviewTable] No display headers found in query request"
+        );
+      }
+
+      // Transform the result to match the component's expected format
+      if (
+        queryRequest.displayHeaders &&
+        queryRequest.displayHeaders.length > 0
+      ) {
+        // Use display headers to create a transformed result with better column names
+        queryResults.value = result.data.map((row) => {
+          const transformedRow: Record<string, any> = {};
+          result.headers.forEach((header, index) => {
+            const displayName =
+              index < queryRequest.displayHeaders!.length
+                ? queryRequest.displayHeaders![index]
+                : header;
+            transformedRow[displayName] = row[header];
+
+            // Debug log to see what's being assigned
+            console.log(
+              `[RenderDataviewTable] Mapping header "${header}" to display name "${displayName}", value:`,
+              row[header]
+            );
+          });
+          return transformedRow;
+        });
+
+        console.log(
+          "[RenderDataviewTable] Transformed results with display headers:",
+          queryResults.value
+        );
+      } else {
+        // No display headers, use the data as-is
+        queryResults.value = result.data;
+        console.log(
+          "[RenderDataviewTable] Using raw results:",
+          queryResults.value
+        );
+      }
+
+      // Log the final columns that will be used for rendering
+      if (queryResults.value.length > 0) {
+        console.log(
+          "[RenderDataviewTable] Final columns for rendering:",
+          Object.keys(queryResults.value[0])
+        );
+      } else {
+        console.log("[RenderDataviewTable] No results to render");
+      }
+    } else if (result.type === "ERROR") {
+      console.error(
+        "[RenderDataviewTable] Query returned error:",
+        result.message
+      );
+      error.value = result.message || "Error executing query";
+      queryResults.value = [];
+    } else {
+      // We got a non-TABLE result - this shouldn't happen but handle it just in case
+      console.warn(
+        `[RenderDataviewTable] Unexpected result type: ${result.type}`
+      );
+      error.value = `Unexpected result type: ${result.type}`;
+      queryResults.value = [];
+    }
   } catch (err: any) {
-    console.error("[DataviewTable] Error executing dataview query:", err);
+    console.error("[RenderDataviewTable] Error executing dataview query:", err);
+    console.error("[RenderDataviewTable] Error stack:", err.stack);
     queryResults.value = [];
     error.value = err.message || "Error executing query";
   } finally {
     isLoading.value = false;
-    console.log("[DataviewTable] Query execution completed");
+    console.log("[RenderDataviewTable] Query execution completed");
+    console.log(
+      "[RenderDataviewTable] Final queryResults count:",
+      queryResults.value.length
+    );
   }
 };
 
@@ -354,7 +411,11 @@ const formatCell = (value: any): string => {
 // Set up watchers
 onMounted(() => {
   console.log("[DataviewTable] Component mounted, executing initial query");
-  executeQuery();
+  // Initialize the DataStore when the component mounts
+  dataStoreManager.initializeDataStore().then(() => {
+    // Execute the query once the data store is initialized
+    executeQuery();
+  });
 
   // Debug logs about available node properties
   console.log("[DataviewTable] Node props:", {
@@ -406,9 +467,26 @@ watch(
 
 const debouncedExecuteQuery = debounce(() => {
   console.log("[DataviewTable] Debounced query execution triggered");
-  executeQuery();
+  // Only execute if the data store is ready
+  if (dataStoreManager.isDataStoreReady) {
+    executeQuery();
+  } else if (!dataStoreManager.isLoading) {
+    // If it's not ready and not loading, try to initialize it first
+    dataStoreManager.initializeDataStore().then(() => {
+      executeQuery();
+    });
+  }
 }, 300);
 </script>
+
+<style>
+/* Add some styles for the loading indicator */
+.loading-message {
+  font-size: 0.85em;
+  color: #666;
+  margin-left: 10px;
+}
+</style>
 
 <style>
 .dataview-wrapper {
