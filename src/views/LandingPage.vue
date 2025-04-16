@@ -11,7 +11,7 @@
               alt="Template Builder Logo"
               class="logo-icon"
             />
-            <span class="logo-text">Template Builder</span>
+            <span class="logo-text">Kuro</span>
           </router-link>
           <div class="nav-links">
             <a href="#features" class="nav-link">Features</a>
@@ -62,7 +62,7 @@
           </p>
           <div class="hero-cta">
             <router-link to="/editor" class="primary-cta">
-              <i class="fas fa-magic"></i> Start Building Templates
+              <i class="fas fa-magic"></i> Build With Kuro
             </router-link>
             <a href="#how-it-works" class="secondary-cta">
               <i class="fas fa-eye"></i> See How It Works
@@ -256,52 +256,75 @@
       <section id="pricing" class="pricing-section">
         <h2 class="section-title">Simple, Transparent Pricing</h2>
         <p class="section-subtitle">Start building better templates today.</p>
+
         <div class="pricing-options">
-          <!-- Monthly Plan -->
+          <!-- Free Plan -->
           <div class="pricing-card glass-card">
-            <h3 class="pricing-tier">Personal</h3>
+            <h3 class="pricing-tier">Free</h3>
             <div class="pricing-price">
-              <span class="currency">$</span>4.99<span class="period">/mo</span>
+              <span class="currency">$</span>0<span class="period">/mo</span>
             </div>
-            <p class="pricing-billing-note">
-              14-day free trial · Cancel anytime
-            </p>
+            <p class="pricing-billing-note">Always Free</p>
             <ul class="pricing-features">
-              <li><i class="fas fa-check"></i> Unlimited Templates</li>
-              <li><i class="fas fa-check"></i> Templater & Dataview Modules</li>
-              <li><i class="fas fa-check"></i> Vault Sync + Cloud Storage</li>
-              <li><i class="fas fa-check"></i> Real-Time Preview</li>
               <li>
-                <i class="fas fa-check"></i> Access to Pre-Built Templates
+                <i class="fas fa-check"></i> Basic Template Builder Modules
               </li>
+              <li><i class="fas fa-check"></i> Unlimited Templates</li>
+              <li><i class="fas fa-check"></i> Markdown Export</li>
+              <li><i class="fas fa-check"></i> Community Support</li>
             </ul>
-            <router-link to="/signup?plan=monthly" class="pricing-cta"
-              >Start Free Trial</router-link
+            <router-link to="/signup?plan=free" class="pricing-cta"
+              >Sign Up Free</router-link
             >
           </div>
 
-          <!-- Annual Plan -->
+          <!-- Pro Plan -->
           <div class="pricing-card glass-card featured">
-            <div class="featured-badge">Save 20%</div>
-            <h3 class="pricing-tier">Annual</h3>
-            <div class="pricing-price">
-              <span class="currency">$</span>3.99<span class="period">/mo</span>
+            <div class="featured-badge">Most Popular</div>
+            <h3 class="pricing-tier">Pro</h3>
+
+            <!-- Pricing Toggle -->
+            <div class="pricing-toggle">
+              <button class="toggle-btn active" data-plan="monthly">
+                Monthly
+              </button>
+              <button class="toggle-btn" data-plan="annual">Annual</button>
             </div>
-            <p class="pricing-billing-note">Billed annually at $48/year</p>
+
+            <!-- Price Display -->
+            <div class="pricing-price">
+              <span class="currency" id="pro-price-currency">$</span>
+              <span id="pro-price-value">4.99</span>
+              <span class="period" id="pro-price-period">/mo</span>
+            </div>
+            <p class="pricing-billing-note" id="pro-billing-note">
+              Billed monthly, cancel anytime
+            </p>
+
             <ul class="pricing-features">
-              <li><i class="fas fa-check"></i> Everything in Personal</li>
-              <li><i class="fas fa-star"></i> Priority Support</li>
+              <li><i class="fas fa-check"></i> Everything in Free</li>
+              <li><i class="fas fa-star"></i> Templater & Dataview Modules</li>
+              <li>
+                <i class="fas fa-star"></i> Direct Obsidian Vault Integration
+              </li>
+              <li><i class="fas fa-star"></i> Real-Time Preview</li>
               <li><i class="fas fa-star"></i> Template Library Access</li>
-              <li><i class="fas fa-star"></i> Early Access to New Modules</li>
+              <li><i class="fas fa-star"></i> Priority Support</li>
             </ul>
-            <router-link to="/signup?plan=annual" class="pricing-cta primary"
-              >Choose Annual Plan</router-link
+
+            <router-link
+              to="/signup?plan=monthly"
+              id="pro-pricing-cta"
+              class="pricing-cta primary"
             >
+              Upgrade to Pro
+            </router-link>
           </div>
         </div>
+
         <div class="pricing-footer">
-          <i class="fas fa-shield-alt"></i> 14-day free trial on all plans.
-          Cancel anytime.
+          <i class="fas fa-shield-alt"></i> Upgrade, downgrade, or cancel
+          anytime.
         </div>
       </section>
 
@@ -484,9 +507,7 @@
 
 <script setup lang="ts">
 import { onMounted } from "vue";
-// Assuming ScrollContainer handles its own logic or is purely presentational
 import ScrollContainer from "@/components/UI/ScrollContainer.vue";
-// Removed unused preferenceStore logic and menu toggles
 
 // Simple FAQ Toggle Logic
 const toggleFaq = (event: MouseEvent) => {
@@ -509,8 +530,48 @@ const toggleFaq = (event: MouseEvent) => {
 };
 
 onMounted(() => {
-  // Optional: Close FAQ items if user clicks outside (more complex, might not be needed)
-  // Optional: Add subtle scroll animations if desired (using Intersection Observer API)
+  const monthlyBtn = document.querySelector(
+    '[data-plan="monthly"]'
+  ) as HTMLElement;
+  const annualBtn = document.querySelector(
+    '[data-plan="annual"]'
+  ) as HTMLElement;
+  const proPriceValue = document.getElementById(
+    "pro-price-value"
+  ) as HTMLElement;
+  const proPricePeriod = document.getElementById(
+    "pro-price-period"
+  ) as HTMLElement;
+  const proBillingNote = document.getElementById(
+    "pro-billing-note"
+  ) as HTMLElement;
+  const proPricingCta = document.getElementById(
+    "pro-pricing-cta"
+  ) as HTMLAnchorElement;
+
+  const setPricingPlan = (plan: "monthly" | "annual") => {
+    if (plan === "monthly") {
+      monthlyBtn.classList.add("active");
+      annualBtn.classList.remove("active");
+      proPriceValue.textContent = "4.99";
+      proPricePeriod.textContent = "/mo";
+      proBillingNote.textContent = "Billed monthly, cancel anytime";
+      proPricingCta.href = "/signup?plan=monthly";
+    } else {
+      annualBtn.classList.add("active");
+      monthlyBtn.classList.remove("active");
+      proPriceValue.textContent = "48";
+      proPricePeriod.textContent = "/year";
+      proBillingNote.textContent = "Billed annually (Save 20%)";
+      proPricingCta.href = "/signup?plan=annual";
+    }
+  };
+
+  monthlyBtn.addEventListener("click", () => setPricingPlan("monthly"));
+  annualBtn.addEventListener("click", () => setPricingPlan("annual"));
+
+  // Default state
+  setPricingPlan("monthly");
 });
 </script>
 
@@ -1342,6 +1403,116 @@ a:hover {
     flex-direction: column;
     align-items: center;
   }
+}
+
+.pricing-section {
+  padding: 4rem 1rem;
+  max-width: 1100px;
+  margin: 0 auto;
+  text-align: center;
+}
+
+.pricing-options {
+  display: flex;
+  justify-content: center;
+  gap: 2rem;
+  flex-wrap: wrap;
+}
+
+.pricing-card {
+  flex: 1;
+  min-width: 280px;
+  max-width: 400px;
+  padding: 2rem;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+}
+
+.featured-badge {
+  position: absolute;
+  top: -12px;
+  background: var(--color-primary);
+  color: white;
+  border-radius: 20px;
+  padding: 0.3rem 1rem;
+  font-size: 0.75rem;
+}
+
+.pricing-toggle {
+  display: inline-flex;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 4px;
+  margin: 1rem 0;
+}
+
+.toggle-btn {
+  border: none;
+  background: transparent;
+  color: var(--color-text-secondary);
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+  transition: background 0.3s, color 0.3s;
+  border-radius: 6px;
+}
+
+.toggle-btn.active {
+  background: var(--color-primary);
+  color: white;
+}
+
+.pricing-price {
+  font-size: 2.5rem;
+  font-weight: bold;
+  color: var(--color-text);
+  margin: 0.5rem 0;
+  display: flex;
+  justify-content: center;
+  align-items: baseline;
+  gap: 0.25rem;
+}
+
+.pricing-price .currency,
+.pricing-price .period {
+  font-size: 1.2rem;
+  color: var(--color-text-secondary);
+}
+
+.pricing-billing-note {
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+  margin-bottom: 1.5rem;
+}
+
+.pricing-features {
+  text-align: left;
+  margin-bottom: 2rem;
+  padding-left: 0;
+  list-style: none;
+}
+
+.pricing-features li {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.pricing-features li i {
+  color: var(--color-primary);
+}
+
+.pricing-features li i.fa-star {
+  color: #ffd700;
+}
+
+.pricing-cta {
+  width: 100%;
+  padding: 0.75rem 1.5rem;
+  font-weight: 600;
 }
 
 @media (max-width: 768px) {

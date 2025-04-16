@@ -82,7 +82,7 @@ export function getModuleIcon(moduleType: ModuleType): string {
   switch (moduleType) {
     // Frontmatter
     case "frontmatter":
-      return "fas fa-file-yml";
+      return "fas fa-tags";
     // Basic module types
     case "header":
       return "fas fa-heading";

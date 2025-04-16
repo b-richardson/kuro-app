@@ -304,8 +304,22 @@ const moduleTypeLabel = computed(() => {
     text: "Text",
     divider: "Divider",
     codeBlock: "Code Block",
+    // Templater plugin modules
     templaterField: "Templater Field",
+    templaterDateAndTime: "Templater Date & Time",
+    templaterUserInput: "Templater User Input",
+    templaterFileProperty: "Templater File Property",
+    templaterConditionalContent: "Templater Conditional Content",
+    templaterValueTransformation: "Templater Value Transformation",
+    templaterTemplateVariables: "Templater Template Variables",
+
+    // Dataview plugin modules
     dataviewQuery: "Dataview Query",
+    dataviewListQuery: "List View",
+    dataviewTableQuery: "Table View",
+    dataviewTaskQuery: "Task View",
+    dataviewCalendarQuery: "Calendar View",
+    dataviewInlineFields: "Dataview Inline Fields",
   };
   return labels[props.module.type] || props.module.type;
 });

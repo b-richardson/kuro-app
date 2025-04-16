@@ -116,7 +116,7 @@ export const usePresetStore = defineStore("presets", () => {
   ]);
 
   const dataviewModules = ref<ModulePreset[]>([
-    // Original modules (keeping for backward compatibility)
+    // Original modules (keeping for backward compatibility but wont use again)
     {
       id: "basic-list",
       moduleType: "dataviewQuery",
@@ -137,7 +137,7 @@ export const usePresetStore = defineStore("presets", () => {
     {
       id: "list-query",
       moduleType: "dataviewListQuery",
-      title: "List Query",
+      title: "List View",
       description: "Create a list of notes with filtering",
       priority: ModulePriority.HIGH,
       content: [],
@@ -145,15 +145,15 @@ export const usePresetStore = defineStore("presets", () => {
     {
       id: "table-query-module",
       moduleType: "dataviewTableQuery",
-      title: "Table Query",
-      description: "Create a table with custom columns",
+      title: "Table View",
+      description: "Create a table of your notes with custom columns",
       priority: ModulePriority.HIGH,
       content: [],
     },
     {
       id: "task-query",
       moduleType: "dataviewTaskQuery",
-      title: "Task Query",
+      title: "Task View",
       description: "Create a list of tasks from your notes",
       priority: ModulePriority.HIGH,
       content: [],
@@ -162,7 +162,7 @@ export const usePresetStore = defineStore("presets", () => {
       id: "calendar-query",
       moduleType: "dataviewCalendarQuery",
       title: "Calendar View",
-      description: "Display notes on a calendar by date field",
+      description: "Display your notes on a calendar by date field",
       priority: ModulePriority.HIGH,
       content: [],
     },
