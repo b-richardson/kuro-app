@@ -6,7 +6,7 @@
         <div class="app-logo">
           <i class="fas fa-file-alt"></i>
         </div>
-        <h1 class="app-title">Template Builder</h1>
+        <h1 class="app-title">Kuro</h1>
       </div>
     </div>
 

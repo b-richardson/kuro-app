@@ -228,6 +228,8 @@ export class QueryEngine {
         dataStore.getAllNotes()
       );
 
+      // In your QueryEngine.execute method:
+
       // 2. Apply Source Filtering (FROM clause)
       const sourceFilteredNotes: CombinedNoteData[] = [];
       if (query.sources.some((s) => s.type === "ALL")) {
@@ -241,11 +243,9 @@ export class QueryEngine {
             let match = false;
             switch (source.type) {
               case "TAG":
-                // Check both NoteJson.tags and parsed task tags? Decide scope.
-                // Let's check NoteJson.tags for note-level filtering first.
                 match = note.note.tags?.includes(
                   source.value.replace(/^#/, "")
-                ); // Remove leading # if present
+                );
                 break;
               case "FOLDER":
                 const folderPath = source.value.endsWith("/")
@@ -254,7 +254,12 @@ export class QueryEngine {
                 match = note.note.path.startsWith(folderPath);
                 break;
               case "PATH":
-                match = note.note.path === source.value;
+                if (source.value === "[[]]") {
+                  // Special case for "current note" - in preview, just include all notes
+                  match = true;
+                } else {
+                  match = note.note.path === source.value;
+                }
                 break;
             }
             if (match) {
@@ -262,6 +267,7 @@ export class QueryEngine {
             }
           }
         }
+
         // Filter notes based on matched paths
         candidateNotes.forEach((note) => {
           if (sourcePaths.has(note.note.path)) {
@@ -276,14 +282,19 @@ export class QueryEngine {
       let filteredData: Array<CombinedNoteData | TaskInfo> = candidateNotes; // Start with notes
 
       if (query.queryType === "TASK") {
-        // If it's a TASK query, expand notes into individual tasks *before* applying WHERE filters
-        // that might target task properties. Note-level filters can still be applied first.
+        // If it's a TASK query, expand notes into individual tasks first
         const allTasks: TaskInfo[] = [];
         candidateNotes.forEach((note) => {
-          // Apply note-level filters first (e.g., path, note tags, frontmatter)
+          // Note-level filters aren't as relevant for tasks, as we primarily care about the task status
+          // But we'll keep them for future expansion
           const notePassesFilters = (query.filters ?? []).every((filter) => {
             // Only apply filters that don't target task-specific fields
             if (filter.field.startsWith("parsed.tasks.")) return true;
+            if (
+              filter.operator === "is complete" ||
+              filter.operator === "is incomplete"
+            )
+              return true; // Skip task status checks for notes
             const value = getProperty(note, filter.field);
             return checkFilter(value, filter.operator, filter.value);
           });
@@ -294,16 +305,69 @@ export class QueryEngine {
             });
           }
         });
+
+        console.log("[QueryEngine] Task filters:", query.filters);
+        console.log(
+          "[QueryEngine] All tasks before filtering:",
+          allTasks.length
+        );
+        console.log(
+          "[QueryEngine] First task status:",
+          allTasks.length > 0 ? allTasks[0].status : "none"
+        );
+
         // Now apply task-specific filters to the collected tasks
         filteredData = allTasks.filter((task) => {
           return (query.filters ?? []).every((filter) => {
-            // Only apply task-specific filters here
-            if (!filter.field.startsWith("parsed.tasks.")) return true;
-            const taskField = filter.field.replace("parsed.tasks.", ""); // e.g., 'status', 'dueDate'
-            const value = getProperty(task, taskField); // Get property directly from TaskInfo
-            return checkFilter(value, filter.operator, filter.value);
+            // Direct handling of task status filters
+            if (filter.operator === "is complete") {
+              const isCompleted = task.status === "x" || task.status === "X";
+              console.log(
+                "[QueryEngine] Testing task completion:",
+                task.text,
+                task.status,
+                isCompleted
+              );
+              return isCompleted;
+            }
+            if (filter.operator === "is incomplete") {
+              const isIncomplete = task.status !== "x" && task.status !== "X";
+              console.log(
+                "[QueryEngine] Testing task incompletion:",
+                task.text,
+                task.status,
+                isIncomplete
+              );
+              return isIncomplete;
+            }
+
+            // For other task-specific property filters
+            if (filter.field.startsWith("parsed.tasks.")) {
+              const taskField = filter.field.replace("parsed.tasks.", ""); // e.g., 'dueDate'
+              const value = getProperty(task, taskField);
+              return checkFilter(value, filter.operator, filter.value);
+            }
+
+            // For field='status' without 'is complete'/'is incomplete' operators (if any)
+            if (filter.field === "status") {
+              return checkFilter(task.status, filter.operator, filter.value);
+            }
+
+            // Skip note-level filters for tasks (already applied above)
+            return true;
           });
         });
+
+        console.log("[QueryEngine] Filtered tasks:", filteredData.length);
+        console.log(
+          "[QueryEngine] Tasks after filtering:",
+          filteredData
+            .slice(0, 3)
+            .map((t) => ({
+              text: (t as TaskInfo).text,
+              status: (t as TaskInfo).status,
+            }))
+        );
       } else {
         // For LIST, TABLE, CALENDAR, apply all filters to the CombinedNoteData
         if (query.filters && query.filters.length > 0) {

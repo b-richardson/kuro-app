@@ -10,7 +10,7 @@
         </div>
       </div>
 
-      <!-- Replace the template section with this updated version -->
+      <!-- Task rendering section using Obsidian-native styling -->
       <div
         class="query-output task-result"
         :class="{ loading: isLoading || isInitializingStore }"
@@ -30,23 +30,32 @@
                 v-for="(task, taskIndex) in group.tasks"
                 :key="taskIndex"
                 class="task-item"
+                :class="{ 'is-completed': task.status === 'x' }"
               >
-                <span class="task-checkbox">
-                  <i
-                    :class="[
-                      task.status === 'x'
-                        ? 'far fa-check-square'
-                        : 'far fa-square',
-                    ]"
-                  ></i>
-                </span>
-                <span
-                  class="task-text"
-                  v-html="formatTaskText(task.text)"
-                ></span>
-                <span v-if="task.path" class="task-source">{{
-                  formatSourcePath(task.path)
-                }}</span>
+                <label class="task-checkbox">
+                  <input
+                    type="checkbox"
+                    :checked="task.status === 'x'"
+                    disabled
+                  />
+                </label>
+                <div class="task-content">
+                  <span
+                    class="task-text"
+                    v-html="formatTaskText(task.text)"
+                  ></span>
+                  <div
+                    v-if="task.metadata && task.metadata.length"
+                    class="task-metadata"
+                  >
+                    <div
+                      v-for="(meta, metaIndex) in task.metadata"
+                      :key="metaIndex"
+                      class="metadata-line"
+                      v-html="formatTaskText(meta)"
+                    ></div>
+                  </div>
+                </div>
               </li>
             </ul>
           </div>
@@ -54,18 +63,29 @@
 
         <!-- Flat task rendering if not grouped and we have results -->
         <ul v-else-if="flatTasks.length > 0" class="task-list">
-          <li v-for="(task, index) in flatTasks" :key="index" class="task-item">
-            <span class="task-checkbox">
-              <i
-                :class="[
-                  task.status === 'x' ? 'far fa-check-square' : 'far fa-square',
-                ]"
-              ></i>
-            </span>
-            <span class="task-text" v-html="formatTaskText(task.text)"></span>
-            <span v-if="task.path" class="task-source">{{
-              formatSourcePath(task.path)
-            }}</span>
+          <li
+            v-for="(task, index) in flatTasks"
+            :key="index"
+            class="task-item"
+            :class="{ 'is-completed': task.status === 'x' }"
+          >
+            <label class="task-checkbox">
+              <input type="checkbox" :checked="task.status === 'x'" disabled />
+            </label>
+            <div class="task-content">
+              <span class="task-text" v-html="formatTaskText(task.text)"></span>
+              <div
+                v-if="task.metadata && task.metadata.length"
+                class="task-metadata"
+              >
+                <div
+                  v-for="(meta, metaIndex) in task.metadata"
+                  :key="metaIndex"
+                  class="metadata-line"
+                  v-html="formatTaskText(meta)"
+                ></div>
+              </div>
+            </div>
           </li>
         </ul>
 
@@ -340,7 +360,7 @@ const getGroupHeader = (groupKey: string): string => {
   return groupKey;
 };
 
-// Format the task text to highlight tags, priority, due dates
+// Format the task text to highlight tags
 const formatTaskText = (text: string): string => {
   if (!text) return "";
 
@@ -352,22 +372,10 @@ const formatTaskText = (text: string): string => {
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#039;");
 
-  // Highlight #tags
+  // Highlight #tags with Obsidian-native styling
   formattedText = formattedText.replace(
     /#[a-zA-Z0-9_/-]+/g,
     '<span class="task-tag">$&</span>'
-  );
-
-  // Highlight due dates (📅 YYYY-MM-DD)
-  formattedText = formattedText.replace(
-    /📅\s*(\d{4}-\d{2}-\d{2})/g,
-    '<span class="task-due">📅 $1</span>'
-  );
-
-  // Highlight priorities (P1, P2, P3 or !!, !, etc)
-  formattedText = formattedText.replace(
-    /\b(P1|P2|P3|\!\!\!|\!\!|\!)\b/g,
-    '<span class="task-priority">$1</span>'
   );
 
   return formattedText;
@@ -564,65 +572,113 @@ const debouncedExecuteQuery = debounce(() => {
   border-bottom: 1px solid var(--background-modifier-border, #333);
 }
 
-/* Task List Styling - matches Obsidian native */
+/* Obsidian-native Task List Styling */
 .task-list {
   list-style-type: none;
   padding: 0;
   margin: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
+  gap: 0.35rem;
 }
 
 .task-item {
   display: flex;
   align-items: flex-start;
-  padding: 0.25rem 0;
-  gap: 0.5rem;
-  line-height: 1.4;
+  padding: 0.15rem 0;
+  line-height: 1.5;
 }
 
+/* Checkbox styling for native Obsidian appearance */
 .task-checkbox {
-  color: var(--text-normal, #dcddde);
-  font-size: 1.1em;
-  min-width: 1.2em;
-  margin-top: 0.1em; /* Align with the text */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 8px;
+  position: relative;
+  flex-shrink: 0;
 }
 
-.task-checkbox .fa-check-square {
-  color: var(--text-accent, #a389f4);
+.task-checkbox input[type="checkbox"] {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border: 1px solid var(--text-muted, #999);
+  border-radius: 3px;
+  margin: 3px 0 0 0;
+  background-color: transparent;
+  position: relative;
+  cursor: pointer;
 }
 
+.task-checkbox input[type="checkbox"]:checked {
+  background-color: var(--interactive-accent, #7f6df2);
+  border-color: var(--interactive-accent, #7f6df2);
+}
+
+/* Checkmark */
+.task-checkbox input[type="checkbox"]:checked::after {
+  content: "✓";
+  position: absolute;
+  color: black;
+  font-size: 11px;
+  left: 2px;
+  top: 0px;
+  font-weight: 800;
+}
+
+/* Task content - contains the text and metadata */
+.task-content {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Task text */
 .task-text {
-  flex-grow: 1;
   word-break: break-word;
 }
 
-.task-source {
+/* Completed task styling */
+.task-item.is-completed .task-text,
+.task-item.is-completed .metadata-line {
+  color: var(--text-muted, #999);
+  text-decoration: line-through;
+  opacity: 0.7;
+}
+
+/* Metadata lines styling */
+.task-metadata {
+  padding-left: 0.5rem;
+  font-size: 0.95em;
+  color: var(--text-muted, #999);
+}
+
+.metadata-line {
+  margin-top: 1px;
+}
+
+/* Tag styling to match Obsidian native */
+.task-tag {
+  display: inline;
+  padding: 2px 8px;
+  border-radius: 14px;
+  font-size: 0.85em;
+  font-weight: 500;
+  color: var(--tag-color, #a389f4);
+  background-color: var(--tag-background, rgba(163, 137, 244, 0.1));
+}
+
+/* .task-source {
   color: var(--text-faint, #888);
   font-size: 0.85em;
   margin-left: 0.5em;
   opacity: 0.7;
   white-space: nowrap;
-}
-
-/* Task text styling enhancements */
-.task-tag {
-  display: inline;
-  color: var(--text-accent, #a389f4);
-  font-size: 0.9em;
-}
-
-.task-due {
-  display: inline;
-  color: #10b981; /* Green color for due dates */
-}
-
-.task-priority {
-  display: inline;
-  font-weight: 600;
-  color: #f87171; /* Red for priorities */
-}
+} */
 
 .empty-state {
   font-style: italic;
