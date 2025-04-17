@@ -5,7 +5,7 @@
       <nav class="app-header" :class="{ scrolled: isScrolled }">
         <div class="container">
           <router-link to="/" class="logo">
-            <img src="" alt="Kuro" class="logo-icon" />
+            <img src="@/assets/kuro-logo.png" alt="Kuro" class="logo-icon" />
             <span class="logo-text">Kuro</span>
           </router-link>
 
@@ -45,6 +45,15 @@
       <!-- Hero Section -->
       <section class="hero-section">
         <div class="container">
+          <div class="hero-image">
+            <img
+              src="@/assets/hero-screenshot.png"
+              alt="Kuro Obsidian Template Builder Interface"
+              class="preview-image"
+            />
+            <div class="glow-effect"></div>
+          </div>
+
           <div class="hero-content">
             <h1 class="hero-title">
               Build Obsidian Templates
@@ -84,15 +93,6 @@
               </div>
             </div>
           </div>
-
-          <div class="hero-image">
-            <img
-              src=""
-              alt="Kuro Obsidian Template Builder Interface"
-              class="preview-image"
-            />
-            <div class="glow-effect"></div>
-          </div>
         </div>
       </section>
 
@@ -113,7 +113,7 @@
               class="feature-card"
             >
               <div class="feature-icon">
-                <i :class="'icon-' + feature.icon"></i>
+                <i :class="feature.icon"></i>
               </div>
               <h3>{{ feature.title }}</h3>
               <p>{{ feature.description }}</p>
@@ -140,7 +140,7 @@
             >
               <div class="step-number">{{ index + 1 }}</div>
               <div class="step-icon">
-                <i :class="'icon-' + step.icon"></i>
+                <i :class="step.icon"></i>
               </div>
               <h3>{{ step.title }}</h3>
               <p>{{ step.description }}</p>
@@ -156,7 +156,7 @@
                 :class="{ active: activeTab === index }"
                 @click="activeTab = index"
               >
-                <i :class="'icon-' + tab.icon"></i>
+                <i :class="tab.icon"></i>
                 <span>{{ tab.name }}</span>
               </button>
             </div>
@@ -198,7 +198,7 @@
               class="user-type-card"
             >
               <div class="user-type-icon">
-                <i :class="'icon-' + userType.icon"></i>
+                <i :class="userType.icon"></i>
               </div>
               <h3>{{ userType.title }}</h3>
               <p>{{ userType.description }}</p>
@@ -213,7 +213,7 @@
                 :key="useCase.title"
                 class="use-case-card"
               >
-                <i :class="'icon-' + useCase.icon"></i>
+                <i :class="useCase.icon"></i>
                 <span>{{ useCase.title }}</span>
               </div>
             </div>
@@ -232,6 +232,7 @@
           </div>
 
           <swiper
+            :modules="swiperModules"
             :slides-per-view="slidesPerView"
             :space-between="24"
             :pagination="{ clickable: true }"
@@ -422,7 +423,11 @@
             </div>
 
             <div class="cta-graphic">
-              <img src="" alt="Kuro Template Builder" class="graphic-image" />
+              <img
+                src="@/assets/kuro-icon-mark.png"
+                alt="Kuro Template Builder"
+                class="graphic-image"
+              />
             </div>
           </div>
         </div>
@@ -434,7 +439,11 @@
           <div class="footer-main">
             <div class="footer-brand">
               <router-link to="/" class="logo">
-                <img src="" alt="Kuro" class="logo-icon" />
+                <img
+                  src="@/assets/kuro-icon-mark.png"
+                  alt="Kuro"
+                  class="logo-icon"
+                />
                 <span class="logo-text">Kuro</span>
               </router-link>
               <p class="brand-tagline">Powerful templates without code.</p>
@@ -503,14 +512,14 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch } from "vue";
-// import { Swiper, SwiperSlide } from 'swiper/vue';
-// import { Autoplay, Pagination } from 'swiper/modules';
-// import "swiper/css";
-// import "swiper/css/pagination";
 import ScrollContainer from "@/components/UI/ScrollContainer.vue";
+import { Swiper, SwiperSlide } from "swiper/vue";
+import { Pagination, Autoplay } from "swiper/modules";
+import "swiper/css";
+import "swiper/css/pagination";
 
-// Swiper modules
-// const swiperModules = [Autoplay, Pagination];
+// Create a ref for the modules
+const swiperModules = [Pagination, Autoplay];
 
 // Navigation state and functionality
 interface NavItem {
@@ -556,37 +565,37 @@ interface Feature {
 
 const features = ref<Feature[]>([
   {
-    icon: "templater",
+    icon: "fas fa-drafting-compass", // Represents drafting and design, fitting for "Templater Without The Syntax"
     title: "Templater Without The Syntax",
     description:
       "Build dynamic templates with dates, user prompts, and conditional content—no JavaScript knowledge required.",
   },
   {
-    icon: "dataview",
+    icon: "fas fa-database", // Represents data and queries, aligning with "Visual Dataview Builder"
     title: "Visual Dataview Builder",
     description:
       "Create powerful queries and dashboards with a visual interface instead of learning complex query syntax.",
   },
   {
-    icon: "preview",
+    icon: "fas fa-eye", // Represents previewing or viewing, fitting for "True-to-Obsidian Preview"
     title: "True-to-Obsidian Preview",
     description:
       "See exactly how your template will look in Obsidian with our accurate, real-time preview panel.",
   },
   {
-    icon: "vault",
+    icon: "fas fa-folder-open", // Represents vaults or folders, aligning with "Direct Vault Integration"
     title: "Direct Vault Integration",
     description:
       "Send templates straight to your Obsidian vault with one click—no manual file management needed.",
   },
   {
-    icon: "metadata",
+    icon: "fas fa-tags", // Represents metadata, aligning with "YAML & Frontmatter Builder"
     title: "YAML & Frontmatter Builder",
     description:
       "Easily create and manage metadata fields with our intuitive property editor and visual interface.",
   },
   {
-    icon: "library",
+    icon: "fas fa-th-large", // Represents a collection or library, fitting for "Template Library"
     title: "Template Library",
     description:
       "Start with pre-built templates designed for specific workflows like journals, task management, and notes.",
@@ -612,19 +621,19 @@ interface WorkflowCaption {
 
 const workflowSteps = ref<WorkflowStep[]>([
   {
-    icon: "modules",
+    icon: "fas fa-puzzle-piece", // Represents building blocks and components, suitable for "Select Modules"
     title: "Select Modules",
     description:
       "Choose from our library of building blocks – from basic headers to dynamic Templater functions.",
   },
   {
-    icon: "configure",
+    icon: "fas fa-sliders-h", // Represents configuration or control, fitting for "Configure Visually"
     title: "Configure Visually",
     description:
       "Use simple controls to configure each module—we generate the complex code automatically.",
   },
   {
-    icon: "export",
+    icon: "fas fa-file-export", // Represents exporting files or data, perfect for "Export to Vault"
     title: "Export to Vault",
     description:
       "Preview in real-time, then push directly to your Obsidian vault or export as a markdown file.",
@@ -632,9 +641,9 @@ const workflowSteps = ref<WorkflowStep[]>([
 ]);
 
 const tabs = ref<WorkflowTab[]>([
-  { name: "Select", icon: "modules" },
-  { name: "Configure", icon: "configure" },
-  { name: "Export", icon: "export" },
+  { name: "Select", icon: "fas fa-puzzle-piece" }, // Matches the "Select Modules" phase with its modular representation.
+  { name: "Configure", icon: "fas fa-sliders-h" }, // Matches the "Configure Visually" phase with its control/configuration symbol.
+  { name: "Export", icon: "fas fa-file-export" }, // Matches the "Export to Vault" phase with the export functionality.
 ]);
 
 const workflowCaptions = ref<WorkflowCaption[]>([
@@ -671,25 +680,25 @@ interface UseCase {
 
 const userTypes = ref<UserType[]>([
   {
-    icon: "new-user",
+    icon: "fas fa-list", // Represents growth, learning, and starting fresh, perfect for "New Obsidian Users"
     title: "New Obsidian Users",
     description:
       "Skip the learning curve and start using powerful Obsidian features right away, without needing to learn complex syntax or plugins.",
   },
   {
-    icon: "non-technical",
+    icon: "fas fa-user-cog", // Represents a non-technical person who likes creating advanced but customizable workflows
     title: "Non-Technical Power Users",
     description:
       "Create sophisticated templates and workflows that use Templater and Dataview features without ever touching a line of code.",
   },
   {
-    icon: "productivity",
+    icon: "fas fa-clock", // Represents productivity and time management, fitting for "Productivity Enthusiasts"
     title: "Productivity Enthusiasts",
     description:
       "Build consistent journaling, task management, and note-taking systems that work exactly how you need them to.",
   },
   {
-    icon: "frustrated",
+    icon: "fas fa-bug", // Represents frustration, debugging, and overcoming challenges, perfect for "Syntax-Frustrated Users"
     title: "Syntax-Frustrated Users",
     description:
       "Eliminate the frustration of troubleshooting code errors in your templates with our visual interface and real-time previews.",
@@ -726,7 +735,7 @@ const testimonials = ref<Testimonial[]>([
     author: {
       name: "Maya Desai",
       role: "Content Creator",
-      avatar: "",
+      avatar: "https://randomuser.me/api/portraits/women/10.jpg",
     },
   },
   {
@@ -735,7 +744,7 @@ const testimonials = ref<Testimonial[]>([
     author: {
       name: "Leo Kim",
       role: "Product Manager",
-      avatar: "",
+      avatar: "https://randomuser.me/api/portraits/men/20.jpg",
     },
   },
   {
@@ -744,7 +753,7 @@ const testimonials = ref<Testimonial[]>([
     author: {
       name: "Chloe Dubois",
       role: "PhD Researcher",
-      avatar: "",
+      avatar: "https://randomuser.me/api/portraits/women/30.jpg",
     },
   },
   {
@@ -753,7 +762,34 @@ const testimonials = ref<Testimonial[]>([
     author: {
       name: "James Wilson",
       role: "Business Analyst",
-      avatar: "",
+      avatar: "https://randomuser.me/api/portraits/men/40.jpg",
+    },
+  },
+  {
+    quote:
+      "Kuro has turned Obsidian into a professional-grade tool for my freelance writing. The prebuilt templates and real-time preview save me hours of formatting—and keep me focused on writing.",
+    author: {
+      name: "Sofia Martinez",
+      role: "Freelance Writer",
+      avatar: "https://randomuser.me/api/portraits/women/50.jpg",
+    },
+  },
+  {
+    quote:
+      "I used to dread building templates because I’d spend hours troubleshooting weird syntax errors. Now I click, drag, and tweak, and everything just works. Kuro is a game-changer for non-coders like me.",
+    author: {
+      name: "Ethan Garcia",
+      role: "Operations Specialist",
+      avatar: "https://randomuser.me/api/portraits/men/60.jpg",
+    },
+  },
+  {
+    quote:
+      "From customizing my task manager to organizing lecture notes, Kuro adapts to everything I need. It’s like having a personal assistant that thinks exactly the way I do.",
+    author: {
+      name: "Amelia Nguyen",
+      role: "University Student",
+      avatar: "https://randomuser.me/api/portraits/women/70.jpg",
     },
   },
 ]);
@@ -839,11 +875,6 @@ const faqItems = ref<FaqItem[]>([
     question: "What happens to my templates if I cancel my subscription?",
     answer:
       "Any templates you've exported or pushed to your vault remain yours permanently. You'll lose access to cloud storage of templates and the ability to edit them in our app after your subscription ends, but all your created templates will continue to work in Obsidian.",
-  },
-  {
-    question: "Can I use Kuro with mobile Obsidian?",
-    answer:
-      "Yes! While direct vault integration works best on desktop, all templates created with Kuro are fully compatible with Obsidian mobile. You can export your templates as markdown files and add them to your mobile vault.",
   },
 ]);
 
@@ -1010,6 +1041,7 @@ watch(
 
 <style>
 /* CSS Variables for consistent theming */
+/* I need to figure out why the root here effects my entire code base. How is that happening? */
 :root {
   /* Colors */
   --color-primary: #8866e9;
@@ -1019,12 +1051,11 @@ watch(
 
   --color-background: #14151e;
   --color-background-alt: #0f1018;
-  --color-surface: #1e1f2e;
+  --color-surface: rgba(255, 255, 255, 0.1);
   --color-surface-dark: #171822;
 
   --color-text: #e0e0e0;
   --color-text-light: #b0b0b0;
-  --color-text-muted: #888888;
 
   --color-border: rgba(255, 255, 255, 0.08);
   --color-border-hover: rgba(255, 255, 255, 0.15);
@@ -1900,5 +1931,303 @@ section {
   font-size: 0.75rem;
   font-weight: 600;
   padding: 0.3rem 1rem;
+}
+
+/* FAQ Section */
+.faq-section {
+  padding: var(--spacing-xxl) 0;
+}
+
+.faq-container {
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+/* FAQ Item */
+.faq-item {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--spacing-lg);
+  overflow: hidden;
+  transition: all var(--transition-normal);
+}
+
+/* FAQ Item (Expanded) */
+.faq-item.open {
+  border-color: var(--color-primary);
+  box-shadow: 0 10px 30px rgba(var(--color-primary-rgb), 0.1);
+}
+
+/* FAQ Question */
+.faq-question {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--spacing-lg);
+  font-size: 1.125rem;
+  font-weight: 600;
+  cursor: pointer;
+  color: var(--color-text);
+  transition: color var(--transition-normal);
+}
+
+.faq-question:hover {
+  color: var(--color-primary);
+}
+
+/* Question Icon */
+.faq-question .icon-chevron {
+  font-size: 1.25rem;
+  color: var(--color-text-light);
+  transition: transform var(--transition-normal), color var(--transition-normal);
+}
+
+.faq-question .icon-chevron.rotated {
+  transform: rotate(180deg);
+  color: var(--color-primary);
+}
+
+/* FAQ Answer */
+.faq-answer {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height var(--transition-normal) ease;
+  background: var(--color-surface-dark);
+}
+
+.faq-answer .answer-content {
+  padding: var(--spacing-lg);
+  color: var(--color-text-light);
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+/* FAQ Answer Visible (Expanded) */
+.faq-item.open .faq-answer {
+  max-height: 200px; /* Adjust based on expected answer size */
+}
+
+/* More Questions Section */
+.more-questions {
+  text-align: center;
+  margin-top: var(--spacing-xl);
+}
+
+.more-questions p {
+  font-size: 1.125rem;
+  color: var(--color-text-light);
+}
+
+.more-questions .text-link {
+  color: var(--color-primary);
+  font-weight: 600;
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+  transition: all var(--transition-normal);
+}
+
+.more-questions .text-link:hover {
+  color: var(--color-primary-light);
+  border-bottom-color: var(--color-primary-light);
+}
+
+/* Call to Action Section */
+.cta-section {
+  background: linear-gradient(
+    120deg,
+    rgba(var(--color-primary-rgb), 0.2),
+    rgba(var(--color-secondary-rgb), 0.1)
+  );
+  padding: var(--spacing-xxl) 0;
+  overflow: hidden;
+}
+
+.cta-card {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spacing-xl);
+  background: var(--color-surface-dark);
+  box-shadow: var(--shadow-lg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 3rem;
+}
+
+.cta-content {
+  flex: 1;
+  text-align: left;
+}
+
+.cta-content h2 {
+  font-size: 2rem;
+  margin-bottom: var(--spacing-md);
+  color: var(--color-text);
+}
+
+.cta-content p {
+  font-size: 1.125rem;
+  margin-bottom: var(--spacing-lg);
+  color: var(--color-text-light);
+}
+
+.cta-buttons {
+  display: flex;
+  gap: var(--spacing-md);
+}
+
+.cta-graphic {
+  flex: 1;
+  text-align: center;
+}
+
+.cta-graphic img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+  transition: transform var(--transition-normal);
+}
+
+.cta-graphic img:hover {
+  transform: translateY(-5px);
+}
+
+/* Footer Section */
+.app-footer {
+  background: var(--color-surface-dark);
+  padding: var(--spacing-xxl) 0 var(--spacing-xl);
+  color: var(--color-text-light);
+}
+
+.footer-main {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--spacing-lg);
+  margin-bottom: var(--spacing-lg);
+}
+
+.footer-brand {
+  flex: 1 1 30%;
+}
+
+.footer-brand .logo {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-md);
+}
+
+.footer-brand .logo-icon {
+  height: 40px;
+  width: auto;
+}
+
+.footer-brand .logo-text {
+  font-size: 1.5rem;
+  font-weight: 700;
+  background: linear-gradient(
+    90deg,
+    var(--color-primary),
+    var(--color-secondary)
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.footer-brand .brand-tagline {
+  font-size: 0.875rem;
+  color: var(--color-text-light);
+  margin-bottom: var(--spacing-lg);
+}
+
+.social-links {
+  display: flex;
+  gap: var(--spacing-md);
+}
+
+.social-link {
+  color: var(--color-text-light);
+  font-size: 1.25rem;
+  transition: color var(--transition-normal);
+}
+
+.social-link:hover {
+  color: var(--color-primary);
+}
+
+.footer-links {
+  flex: 1 1 60%;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-lg);
+}
+
+.link-group {
+  flex: 1 1 45%;
+}
+
+.group-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--color-text);
+  margin-bottom: var(--spacing-sm);
+}
+
+.link-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.link-list li {
+  margin-bottom: var(--spacing-sm);
+}
+
+.footer-link {
+  color: var(--color-text-light);
+  text-decoration: none;
+  font-size: 0.875rem;
+  transition: all var(--transition-normal);
+}
+
+.footer-link:hover {
+  color: var(--color-primary);
+}
+
+/* Footer Bottom Section */
+.footer-bottom {
+  border-top: 1px solid var(--color-border);
+  padding-top: var(--spacing-lg);
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--spacing-md);
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
+}
+
+.copyright {
+  margin: 0;
+}
+
+.legal-links {
+  display: flex;
+  gap: var(--spacing-md);
+}
+
+.legal-link {
+  color: var(--color-text-light);
+  text-decoration: none;
+  transition: all var(--transition-normal);
+}
+
+.legal-link:hover {
+  color: var(--color-primary);
 }
 </style>

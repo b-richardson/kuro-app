@@ -13,6 +13,7 @@ import {
 
 // Import view components
 import LandingPage from "../views/LandingPage.vue";
+import KuroLandingPage from "@/views/KuroLandingPage.vue";
 import LoginView from "../views/LoginView.vue";
 import DashboardView from "../views/DashboardView.vue";
 import MyTemplatesView from "../views/MyTemplatesView.vue";
@@ -29,12 +30,17 @@ const routes = [
   {
     path: "/",
     name: "home",
-    component: LandingPage,
+    component: KuroLandingPage,
   },
   {
     path: "/landing",
     name: "landing",
     component: LandingPage,
+  },
+  {
+    path: "/kuro-landing-page",
+    name: "kuro-landing-page",
+    component: KuroLandingPage,
   },
   {
     path: "/login",

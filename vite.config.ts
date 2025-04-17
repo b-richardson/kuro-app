@@ -17,7 +17,7 @@ export default defineConfig({
     },
   },
   optimizeDeps: {
-    include: ["sortablejs", "vue-draggable-next"],
+    include: ["sortablejs", "vue-draggable-next", "swiper/vue", "swiper"],
     // Remove 'vuedraggable' from here as well
   },
 });
