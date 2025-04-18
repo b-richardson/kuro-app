@@ -23,6 +23,10 @@ import DesignView from "../views/DesignView.vue";
 import ObsidianOnboarding from "../views/ObsidianOnboarding.vue";
 import ObsidianExplorer from "../views/ObsidianExplorer.vue";
 import TemplateBrowserView from "@/views/TemplateBrowserView.vue";
+import PricingPageView from "@/views/PricingPageView.vue";
+import SubscriptionSuccessView from "@/views/SubscriptionSuccessView.vue";
+import SubscriptionCancelView from "@/views/SubscriptionCancelView.vue";
+import SubscribePageView from "@/views/SubscribePageView.vue";
 
 // Route definitions
 const routes = [
@@ -69,7 +73,29 @@ const routes = [
     component: DesignView,
   },
 
-  // Other routes (no auth requirements enforced by router)
+  // New subscription routes
+  {
+    path: "/pricing",
+    name: "pricing",
+    component: PricingPageView,
+  },
+  {
+    path: "/subscription/success",
+    name: "subscription-success",
+    component: SubscriptionSuccessView,
+  },
+  {
+    path: "/subscription/cancel",
+    name: "subscription-cancel",
+    component: SubscriptionCancelView,
+  },
+  {
+    path: "/subscribe/:plan",
+    name: "subscribe",
+    component: SubscribePageView,
+    props: true,
+  },
+
   {
     path: "/dashboard",
     name: "dashboard",
