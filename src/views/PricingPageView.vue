@@ -22,14 +22,15 @@
           </button>
           <span :class="{ active: billingCycle === 'annual' }">
             Annual
-            <span class="discount-badge">Save 20%</span>
+            <span class="discount-badge">Save {{ savingsPercentage }}%</span>
           </span>
         </div>
 
-        <div class="pricing-cards">
-          <div class="pricing-card">
+        <div class="pricing-cards" v-if="plansLoaded">
+          <!-- Free Plan Card -->
+          <div class="pricing-card" v-if="freePlan">
             <div class="card-header">
-              <h3 class="card-title">Free</h3>
+              <h3 class="card-title">{{ freePlan.name }}</h3>
               <div class="price">
                 <span class="currency">$</span>
                 <span class="amount">0</span>
@@ -39,7 +40,7 @@
             </div>
 
             <ul class="feature-list">
-              <li v-for="feature in freePlanFeatures" :key="feature">
+              <li v-for="feature in freePlan.features" :key="feature">
                 <i class="icon-check"></i>
                 <span>{{ feature }}</span>
               </li>
@@ -48,10 +49,11 @@
             <p class="current-plan">Your current plan</p>
           </div>
 
-          <div class="pricing-card featured">
-            <div class="popular-badge">Most Popular</div>
+          <!-- Pro Plan Card -->
+          <div class="pricing-card featured" v-if="proPlan">
+            <div class="popular-badge" v-if="proPlan.popular">Most Popular</div>
             <div class="card-header">
-              <h3 class="card-title">Pro</h3>
+              <h3 class="card-title">{{ proPlan.name }}</h3>
               <div class="price">
                 <span class="currency">$</span>
                 <span class="amount">{{ proPlanPrice }}</span>
@@ -61,7 +63,7 @@
             </div>
 
             <ul class="feature-list">
-              <li v-for="feature in proPlanFeatures" :key="feature">
+              <li v-for="feature in proPlan.features" :key="feature">
                 <i class="icon-check"></i>
                 <span>{{ feature }}</span>
               </li>
@@ -75,6 +77,9 @@
           </div>
         </div>
 
+        <!-- Loading state -->
+        <div v-else class="loading-plans">Loading plans...</div>
+
         <div class="pricing-note">
           <i class="icon-shield"></i>
           <p>Upgrade, downgrade, or cancel anytime. No hidden fees.</p>
@@ -87,38 +92,43 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from "vue";
 import { useRoute } from "vue-router";
-import SubscribeButton from "@/components/billing/SubscribeButton.vue";
+import SubscribeButton from "@/components/subscription/SubscribeButton.vue";
 import ScrollContainer from "@/components/UI/ScrollContainer.vue";
-
-type BillingCycle = "monthly" | "annual";
+import { subscriptionService } from "@/services/supabase/subscriptions";
+import type { BillingCycle, Plan } from "@/services/supabase/types";
 
 const route = useRoute();
 const billingCycle = ref<BillingCycle>("monthly");
 
-const freePlanFeatures = [
-  "Basic template modules",
-  "Unlimited template creation",
-  "Markdown export",
-  "Community support",
-];
+// Create refs for the plans with proper typing
+const freePlan = ref<Plan | null>(null);
+const proPlan = ref<Plan | null>(null);
+const plansLoaded = ref(false);
 
-const proPlanFeatures = [
-  "Everything in Free plan",
-  "All template modules including Templater & Dataview",
-  "Direct Obsidian vault integration",
-  "True-to-Obsidian preview",
-  "Template library access",
-  "Template sharing & importing",
-  "Faster updates & new modules",
-  "Priority support",
-];
+// Load plans
+const loadPlans = () => {
+  const free = subscriptionService.getPlan("free");
+  const pro = subscriptionService.getPlan("pro");
+
+  // Only set if the plans exist
+  if (free) freePlan.value = free;
+  if (pro) proPlan.value = pro;
+
+  plansLoaded.value = true;
+};
+
+// Display the annual savings percentage
+const savingsPercentage = computed(() => {
+  return subscriptionService.getAnnualSavingsPercentage("pro");
+});
 
 const toggleBillingCycle = () => {
   billingCycle.value = billingCycle.value === "monthly" ? "annual" : "monthly";
 };
 
 const proPlanPrice = computed(() => {
-  return billingCycle.value === "monthly" ? "4.99" : "47.90";
+  if (!proPlan.value) return "0.00";
+  return subscriptionService.getPlanPrice("pro", billingCycle.value).toFixed(2);
 });
 
 const billingPeriod = computed(() => {
@@ -128,10 +138,13 @@ const billingPeriod = computed(() => {
 const billingNote = computed(() => {
   return billingCycle.value === "monthly"
     ? "Billed monthly, cancel anytime"
-    : "Billed annually (save 20%)";
+    : `Billed annually (save ${savingsPercentage.value}%)`;
 });
 
 onMounted(() => {
+  // Load the plans
+  loadPlans();
+
   // Check if we have a billing cycle specified in the route
   if (route.query.plan === "annual") {
     billingCycle.value = "annual";

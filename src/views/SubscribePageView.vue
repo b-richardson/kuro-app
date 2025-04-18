@@ -42,7 +42,7 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
 import { useRoute } from "vue-router";
-import SubscribeButton from "@/components/billing/SubscribeButton.vue";
+import SubscribeButton from "@/components/subscription/SubscribeButton.vue";
 
 const route = useRoute();
 const planType = computed(() => (route.params.plan as string) || "monthly");

@@ -103,3 +103,43 @@ export interface Database {
     };
   };
 }
+
+// Subscription Related Types
+export type BillingCycle = "monthly" | "annual";
+
+// Plan identifier type
+export type PlanId = "free" | "pro";
+
+// Feature definition interface
+export interface Feature {
+  id: string;
+  name: string;
+  description?: string;
+  availableInPlans: PlanId[];
+}
+
+// Plan interface
+export interface Plan {
+  id: PlanId;
+  name: string;
+  features: string[];
+  monthlyPrice: number;
+  annualPrice: number;
+  popular?: boolean;
+}
+
+// Interface for user_profiles table
+export interface UserProfile {
+  id: string;
+  name: string | null;
+  created_at: string | null;
+  last_login: string | null;
+  subscription_plan: string | null;
+  subscription_status: string | null;
+  subscription_expires_at: string | null;
+  stripe_customer_id: string | null;
+  stripe_subscription_id: string | null;
+  subscription_period_start: string | null;
+  subscription_period_end: string | null;
+  stripe_payment_method_id: string | null;
+}

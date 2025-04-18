@@ -26,7 +26,7 @@
 </template>
 
 <script setup lang="ts">
-// Simple cancellation page
+// This is a simple cancellation page for subscription confirmation
 </script>
 
 <style scoped>

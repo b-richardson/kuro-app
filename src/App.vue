@@ -55,6 +55,7 @@ import { useAuthStore } from "./stores/auth";
 import { useObsidianStore } from "./stores/obsidian";
 import { initializeAuth } from "./utils/authInitializer";
 import { restoreObsidianConnection } from "./utils/obsidianUtils";
+import { useUserStore } from "./stores/userStore";
 
 import GradientBackground from "./components/UI/GradientBackground.vue";
 import GlobalSidebar from "./components/Layout/GlobalSidebar.vue";
@@ -68,6 +69,7 @@ const sidebarCollapsed = ref(false);
 const showExportDialog = ref(false);
 const isDarkTheme = ref(true);
 const appInitialized = ref(false);
+const userStore = useUserStore();
 
 // Provide theme to all components
 provide("theme", isDarkTheme);
@@ -172,6 +174,15 @@ onMounted(async () => {
     console.error("App initialization error:", err);
   } finally {
     appInitialized.value = true;
+  }
+});
+
+// This ensures user profile is loaded whenever auth state changes
+watchEffect(() => {
+  if (authStore.isAuthenticated && authStore.user) {
+    userStore.fetchUserProfile();
+  } else {
+    userStore.clearUserProfile();
   }
 });
 </script>

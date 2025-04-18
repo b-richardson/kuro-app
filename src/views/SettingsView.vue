@@ -11,36 +11,51 @@
           <h2 class="settings-section__title">Account Information</h2>
 
           <div class="profile-summary">
-            <div class="profile-avatar">
-              {{ getInitials(authStore.user?.name || "") }}
+            <div
+              class="profile-avatar"
+              :class="{ 'pro-user': userStore.isSubscribed }"
+            >
+              {{ getInitials(authStore.user?.email || "") }}
+              <span v-if="userStore.isSubscribed" class="pro-badge">PRO</span>
             </div>
             <div class="profile-details">
-              <div class="profile-name">{{ authStore.user?.name }}</div>
               <div class="profile-email">{{ authStore.user?.email }}</div>
-              <div class="profile-joined">
-                Joined {{ formatDate(authStore.user?.createdAt) }}
+              <div class="profile-subscription">
+                <template v-if="userStore.isSubscribed">
+                  {{ getSubscriptionTypeLabel }}
+                  <span
+                    v-if="userStore.profile?.subscription_period_end"
+                    class="subscription-date"
+                  >
+                    (Renews:
+                    {{ formatDate(userStore.profile.subscription_period_end) }})
+                  </span>
+                </template>
+                <template v-else> Free Plan </template>
+              </div>
+              <div class="profile-joined" v-if="authStore.user?.created_at">
+                Joined {{ formatDate(authStore.user.created_at) }}
               </div>
             </div>
           </div>
 
-          <div class="settings-option">
-            <label for="email">Email Address</label>
-            <div class="input-with-button">
-              <input
-                type="email"
-                id="email"
-                v-model="emailAddress"
-                placeholder="Your email address"
-              />
-              <button
-                class="action-button"
-                @click="updateEmail"
-                :disabled="emailAddress === authStore.user?.email"
-              >
-                Update
-              </button>
-            </div>
+          <div class="subscription-actions" v-if="!userStore.isSubscribed">
+            <router-link to="/pricing" class="primary-button">
+              <i class="fas fa-crown"></i> Upgrade to Pro
+            </router-link>
           </div>
+          <div class="subscription-actions" v-else>
+            <button class="secondary-button" @click="manageSubscription">
+              <i class="fas fa-cog"></i> Manage Subscription
+            </button>
+          </div>
+        </div>
+
+        <div class="settings-divider"></div>
+
+        <!-- Password Section -->
+        <div class="settings-section">
+          <h2 class="settings-section__title">Security</h2>
 
           <div class="settings-option">
             <label>Password</label>
@@ -108,31 +123,11 @@
               </button>
             </div>
           </div>
-
-          <div class="settings-option">
-            <label>Connected Accounts</label>
-            <div class="connected-accounts">
-              <div class="connection-item">
-                <i class="fab fa-google"></i>
-                <span>Google</span>
-                <button class="connection-button" @click="connectGoogle">
-                  {{ googleConnected ? "Disconnect" : "Connect" }}
-                </button>
-              </div>
-
-              <div class="connection-item">
-                <i class="fab fa-github"></i>
-                <span>GitHub</span>
-                <button class="connection-button" @click="connectGithub">
-                  {{ githubConnected ? "Disconnect" : "Connect" }}
-                </button>
-              </div>
-            </div>
-          </div>
         </div>
 
         <div class="settings-divider"></div>
 
+        <!-- Obsidian Integration -->
         <ObsidianStatusCard />
 
         <div class="settings-divider"></div>
@@ -151,11 +146,11 @@
 
         <div class="settings-divider"></div>
 
-        <!-- Storage Management -->
+        <!-- Data Management -->
         <div class="settings-section">
-          <h2 class="settings-section__title">Storage Management</h2>
+          <h2 class="settings-section__title">Data Management</h2>
           <div class="settings-option">
-            <button class="danger-button" @click="confirmClearStorage">
+            <button class="danger-button" @click="confirmClearTemplates">
               <i class="fas fa-trash"></i> Clear All Templates
             </button>
             <p class="settings-description">
@@ -180,33 +175,32 @@
 </template>
 
 <script setup lang="ts">
-// ⚠️ DO NOT IMPLEMENT NEW FEATURES UNLESS EXPLICITLY ASKED! ⚠️
-
 import { ref, onMounted, computed } from "vue";
 import { useRouter } from "vue-router";
 import ConfirmationDialog from "../components/UI/ConfirmationDialog.vue";
-import { useTemplateStore, useUIStore, usePreferencesStore } from "../stores";
-import ObsidianStatusCard from "../components/Layout/ObsidianStatusIndicator.vue";
+import { useTemplateStore } from "../stores/template";
+import { useUIStore } from "../stores/ui";
+import { usePreferencesStore } from "../stores/preferences";
 import { useAuthStore } from "../stores/auth";
+import { useUserStore } from "../stores/userStore";
+import ObsidianStatusCard from "../components/Layout/ObsidianStatusIndicator.vue";
+import { subscriptionService } from "../services/supabase/subscriptions";
 
 const router = useRouter();
 const templateStore = useTemplateStore();
 const uiStore = useUIStore();
 const preferencesStore = usePreferencesStore();
 const authStore = useAuthStore();
+const userStore = useUserStore();
 
 const theme = ref("dark");
-const exportProfileId = ref("");
-const editorWidth = ref(50);
-const emailAddress = ref("");
 const showPasswordChange = ref(false);
 const currentPassword = ref("");
 const newPassword = ref("");
 const confirmPassword = ref("");
 const authUpdating = ref(false);
-const googleConnected = ref(false);
-const githubConnected = ref(false);
 
+// Computed values
 const passwordStrength = computed(() => {
   if (!newPassword.value) return 0;
   let strength = 0;
@@ -243,31 +237,54 @@ const canUpdatePassword = computed(() => {
   );
 });
 
-onMounted(() => {
-  preferencesStore.loadPreferences();
-  theme.value = preferencesStore.editorTheme || "dark";
-  exportProfileId.value = preferencesStore.activeExportProfileId || "";
-  editorWidth.value = uiStore.editorWidth;
+const getSubscriptionTypeLabel = computed(() => {
+  console.log("User profile:", userStore.profile); // Debug - check what's in the profile
 
-  if (authStore.user) {
-    emailAddress.value = authStore.user.email ?? "";
-  }
+  if (!userStore.profile?.subscription_plan) return "Free Plan";
 
-  preferencesStore.setLastVisitedView("settings");
+  // Handle both new format (pro-monthly, pro-annual) and old format (pro)
+  const plan = userStore.profile.subscription_plan;
+  console.log("Subscription plan:", plan); // Debug - check the actual plan
+
+  if (plan === "pro-monthly") return "Pro Monthly";
+  if (plan === "pro-annual") return "Pro Annual";
+  if (plan === "pro") return "Pro Subscription";
+  if (plan === "free") return "Free Plan";
+
+  return plan.charAt(0).toUpperCase() + plan.slice(1); // Capitalize any other plan
 });
 
-const getInitials = (name: string) => {
-  if (!name) return "";
-  return name
-    .split(" ")
-    .map((part) => part.charAt(0))
-    .join("")
-    .toUpperCase();
+// Lifecycle hooks
+onMounted(() => {
+  // Load preferences
+  preferencesStore.loadPreferences();
+  theme.value = preferencesStore.editorTheme || "dark";
+
+  // Set last visited view
+  preferencesStore.setLastVisitedView("settings");
+
+  // Ensure user profile is loaded
+  if (authStore.isAuthenticated && !userStore.profile) {
+    userStore.fetchUserProfile();
+  }
+});
+
+// Methods
+const getInitials = (email: string) => {
+  if (!email) return "";
+
+  // Get initials from email (first letter of username)
+  const username = email.split("@")[0];
+  return username.charAt(0).toUpperCase();
 };
 
 const formatDate = (dateString: string | null | undefined) => {
   if (!dateString) return "N/A";
-  return new Date(dateString).toLocaleDateString();
+  return new Date(dateString).toLocaleDateString(undefined, {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
 };
 
 const updateTheme = () => {
@@ -275,37 +292,22 @@ const updateTheme = () => {
   document.documentElement.setAttribute("data-theme", theme.value);
 };
 
-const updateEmail = async () => {
-  if (!emailAddress.value || emailAddress.value === authStore.user?.email)
-    return;
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if (!emailRegex.test(emailAddress.value)) {
-    uiStore.showToast("Please enter a valid email address", "error");
-    return;
-  }
-  authUpdating.value = true;
-  try {
-    await new Promise((resolve) => setTimeout(resolve, 800));
-    if (authStore.user) {
-      authStore.user = { ...authStore.user, email: emailAddress.value };
-    }
-    uiStore.showToast("Email updated successfully", "success");
-  } catch {
-    uiStore.showToast("Failed to update email", "error");
-  } finally {
-    authUpdating.value = false;
-  }
-};
-
 const updatePassword = async () => {
   if (!canUpdatePassword.value) return;
   authUpdating.value = true;
+
   try {
-    await new Promise((resolve) => setTimeout(resolve, 800));
+    // Call Supabase to update password - returns boolean
+    const success = await authStore.updatePassword(newPassword.value);
+
+    if (!success) {
+      throw new Error("Failed to update password");
+    }
+
     uiStore.showToast("Password updated successfully", "success");
     cancelPasswordChange();
-  } catch {
-    uiStore.showToast("Failed to update password", "error");
+  } catch (error) {
+    uiStore.showToast(`Failed to update password: ${error}`, "error");
   } finally {
     authUpdating.value = false;
   }
@@ -318,65 +320,13 @@ const cancelPasswordChange = () => {
   confirmPassword.value = "";
 };
 
-const connectGoogle = async () => {
-  if (googleConnected.value) {
-    uiStore.showConfirmationDialog(
-      "Disconnect Google Account",
-      "Are you sure you want to disconnect your Google account?",
-      "Disconnect",
-      "Cancel",
-      async () => {
-        try {
-          await new Promise((resolve) => setTimeout(resolve, 500));
-          googleConnected.value = false;
-          uiStore.showToast("Google account disconnected", "success");
-        } catch {
-          uiStore.showToast("Failed to disconnect Google account", "error");
-        }
-      },
-      () => {}
-    );
-  } else {
-    try {
-      await new Promise((resolve) => setTimeout(resolve, 800));
-      googleConnected.value = true;
-      uiStore.showToast("Google account connected", "success");
-    } catch {
-      uiStore.showToast("Failed to connect Google account", "error");
-    }
-  }
+const manageSubscription = async () => {
+  // Here you would redirect to Stripe customer portal
+  // or your subscription management page
+  uiStore.showToast("Subscription management coming soon", "info");
 };
 
-const connectGithub = async () => {
-  if (githubConnected.value) {
-    uiStore.showConfirmationDialog(
-      "Disconnect GitHub Account",
-      "Are you sure you want to disconnect your GitHub account?",
-      "Disconnect",
-      "Cancel",
-      async () => {
-        try {
-          await new Promise((resolve) => setTimeout(resolve, 500));
-          githubConnected.value = false;
-          uiStore.showToast("GitHub account disconnected", "success");
-        } catch {
-          uiStore.showToast("Failed to disconnect GitHub account", "error");
-        }
-      },
-      () => {}
-    );
-  } else {
-    try {
-      await new Promise((resolve) => setTimeout(resolve, 800));
-      githubConnected.value = true;
-      uiStore.showToast("GitHub account connected", "success");
-    } catch {
-      uiStore.showToast("Failed to connect GitHub account", "error");
-    }
-  }
-};
-
-const confirmClearStorage = () => {
+const confirmClearTemplates = () => {
   uiStore.showConfirmationDialog(
     "Clear All Templates",
     "Are you sure you want to delete all templates? This action cannot be undone.",
@@ -387,216 +337,297 @@ const confirmClearStorage = () => {
   );
 };
 
-const clearAllTemplates = () => {
-  templateStore.clearAllTemplates();
-  uiStore.showToast("All templates have been deleted", "success");
+const clearAllTemplates = async () => {
+  console.log("Clearing all templates...");
 };
 </script>
 
 <style scoped>
 .settings-view {
-  height: 100vh;
-  width: 100%;
+  display: flex;
+  justify-content: center;
+  padding: 2rem;
+  height: 100%;
   overflow-y: auto;
 }
 
 .settings-container {
-  padding: var(--spacing-lg);
+  width: 100%;
   max-width: 800px;
-  margin: 0 auto;
 }
 
 .settings-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: var(--spacing-md) var(--spacing-lg);
-  margin-bottom: var(--spacing-lg);
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  border-radius: 12px;
 }
 
 .settings-header__title {
   margin: 0;
-  font-size: 1.75rem;
-  font-weight: 600;
-  background: linear-gradient(
-    135deg,
-    var(--color-primary-light),
-    var(--color-primary)
-  );
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  font-size: 2rem;
+  font-weight: 700;
 }
 
 .settings-content {
-  padding: var(--spacing-lg);
+  padding: 2rem;
+  border-radius: 12px;
 }
 
 .settings-section {
-  margin-bottom: var(--spacing-lg);
+  margin-bottom: 2rem;
 }
 
 .settings-section__title {
-  font-size: 1.25rem;
+  font-size: 1.5rem;
+  margin-top: 0;
+  margin-bottom: 1.5rem;
+  color: var(--color-primary);
+}
+
+.profile-summary {
+  display: flex;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+
+.profile-avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background-color: var(--color-primary);
+  color: white;
+  font-size: 1.5rem;
   font-weight: 600;
-  margin: 0 0 var(--spacing-md);
-  color: var(--color-text);
+  margin-right: 1.5rem;
+  position: relative;
+}
+
+.profile-avatar.pro-user {
+  background: linear-gradient(
+    135deg,
+    var(--color-primary),
+    var(--color-accent)
+  );
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+}
+
+.pro-badge {
+  position: absolute;
+  bottom: -5px;
+  right: -5px;
+  background-color: gold;
+  color: #333;
+  font-size: 0.6rem;
+  font-weight: bold;
+  padding: 3px 6px;
+  border-radius: 10px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+}
+
+.profile-details {
+  flex: 1;
+}
+
+.profile-email {
+  font-size: 1.2rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+
+.profile-subscription {
+  font-size: 1rem;
+  color: var(--color-text-secondary);
+  margin-bottom: 0.5rem;
+}
+
+.subscription-date {
+  font-size: 0.9rem;
+  opacity: 0.8;
+}
+
+.profile-joined {
+  font-size: 0.9rem;
+  color: var(--color-text-secondary);
+}
+
+.subscription-actions {
+  margin-top: 1.5rem;
 }
 
 .settings-option {
-  margin-bottom: var(--spacing-md);
+  margin-bottom: 1.5rem;
 }
 
 .settings-option label {
   display: block;
-  margin-bottom: var(--spacing-xs);
-  font-weight: 500;
-  color: var(--color-text-secondary);
+  margin-bottom: 0.5rem;
+  font-weight: 600;
 }
 
 .settings-option select,
-.settings-option input[type="text"],
-.settings-option input[type="email"],
-.settings-option input[type="password"],
-.settings-option input[type="number"] {
+.settings-option input {
   width: 100%;
-  padding: var(--spacing-sm);
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius-sm);
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  border: 1px solid var(--color-border);
+  background-color: var(--color-bg-input);
   color: var(--color-text);
-  font-size: 0.9rem;
-  margin-bottom: var(--spacing-xs);
+  font-size: 1rem;
+  transition: border-color 0.3s, box-shadow 0.3s;
 }
 
-.settings-option input[type="range"] {
-  width: 100%;
-  margin-bottom: var(--spacing-xs);
-  background: rgba(255, 255, 255, 0.05);
-  height: 8px;
-  border-radius: var(--radius-full);
+.settings-option select:focus,
+.settings-option input:focus {
   outline: none;
-  -webkit-appearance: none;
-}
-
-.settings-option input[type="range"]::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  background: var(--color-primary);
-  cursor: pointer;
-}
-
-.settings-value {
-  display: inline-block;
-  font-size: 0.9rem;
-  color: var(--color-text-secondary);
-}
-
-.settings-description {
-  font-size: 0.9rem;
-  color: var(--color-text-tertiary);
-  margin-top: var(--spacing-xs);
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px rgba(var(--color-primary-rgb), 0.2);
 }
 
 .settings-divider {
   height: 1px;
-  background: var(--glass-border);
-  margin: var(--spacing-lg) 0;
+  background-color: var(--color-border);
+  margin: 2rem 0;
+  opacity: 0.5;
 }
 
-/* Profile summary styles */
-.profile-summary {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-md);
-  margin-bottom: var(--spacing-md);
-  padding: var(--spacing-md);
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: var(--radius-md);
-  border: 1px solid var(--glass-border);
+.password-change-form {
+  background-color: var(--color-bg-light);
+  border-radius: 8px;
+  padding: 1.5rem;
+  margin-top: 1rem;
+  border: 1px solid var(--color-border);
 }
 
-.profile-avatar {
-  width: 64px;
-  height: 64px;
-  border-radius: var(--radius-full);
-  background: linear-gradient(
-    135deg,
-    var(--color-primary-light),
-    var(--color-primary)
-  );
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
-  font-weight: 600;
-  font-size: 1.5rem;
-  flex-shrink: 0;
+.form-group {
+  margin-bottom: 1rem;
 }
 
-.profile-details {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-xs);
-}
-
-.profile-name {
-  font-size: 1.1rem;
+.form-group label {
+  display: block;
+  margin-bottom: 0.5rem;
   font-weight: 600;
 }
 
-.profile-email {
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+
+.password-strength {
+  margin-top: 1rem;
+}
+
+.strength-label {
+  margin-bottom: 0.5rem;
   font-size: 0.9rem;
-  color: var(--color-text-secondary);
 }
 
-.profile-joined {
-  font-size: 0.8rem;
-  color: var(--color-text-tertiary);
+.strength-meter {
+  height: 8px;
+  background-color: var(--color-bg-dark);
+  border-radius: 4px;
+  overflow: hidden;
 }
 
-/* Input with button */
-.input-with-button {
-  display: flex;
-  gap: var(--spacing-sm);
+.strength-value {
+  height: 100%;
+  transition: width 0.3s;
 }
 
-.input-with-button input {
-  flex: 1;
-  margin-bottom: 0;
+.strength-value.weak {
+  background-color: #ff4d4d;
 }
 
-/* Button styles */
-.action-button,
+.strength-value.medium {
+  background-color: #ffb84d;
+}
+
+.strength-value.good {
+  background-color: #4da6ff;
+}
+
+.strength-value.strong {
+  background-color: #4dff4d;
+}
+
+.strength-text {
+  margin-top: 0.5rem;
+  font-size: 0.9rem;
+  text-align: right;
+}
+
+.strength-text.weak {
+  color: #ff4d4d;
+}
+
+.strength-text.medium {
+  color: #ffb84d;
+}
+
+.strength-text.good {
+  color: #4da6ff;
+}
+
+.strength-text.strong {
+  color: #4dff4d;
+}
+
+.primary-button,
 .secondary-button,
+.danger-button,
+.action-button,
 .cancel-button {
-  padding: var(--spacing-sm) var(--spacing-md);
-  border-radius: var(--radius-sm);
-  font-size: 0.9rem;
-  font-weight: 500;
+  padding: 0.75rem 1.25rem;
+  border-radius: 8px;
+  font-weight: 600;
   cursor: pointer;
-  transition: all var(--transition-fast);
-  display: flex;
+  border: none;
+  transition: all 0.2s;
+  display: inline-flex;
   align-items: center;
-  gap: var(--spacing-xs);
+  gap: 0.5rem;
+}
+
+.primary-button {
+  background-color: var(--color-primary);
+  color: white;
+}
+
+.primary-button:hover {
+  background-color: var(--color-primary-dark);
+}
+
+.secondary-button {
+  background-color: var(--color-bg-light);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+}
+
+.secondary-button:hover {
+  background-color: var(--color-bg);
+}
+
+.danger-button {
+  background-color: var(--color-danger);
+  color: white;
+}
+
+.danger-button:hover {
+  background-color: var(--color-danger-dark, #d32f2f);
 }
 
 .action-button {
-  background: linear-gradient(
-    135deg,
-    var(--color-primary-light),
-    var(--color-primary)
-  );
+  background-color: var(--color-primary);
   color: white;
-  border: none;
 }
 
 .action-button:hover:not(:disabled) {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 8px rgba(var(--color-primary-rgb), 0.3);
+  background-color: var(--color-primary-dark);
 }
 
 .action-button:disabled {
@@ -604,363 +635,38 @@ const clearAllTemplates = () => {
   cursor: not-allowed;
 }
 
-.secondary-button {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid var(--glass-border);
-  color: var(--color-text);
-}
-
-.secondary-button:hover {
-  background: rgba(255, 255, 255, 0.1);
-}
-
 .cancel-button {
-  background: transparent;
-  border: 1px solid var(--glass-border);
-  color: var(--color-text-secondary);
+  background-color: transparent;
+  color: var(--color-text);
 }
 
 .cancel-button:hover {
-  background: rgba(255, 255, 255, 0.05);
-  color: var(--color-text);
+  background-color: var(--color-bg-light);
 }
 
-.danger-button {
-  padding: var(--spacing-sm) var(--spacing-md);
-  background: rgba(244, 67, 54, 0.1);
-  border: 1px solid rgba(244, 67, 54, 0.3);
-  color: rgb(244, 67, 54);
-  border-radius: var(--radius-sm);
-  font-size: 0.9rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all var(--transition-fast);
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-xs);
-}
-
-.danger-button:hover {
-  background: rgba(244, 67, 54, 0.2);
-  transform: translateY(-1px);
-}
-
-/* Password change form */
-.password-change-form {
-  padding: var(--spacing-md);
-  background: rgba(255, 255, 255, 0.03);
-  border-radius: var(--radius-md);
-  border: 1px solid var(--glass-border);
-  margin-top: var(--spacing-sm);
-  margin-bottom: var(--spacing-md);
-}
-
-.form-group {
-  margin-bottom: var(--spacing-md);
-}
-
-.form-group label {
-  display: block;
-  font-size: 0.9rem;
-  margin-bottom: var(--spacing-xs);
-  font-weight: 500;
-  color: var(--color-text-secondary);
-}
-
-.form-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: var(--spacing-md);
-  margin-top: var(--spacing-md);
-}
-
-.password-strength {
-  margin-top: var(--spacing-sm);
-}
-
-.strength-label {
-  font-size: 0.8rem;
-  color: var(--color-text-tertiary);
-  margin-bottom: var(--spacing-xs);
-}
-
-.strength-meter {
-  height: 4px;
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: var(--radius-full);
-  overflow: hidden;
-  margin-bottom: var(--spacing-xs);
-}
-
-.strength-value {
-  height: 100%;
-  transition: all var(--transition-fast);
-}
-
-.strength-value.weak {
-  background: #f44336;
-}
-
-.strength-value.medium {
-  background: #ff9800;
-}
-
-.strength-value.good {
-  background: #4caf50;
-}
-
-.strength-value.strong {
-  background: #2196f3;
-}
-
-.strength-text {
-  font-size: 0.8rem;
-  text-align: right;
-}
-
-.strength-text.weak {
-  color: #f44336;
-}
-.strength-text.medium {
-  color: #ff9800;
-}
-.strength-text.good {
-  color: #4caf50;
-}
-.strength-text.strong {
-  color: #2196f3;
-}
-
-/* Connected accounts */
-.connected-accounts {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-sm);
-}
-
-.connection-item {
-  display: flex;
-  align-items: center;
-  padding: var(--spacing-sm) var(--spacing-md);
-  background: rgba(255, 255, 255, 0.03);
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--glass-border);
-}
-
-.connection-item i {
-  font-size: 1.25rem;
-  width: 30px;
-}
-
-.connection-item span {
-  flex: 1;
-}
-
-.connection-button {
-  background: transparent;
-  border: 1px solid var(--glass-border);
-  color: var(--color-text-secondary);
-  padding: var(--spacing-xs) var(--spacing-sm);
-  border-radius: var(--radius-sm);
-  font-size: 0.8rem;
-  cursor: pointer;
-  transition: all var(--transition-fast);
-}
-
-.connection-button:hover {
-  background: rgba(255, 255, 255, 0.05);
-  color: var(--color-text);
-}
-
-/* Subscription card styles */
-.subscription-card {
-  padding: var(--spacing-md);
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: var(--radius-md);
-  border: 1px solid var(--glass-border);
-  margin-bottom: var(--spacing-md);
-}
-
-.subscription-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: var(--spacing-md);
-}
-
-.subscription-plan {
-  font-size: 1.1rem;
-  font-weight: 600;
-  margin: 0;
-  color: var(--color-primary);
-}
-
-.subscription-status {
-  padding: var(--spacing-xs) var(--spacing-sm);
-  border-radius: var(--radius-full);
-  font-size: 0.8rem;
-  font-weight: 500;
-}
-
-.status-active {
-  background: rgba(76, 175, 80, 0.1);
-  color: #4caf50;
-  border: 1px solid rgba(76, 175, 80, 0.3);
-}
-
-.status-canceled {
-  background: rgba(255, 152, 0, 0.1);
-  color: #ff9800;
-  border: 1px solid rgba(255, 152, 0, 0.3);
-}
-
-.status-expired {
-  background: rgba(244, 67, 54, 0.1);
-  color: #f44336;
-  border: 1px solid rgba(244, 67, 54, 0.3);
-}
-
-.subscription-details {
-  margin-bottom: var(--spacing-md);
-}
-
-.subscription-info {
-  font-size: 0.9rem;
-  color: var(--color-text-secondary);
-  margin-bottom: var(--spacing-sm);
-}
-
-.subscription-features {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-xs);
-}
-
-.feature-item {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-sm);
-  font-size: 0.9rem;
-}
-
-.feature-item i {
-  color: var(--color-primary);
-}
-
-.subscription-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--spacing-sm);
-}
-
-/* Billing cycle toggle */
-.billing-cycle-toggle {
-  margin-top: var(--spacing-sm);
-}
-
-.toggle-container {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-md);
-  margin-top: var(--spacing-xs);
-}
-
-.toggle-container span {
+.settings-description {
+  margin-top: 0.5rem;
   font-size: 0.9rem;
   color: var(--color-text-secondary);
 }
 
-.toggle-container span.active {
-  color: var(--color-text);
-  font-weight: 500;
-}
-
-.discount {
-  font-size: 0.75rem;
-  background: rgba(76, 175, 80, 0.1);
-  color: #4caf50;
-  padding: 2px 6px;
-  border-radius: var(--radius-full);
-  margin-left: var(--spacing-xs);
-}
-
-.toggle {
-  position: relative;
-  display: inline-block;
-  width: 50px;
-  height: 24px;
-}
-
-.toggle input {
-  opacity: 0;
-  width: 0;
-  height: 0;
-}
-
-.toggle-slider {
-  position: absolute;
-  cursor: pointer;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(255, 255, 255, 0.1);
-  border: 1px solid var(--glass-border);
-  border-radius: 34px;
-  transition: 0.4s;
-}
-
-.toggle-slider:before {
-  position: absolute;
-  content: "";
-  height: 16px;
-  width: 16px;
-  left: 4px;
-  bottom: 3px;
-  background-color: var(--color-text);
-  border-radius: 50%;
-  transition: 0.4s;
-}
-
-input:checked + .toggle-slider {
-  background-color: rgba(var(--color-primary-rgb), 0.5);
-}
-
-input:checked + .toggle-slider:before {
-  transform: translateX(26px);
-  background-color: var(--color-primary);
-}
-
-@media (max-width: 640px) {
-  .settings-container {
-    padding: var(--spacing-md);
-  }
-
-  .settings-header {
-    padding: var(--spacing-md) var(--spacing-md);
+@media (max-width: 768px) {
+  .settings-view {
+    padding: 1rem;
   }
 
   .settings-content {
-    padding: var(--spacing-md);
+    padding: 1.5rem;
   }
 
   .profile-summary {
     flex-direction: column;
-    text-align: center;
-  }
-
-  .input-with-button {
-    flex-direction: column;
-  }
-
-  .subscription-header {
-    flex-direction: column;
     align-items: flex-start;
-    gap: var(--spacing-sm);
   }
 
-  .subscription-actions {
-    flex-direction: column;
+  .profile-avatar {
+    margin-bottom: 1rem;
+    margin-right: 0;
   }
 }
 </style>

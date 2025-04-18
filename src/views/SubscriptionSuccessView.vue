@@ -15,7 +15,7 @@
           priority support, and advanced customization tools.
         </p>
         <div class="success-actions">
-          <router-link to="/" class="btn btn-primary btn-lg">
+          <router-link to="dashboard" class="btn btn-primary btn-lg">
             <span>Go to Dashboard</span>
             <i class="icon-arrow-right"></i>
           </router-link>
@@ -26,7 +26,7 @@
 </template>
 
 <script setup lang="ts">
-// We'll enhance this later to update the user's subscription in the database
+// This is a simple success page for subscription confirmation
 </script>
 
 <style scoped>
