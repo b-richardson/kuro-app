@@ -8,6 +8,7 @@ import {
   signIn,
   signUp,
   signOut,
+  exchangeCodeForSession,
   resetPassword as resetPasswordService,
   updateUser,
   signInWithOAuth as signInWithOAuthService,
@@ -234,6 +235,27 @@ export const useAuthStore = defineStore("auth", () => {
     }
   };
 
+  const handleMagicLinkOrPasswordRecovery = async (
+    code: string
+  ): Promise<boolean> => {
+    try {
+      const { error } = await exchangeCodeForSession(code);
+      if (error) {
+        console.error("Exchange code error:", error.message);
+        return false;
+      }
+
+      const { data } = await getSession(); // Refresh the local session
+      session.value = data.session;
+      user.value = data.session?.user || null;
+
+      return true;
+    } catch (err) {
+      console.error("Unexpected error handling magic link:", err);
+      return false;
+    }
+  };
+
   return {
     // State
     user,
@@ -255,5 +277,6 @@ export const useAuthStore = defineStore("auth", () => {
     updatePassword,
     checkAuth,
     signInWithOAuth,
+    handleMagicLinkOrPasswordRecovery,
   };
 });

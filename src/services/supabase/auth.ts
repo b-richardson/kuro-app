@@ -80,7 +80,7 @@ export const updateUser = async (attributes: {
  */
 export const resetPassword = async (email: string) => {
   return await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: `${window.location.origin}/reset-password?update=true`,
+    redirectTo: `${window.location.origin}/login?type=reset-password&update=true`,
   });
 };
 
@@ -109,4 +109,11 @@ export const onAuthStateChange = (
  */
 export const refreshSession = async () => {
   return await supabase.auth.refreshSession();
+};
+
+/**
+ * Handle magic link or password recovery link by exchanging code for session.
+ */
+export const exchangeCodeForSession = async (code: string) => {
+  return await supabase.auth.exchangeCodeForSession(code);
 };

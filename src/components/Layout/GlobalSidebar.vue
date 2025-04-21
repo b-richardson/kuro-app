@@ -1,10 +1,10 @@
 <template>
-  <div class="global-sidebar" :class="{ show: uiStore.isSidebarOpen }">
+  <div class="global-sidebar">
     <!-- App header with logo -->
     <div class="sidebar-header">
       <div class="app-logo-container">
         <div class="app-logo">
-          <i class="fas fa-file-alt"></i>
+          <img src="@/assets/kuro-icon-mark.png" alt="Kuro" class="logo-icon" />
         </div>
         <h1 class="app-title">Kuro</h1>
       </div>

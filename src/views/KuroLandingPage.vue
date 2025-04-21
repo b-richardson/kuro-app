@@ -5,7 +5,11 @@
       <nav class="app-header" :class="{ scrolled: isScrolled }">
         <div class="container">
           <router-link to="/" class="logo">
-            <img src="@/assets/kuro-logo.png" alt="Kuro" class="logo-icon" />
+            <img
+              src="@/assets/kuro-icon-mark.png"
+              alt="Kuro"
+              class="logo-icon"
+            />
             <span class="logo-text">Kuro</span>
           </router-link>
 
@@ -691,12 +695,12 @@ const userTypes = ref<UserType[]>([
     description:
       "Create sophisticated templates and workflows that use Templater and Dataview features without ever touching a line of code.",
   },
-  {
-    icon: "fas fa-clock", // Represents productivity and time management, fitting for "Productivity Enthusiasts"
-    title: "Productivity Enthusiasts",
-    description:
-      "Build consistent journaling, task management, and note-taking systems that work exactly how you need them to.",
-  },
+  // {
+  //   icon: "fas fa-clock", // Represents productivity and time management, fitting for "Productivity Enthusiasts"
+  //   title: "Productivity Enthusiasts",
+  //   description:
+  //     "Build consistent journaling, task management, and note-taking systems that work exactly how you need them to.",
+  // },
   {
     icon: "fas fa-bug", // Represents frustration, debugging, and overcoming challenges, perfect for "Syntax-Frustrated Users"
     title: "Syntax-Frustrated Users",
@@ -706,14 +710,15 @@ const userTypes = ref<UserType[]>([
 ]);
 
 const useCases = ref<UseCase[]>([
-  { title: "Daily Notes", icon: "daily" },
-  { title: "Journals", icon: "journal" },
-  { title: "Meeting Notes", icon: "meeting" },
-  { title: "Project Templates", icon: "project" },
-  { title: "Study Notes", icon: "study" },
-  { title: "Task Dashboards", icon: "dashboard" },
-  { title: "Database Records", icon: "database" },
-  { title: "Weekly Reviews", icon: "weekly" },
+  { title: "Daily Notes", icon: "fas fa-clipboard-list" },
+  { title: "Journals", icon: "fas fa-feather-alt" },
+  { title: "Meeting Notes", icon: "fas fa-comments" },
+  { title: "Project Templates", icon: "fas fa-shapes" },
+  { title: "Study Notes", icon: "fas fa-brain" },
+  { title: "Habit Trackers", icon: "fas fa-calendar-check" },
+  { title: "Reading Trackers", icon: "fas fa-book-open" },
+  { title: "Recipe Collections", icon: "fas fa-utensils" },
+  { title: "Research Notes", icon: "fas fa-book" },
 ]);
 
 // Testimonials section
@@ -2163,7 +2168,6 @@ section {
 .footer-links {
   flex: 1 1 60%;
   display: flex;
-  flex-wrap: wrap;
   gap: var(--spacing-lg);
 }
 
