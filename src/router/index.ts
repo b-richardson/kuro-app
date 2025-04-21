@@ -15,6 +15,7 @@ import SubscriptionSuccessView from "@/views/SubscriptionSuccessView.vue";
 import SubscriptionCancelView from "@/views/SubscriptionCancelView.vue";
 import SubscribePageView from "@/views/SubscribePageView.vue";
 import MagicLinkHandler from "@/views/MagicLinkView.vue";
+import EarlyAccessLandingPage from "@/views/EarlyAccessLandingPage.vue";
 
 // Authenticated views
 import DashboardView from "@/views/DashboardView.vue";
@@ -41,6 +42,12 @@ const routes: RouteRecordRaw[] = [
     path: "/landing",
     name: "landing",
     component: LandingPage,
+    meta: { requiresAuth: false, hideSidebar: true },
+  },
+  {
+    path: "/early-access",
+    name: "early-access",
+    component: EarlyAccessLandingPage,
     meta: { requiresAuth: false, hideSidebar: true },
   },
   {

@@ -51,7 +51,6 @@
         <div class="container">
           <div class="hero-image">
             <img
-              src="@/assets/hero-screenshot.png"
               alt="Kuro Obsidian Template Builder Interface"
               class="preview-image"
             />
@@ -169,10 +168,11 @@
               <transition name="fade" mode="out-in">
                 <div :key="activeTab" class="workflow-screen">
                   <img
-                    :src="'/images/workflow-' + tabs[activeTab].icon + '.webp'"
+                    :src="`/assets/workflow/${tabs[activeTab].gif}`"
                     :alt="tabs[activeTab].name"
                     class="workflow-image"
                   />
+
                   <div class="workflow-caption">
                     <h4>{{ workflowCaptions[activeTab].title }}</h4>
                     <p>{{ workflowCaptions[activeTab].description }}</p>
@@ -616,6 +616,7 @@ interface WorkflowStep {
 interface WorkflowTab {
   name: string;
   icon: string;
+  gif?: string; // Optional property for GIFs
 }
 
 interface WorkflowCaption {
@@ -645,9 +646,9 @@ const workflowSteps = ref<WorkflowStep[]>([
 ]);
 
 const tabs = ref<WorkflowTab[]>([
-  { name: "Select", icon: "fas fa-puzzle-piece" }, // Matches the "Select Modules" phase with its modular representation.
-  { name: "Configure", icon: "fas fa-sliders-h" }, // Matches the "Configure Visually" phase with its control/configuration symbol.
-  { name: "Export", icon: "fas fa-file-export" }, // Matches the "Export to Vault" phase with the export functionality.
+  { name: "Select", icon: "fas fa-puzzle-piece", gif: "Configure.gif" },
+  { name: "Configure", icon: "fas fa-sliders-h", gif: "configure.gif" },
+  { name: "Export", icon: "fas fa-file-export", gif: "Configure.gif" },
 ]);
 
 const workflowCaptions = ref<WorkflowCaption[]>([
