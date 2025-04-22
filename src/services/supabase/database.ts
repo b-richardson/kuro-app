@@ -84,7 +84,7 @@ export async function syncTemplateWithSupabase(
   }
 
   try {
-    // First, save the template itself
+    // Save the template itself
     const { data: templateData, error: templateError } = await supabase
       .from("templates")
       .upsert(
@@ -106,7 +106,7 @@ export async function syncTemplateWithSupabase(
       return { success: false, error: templateError };
     }
 
-    // Delete existing modules for this template to avoid orphaned modules
+    // Delete existing modules for this template
     const { error: deleteError } = await supabase
       .from("template_modules")
       .delete()
@@ -117,7 +117,7 @@ export async function syncTemplateWithSupabase(
       return { success: false, error: deleteError };
     }
 
-    // Then insert all modules with their current order
+    // Insert updated modules
     const moduleInserts = template.modules.map((module, index) => ({
       id: module.id,
       template_id: template.id,
@@ -139,34 +139,6 @@ export async function syncTemplateWithSupabase(
       return { success: false, error: modulesError };
     }
 
-    // Now handle tags - first remove existing tags
-    const { error: deleteTagsError } = await supabase
-      .from("template_tags")
-      .delete()
-      .eq("template_id", template.id);
-
-    if (deleteTagsError) {
-      console.error("Error removing existing tags:", deleteTagsError);
-      return { success: false, error: deleteTagsError };
-    }
-
-    // Then insert all current tags
-    if (template.tags && template.tags.length > 0) {
-      const tagInserts = template.tags.map((tag) => ({
-        template_id: template.id,
-        tag: tag,
-      }));
-
-      const { error: tagsError } = await supabase
-        .from("template_tags")
-        .upsert(tagInserts);
-
-      if (tagsError) {
-        console.error("Error syncing tags:", tagsError);
-        return { success: false, error: tagsError };
-      }
-    }
-
     return { success: true, data: templateData };
   } catch (error) {
     console.error("Error in syncTemplateWithSupabase:", error);
@@ -183,7 +155,7 @@ export async function loadTemplatesFromSupabase(userId: string) {
   }
 
   try {
-    // Fetch templates
+    // Fetch templates for the user
     const { data: templateData, error: templateError } = await supabase
       .from("templates")
       .select("*")
@@ -195,9 +167,8 @@ export async function loadTemplatesFromSupabase(userId: string) {
 
     const templates: Template[] = [];
 
-    // For each template, fetch its modules and tags
     for (const template of templateData) {
-      // Fetch modules
+      // Fetch associated modules
       const { data: moduleData, error: moduleError } = await supabase
         .from("template_modules")
         .select("*")
@@ -212,21 +183,7 @@ export async function loadTemplatesFromSupabase(userId: string) {
         continue;
       }
 
-      // Fetch tags
-      const { data: tagData, error: tagError } = await supabase
-        .from("template_tags")
-        .select("tag")
-        .eq("template_id", template.id);
-
-      if (tagError) {
-        console.error(
-          `Error fetching tags for template ${template.id}:`,
-          tagError
-        );
-        continue;
-      }
-
-      // Convert to our app's Template format
+      // Format into our Template shape
       const formattedTemplate: Template = {
         id: template.id,
         name: template.name,
@@ -238,7 +195,7 @@ export async function loadTemplatesFromSupabase(userId: string) {
           pluginType: module.plugin_type as any,
           metadata: module.metadata || undefined,
         })),
-        tags: tagData.map((t) => t.tag),
+        tags: [], // Tags support removed
         lastModified: new Date(template.last_modified).getTime(),
         createdAt: new Date(template.created_at).getTime(),
         isPublic: template.is_public || false,

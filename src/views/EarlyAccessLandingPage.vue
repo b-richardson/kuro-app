@@ -730,6 +730,18 @@ const userTypes = ref<UserType[]>([
     description:
       "Ditch code errors with visual editing and live previews that just work.",
   },
+  {
+    icon: "fas fa-lightbulb",
+    title: "Idea Stackers",
+    description:
+      "Love playing with structure, prompts, and workflows? Kuro makes it easy to iterate your templates till it *clicks*.",
+  },
+  {
+    icon: "fas fa-magic",
+    title: "Visual Thinkers",
+    description:
+      "Kuro lets you shape your note logic like building LEGO. Create smart, reusable templates in seconds.",
+  },
 ]);
 
 const useCases = ref<UseCase[]>([

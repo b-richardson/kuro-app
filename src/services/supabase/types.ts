@@ -74,20 +74,6 @@ export interface Database {
           last_modified?: string | null;
         };
       };
-      template_tags: {
-        Row: {
-          template_id: string;
-          tag: string;
-        };
-        Insert: {
-          template_id: string;
-          tag: string;
-        };
-        Update: {
-          template_id?: string;
-          tag?: string;
-        };
-      };
     };
     Views: {
       [_ in never]: never;
