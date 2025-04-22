@@ -1,9 +1,4 @@
-import {
-  createRouter,
-  createWebHistory,
-  RouteLocationNormalized,
-  RouteRecordRaw,
-} from "vue-router";
+import { createRouter, createWebHistory, RouteRecordRaw } from "vue-router";
 import { useAuthStore } from "@/stores/auth";
 
 // Public views
@@ -23,7 +18,6 @@ import MyTemplatesView from "@/views/MyTemplatesView.vue";
 import EditorView from "@/views/EditorView.vue";
 import SettingsView from "@/views/SettingsView.vue";
 import ObsidianOnboarding from "@/views/ObsidianOnboarding.vue";
-import ObsidianExplorer from "@/views/ObsidianExplorer.vue";
 import TemplateBrowserView from "@/views/TemplateBrowserView.vue";
 
 // Optional non-auth utility
@@ -128,12 +122,6 @@ const routes: RouteRecordRaw[] = [
     path: "/obsidian-connect",
     name: "obsidian-connect",
     component: ObsidianOnboarding,
-    meta: { requiresAuth: true },
-  },
-  {
-    path: "/obsidian-explorer",
-    name: "obsidian-explorer",
-    component: ObsidianExplorer,
     meta: { requiresAuth: true },
   },
   {

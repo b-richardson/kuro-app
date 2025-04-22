@@ -27,7 +27,9 @@
         <textarea
           class="text-editor__input"
           :value="module.content[0]"
-          @input="updateTextContent($event.target.value)"
+          @input="
+            updateTextContent(($event.target as HTMLTextAreaElement).value)
+          "
           @focus="setEditing(true)"
           @blur="setEditing(false)"
           placeholder="Enter text..."

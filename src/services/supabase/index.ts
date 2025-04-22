@@ -35,7 +35,6 @@ const STORAGE_KEY = "obsidian-template-creator-auth";
  * - persistSession: Maintains the session across page reloads
  * - detectSessionInUrl: Handles OAuth redirects automatically
  * - storage: Uses browser's localStorage for session persistence
- * - asyncStorage: false for better refresh reliability
  */
 export const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
   auth: {
@@ -46,7 +45,6 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
     storageKey: STORAGE_KEY,
     flowType: "pkce",
     debug: import.meta.env.DEV, // Enable debug logs in development
-    asyncStorage: false, // Use synchronous storage for reliability
   },
   // Global database schema
   db: {
@@ -58,12 +56,14 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
       "X-Client-Info": "obsidian-template-creator",
     },
     fetch: (url, options) => {
-      // Add a more reasonable timeout for auth requests
-      const timeoutPromise = new Promise((_, reject) =>
+      const timeoutPromise = new Promise<never>((_, reject) =>
         setTimeout(() => reject(new Error("Request timeout")), 30000)
       );
 
-      return Promise.race([fetch(url, options), timeoutPromise]);
+      return Promise.race([
+        fetch(url, options),
+        timeoutPromise,
+      ]) as Promise<Response>;
     },
   },
 });

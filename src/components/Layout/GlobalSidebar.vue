@@ -65,7 +65,7 @@
       >
         <div class="user-avatar-wrapper">
           <div class="user-avatar">
-            {{ getInitials(authStore.user.name) }}
+            {{ getInitials(authStore.user?.email || "") }}
           </div>
           <div
             v-if="obsidianStore.isConnected"
@@ -74,7 +74,7 @@
           ></div>
         </div>
         <div class="user-info">
-          <div class="user-name">{{ authStore.user.name }}</div>
+          <div class="user-name">Placeholder for User Name</div>
           <div class="user-action">
             <span>Account Settings</span>
             <i class="fas fa-chevron-right"></i>
@@ -107,16 +107,6 @@
         </button>
       </div>
     </div>
-
-    <!-- Mobile close button -->
-    <button
-      class="mobile-close-button"
-      v-if="uiStore.isMobile"
-      @click="uiStore.toggleSidebar"
-      aria-label="Close sidebar"
-    >
-      <i class="fas fa-times"></i>
-    </button>
   </div>
 </template>
 
@@ -155,13 +145,12 @@ const currentRoute = computed(() => {
 });
 
 // Handlers
-const getInitials = (name: string) => {
-  if (!name) return "";
-  return name
-    .split(" ")
-    .map((part) => part[0])
-    .join("")
-    .toUpperCase();
+const getInitials = (email: string) => {
+  if (!email) return "";
+
+  // Get initials from email (first letter of username)
+  const username = email.split("@")[0];
+  return username.charAt(0).toUpperCase();
 };
 
 const logout = () => {

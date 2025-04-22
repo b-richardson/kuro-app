@@ -17,8 +17,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from "vue";
 import ModuleCard from "./ModuleCard.vue";
+import type { ModuleType } from "@/types/TemplateModule";
 import {
   generateDefaultContent,
   getModuleIcon,
@@ -34,43 +34,40 @@ const props = defineProps({
 });
 
 // Define basic modules with their priorities
-// Note: All basic modules are high priority according to the directive
-const basicModules = [
+const basicModules: {
+  type: ModuleType;
+  title: string;
+  description: string;
+}[] = [
   {
     type: "header",
     title: "Header",
     description: "Add a heading to structure your template",
-    priority: "high",
   },
   {
     type: "text",
     title: "Text Block",
     description: "Add paragraphs of text to your template",
-    priority: "high",
   },
   {
     type: "checklist",
     title: "Checklist",
     description: "Create a list of tasks or items",
-    priority: "high",
   },
   {
     type: "table",
     title: "Table",
     description: "Organize information in rows and columns",
-    priority: "high",
   },
   {
     type: "divider",
     title: "Divider",
     description: "Add a horizontal line to separate content",
-    priority: "high",
   },
   {
     type: "codeBlock",
     title: "Code Block",
     description: "Insert a block of code with syntax highlighting",
-    priority: "high",
   },
 ];
 
@@ -78,7 +75,7 @@ const basicModules = [
 const emit = defineEmits(["add-module"]);
 
 // Function to add a module
-const addModule = (type) => {
+const addModule = (type: ModuleType) => {
   const content = generateDefaultContent(type);
   emit("add-module", {
     id: uuidv4(),

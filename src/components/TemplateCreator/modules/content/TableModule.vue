@@ -32,7 +32,9 @@
               placeholder="Header"
               :ref="
                 (el) => {
-                  if (colIndex === 0 && autoFocus) setFocusRef(el);
+                  if (colIndex === 0 && autoFocus) {
+                    setFocusRef(el as HTMLInputElement);
+                  }
                 }
               "
             />
@@ -332,7 +334,9 @@ watch(
     const grid = tableGrid.value;
     if (grid) {
       // Update for headers row
-      const headerRow = grid.querySelector(".headers-row");
+      const headerRow = grid.querySelector(
+        ".headers-row"
+      ) as HTMLElement | null;
       if (headerRow) {
         headerRow.style.gridTemplateColumns = `repeat(${columnsCount}, 1fr)`;
       }
@@ -340,7 +344,9 @@ watch(
       // Update for all data rows
       const tableRows = grid.querySelectorAll(".table-row");
       tableRows.forEach((row) => {
-        row.style.gridTemplateColumns = `repeat(${columnsCount}, 1fr)`;
+        (
+          row as HTMLElement
+        ).style.gridTemplateColumns = `repeat(${columnsCount}, 1fr)`;
       });
     }
   }

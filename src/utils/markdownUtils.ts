@@ -20,16 +20,22 @@ export function generateMarkdown(modules: TemplateModule[]): string {
   if (!modules || !modules.length) return "";
 
   // First look for YAML front matter to place at the beginning
-  const yamlModule = modules.find((module) => module.type === "yaml");
+  const frontmatterModule = modules.find(
+    (module) => module.type === "frontmatter"
+  );
 
   // Process all other modules (excluding YAML if present)
   const processedModules = modules
-    .filter((module) => (yamlModule ? module !== yamlModule : true))
+    .filter((module) =>
+      frontmatterModule ? module !== frontmatterModule : true
+    )
     .map((module) => processModule(module));
 
   // If there's a YAML module, add it at the beginning
-  if (yamlModule) {
-    return processModule(yamlModule) + "\n\n" + processedModules.join("\n\n");
+  if (frontmatterModule) {
+    return (
+      processModule(frontmatterModule) + "\n\n" + processedModules.join("\n\n")
+    );
   }
 
   // Otherwise just join all modules
@@ -58,8 +64,9 @@ function processModule(module: TemplateModule): string {
     return "---";
   }
 
+  // DOBLE CHECK THIS TO SEE IF THIS IS CAUSING THE BUGS WITH PROPERTIES NOT WORK RIGHT IN OBSIDIAN NATIVE
   // Special handling for YAML or Frontmatter module
-  if (module.type === "yaml" || module.type === "frontmatter") {
+  if (module.type === "frontmatter") {
     const content = [...module.content];
 
     // Make sure the content starts and ends with ---

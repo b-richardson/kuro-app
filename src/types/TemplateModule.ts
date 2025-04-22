@@ -15,8 +15,6 @@ export type ModuleType =
   | "text"
   | "divider"
   | "codeBlock"
-  // Plugin-specific module types
-  | "yaml"
   // Templater plugin modules
   | "templaterField"
   | "templaterDateAndTime"
@@ -26,12 +24,12 @@ export type ModuleType =
   | "templaterValueTransformation"
   | "templaterTemplateVariables"
   // Dataview plugin modules
-  | "dataviewQuery" // Generic/legacy dataview query
-  | "dataviewTableQuery" // Table query
-  | "dataviewListQuery" // List query
-  | "dataviewTaskQuery" // Task query
-  | "dataviewCalendarQuery" // Calendar query
-  | "dataviewInlineFields"; // Inline dataview fields
+  | "dataviewQuery"
+  | "dataviewTableQuery"
+  | "dataviewListQuery"
+  | "dataviewTaskQuery"
+  | "dataviewCalendarQuery"
+  | "dataviewInlineFields";
 
 /**
  * Obsidian plugin types supported by the template creator
@@ -42,6 +40,9 @@ export type PluginType = null | "templater" | "dataview";
  * Generic metadata object type for plugin-specific configuration
  */
 export interface ModuleMetadata {
+  level?: number;
+  columns?: number;
+  delimiter?: string;
   [key: string]: any;
 }
 
@@ -49,18 +50,32 @@ export interface ModuleMetadata {
  * Interface defining the structure of a template module
  */
 export interface TemplateModule {
-  /** Unique identifier for the module */
   id: string;
-
-  /** Type of the module */
   type: ModuleType;
-
-  /** Content of the module as string array */
   content: string[];
-
-  /** Associated plugin type (if applicable) */
   pluginType: PluginType;
-
-  /** Additional metadata for plugin-specific configuration */
   metadata?: ModuleMetadata;
+}
+
+/**
+ * Props expected by components representing individual modules
+ */
+export interface ModuleComponentProps {
+  module: TemplateModule;
+  index: number;
+  modules: TemplateModule[];
+  isSelected?: boolean;
+  autoFocus?: boolean;
+}
+
+/**
+ * Emit events used by module components
+ */
+export interface ModuleComponentEmits {
+  (e: "update:content", content: string[]): void;
+  (e: "update", modules: TemplateModule[]): void;
+  (e: "delete"): void;
+  (e: "select"): void;
+  (e: "duplicate"): void;
+  (e: "module-change"): void;
 }

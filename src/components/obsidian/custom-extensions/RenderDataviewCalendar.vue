@@ -205,63 +205,45 @@ function populateCalendarWithNotes() {
     return;
   }
 
-  console.log("[DataviewCalendar] Populating calendar with notes");
+  const field = calendarDateField.value; // <-- now narrowed to `string`
 
-  // Get all notes from the data store
+  // use `field` instead of `calendarDateField.value` from here on
   const allNotes = Array.from(dataStoreManager.dataStore.getAllNotes());
 
-  // Process each note to find the ones that should appear on the calendar
   allNotes.forEach((noteData) => {
     try {
-      // Extract the date value from the note using the calendar date field
       let dateValue: Date | null = null;
 
-      // Handle different date field paths
-      if (
-        calendarDateField.value === "file.ctime" &&
-        noteData.note.stat?.ctime
-      ) {
+      if (field === "file.ctime" && noteData.note.stat?.ctime) {
         dateValue = new Date(noteData.note.stat.ctime);
-      } else if (
-        calendarDateField.value === "file.mtime" &&
-        noteData.note.stat?.mtime
-      ) {
+      } else if (field === "file.mtime" && noteData.note.stat?.mtime) {
         dateValue = new Date(noteData.note.stat.mtime);
       } else {
-        // For custom date fields, check frontmatter or inline fields
-        const fieldParts = calendarDateField.value.split(".");
+        const fieldParts = field.split(".");
         let value = null;
 
-        // Check in frontmatter
         if (
           noteData.note.frontmatter &&
           fieldParts[0] in noteData.note.frontmatter
         ) {
           value = noteData.note.frontmatter[fieldParts[0]];
-        }
-        // Check in parsed inline fields
-        else if (
+        } else if (
           noteData.parsed?.inlineFields &&
           fieldParts[0] in noteData.parsed.inlineFields
         ) {
           value = noteData.parsed.inlineFields[fieldParts[0]];
         }
 
-        // Parse the date value
         if (value && typeof value === "string") {
           try {
             dateValue = parseISO(value);
-          } catch (e) {
-            // Skip notes with invalid dates
-          }
+          } catch (e) {}
         } else if (value instanceof Date) {
           dateValue = value;
         }
       }
 
-      // If we found a valid date, add this note to the corresponding calendar cell
       if (dateValue && !isNaN(dateValue.getTime())) {
-        // Find the calendar cell for this date
         const cell = calendarCells.value.find((cell) =>
           isSameDay(cell.date, dateValue!)
         );
@@ -273,8 +255,6 @@ function populateCalendarWithNotes() {
       console.error("[DataviewCalendar] Error processing note:", e);
     }
   });
-
-  console.log("[DataviewCalendar] Calendar populated with notes");
 }
 
 // Execute query and update calendar

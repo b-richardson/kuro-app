@@ -137,6 +137,7 @@ import GradientBackground from "@/components/UI/GradientBackground.vue";
 
 const router = useRouter();
 const { email, password, register, auth } = useAuthForm();
+const confirmationRequired = ref(false);
 
 const showPassword = ref(false);
 
@@ -144,12 +145,12 @@ const handleRegister = async () => {
   const result = await register();
 
   if (result.success && result.confirmationRequired) {
+    confirmationRequired.value = true;
     router.push({
       name: "login",
       query: { type: "email-sent", email: email.value },
     });
   } else if (result.success) {
-    // If no confirmation required (rare), send them straight in
     router.push("/dashboard");
   }
 };
