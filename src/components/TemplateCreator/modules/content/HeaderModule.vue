@@ -29,7 +29,9 @@
             <select
               class="header-editor__level-select"
               :value="getHeaderLevel(module.content[0])"
-              @input="updateHeaderLevel($event.target.value)"
+              @input="
+                updateHeaderLevel(($event.target as HTMLSelectElement).value)
+              "
               @focus="setEditing(true)"
               @blur="setEditing(false)"
               ref="headerLevelInput"
@@ -46,7 +48,9 @@
               type="text"
               class="header-editor__text-input"
               :value="getHeaderText(module.content[0])"
-              @input="updateHeaderText($event.target.value)"
+              @input="
+                updateHeaderText(($event.target as HTMLInputElement).value)
+              "
               @focus="setEditing(true)"
               @blur="setEditing(false)"
               placeholder="Header text"

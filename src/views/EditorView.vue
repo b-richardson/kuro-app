@@ -186,7 +186,10 @@
           {{ isLoading ? "Pushing..." : "Push to Vault" }}
         </button>
 
-        <button class="action-button export-button" @click="exportTemplate">
+        <button
+          class="action-button export-button"
+          @click="downloadTemplateAsMarkdown"
+        >
           <i class="fas fa-download"></i> Export
         </button>
       </div>
@@ -603,6 +606,30 @@ const pushToVault = async () => {
     // Clear loading state
     isLoading.value = false;
   }
+};
+
+// Download template as markdown file in browser
+const downloadTemplateAsMarkdown = () => {
+  const markdown = generateMarkdown(templateStore.currentModules);
+
+  const templateTitle =
+    templateStore.currentTemplate?.name || "Untitled Template";
+  const safeFilename = templateTitle
+    .toLowerCase()
+    .replace(/[^\w\s-]/g, "")
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-");
+
+  const blob = new Blob([markdown], { type: "text/markdown;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+
+  link.href = url;
+  link.download = `${safeFilename}.md`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
 };
 
 const markAsModified = () => {

@@ -63,15 +63,15 @@
             type="text"
             class="checklist-editor__item-input"
             :value="getItemText(line)"
-            @input="updateItemText(idx, $event.target.value)"
+            @input="
+              updateItemText(idx, ($event.target as HTMLInputElement).value)
+            "
             @focus="setEditing(true)"
             @blur="setEditing(false)"
             placeholder="Checklist item"
-            :ref="
-              (el) => {
-                if (idx === 0 && autoFocus) setInputRef(el);
-              }
-            "
+            :ref="(el) => {
+              if (idx === 0 && autoFocus) setInputRef(el as HTMLElement);
+            }"
           />
 
           <div class="checklist-editor__item-actions">
@@ -341,7 +341,7 @@ onMounted(() => {
 
 const deleteItem = (index: number) => {
   if (props.module.content.length <= 1) {
-    baseModuleRef.value?.displayToast("Cannot delete the last item", "error");
+    // Optional: show inline message or animation here later
     return;
   }
 

@@ -5,10 +5,7 @@ import { PluginType, ModuleType } from "@/types/TemplateModule";
  * Basic default content for modules - used primarily for UI previews
  * Note: Consider migrating this to specific module components in the future
  */
-export function generateDefaultContent(
-  moduleType: ModuleType,
-  pluginType: PluginType = null
-): string[] {
+export function generateDefaultContent(moduleType: ModuleType): string[] {
   switch (moduleType) {
     // Basic module types
     case "header":

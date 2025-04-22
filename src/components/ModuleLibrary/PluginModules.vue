@@ -44,8 +44,8 @@
 import { ref, computed } from "vue";
 import ModuleCard from "./ModuleCard.vue";
 import { getModuleIcon, getPluginIcon } from "@/utils/pluginTemplatesUtils";
-import { usePresetStore } from "@/stores/presets";
-import { PluginType, TemplateModule } from "@/types/TemplateModule";
+import { usePluginModuleStore } from "@/stores/pluginModules";
+import { PluginType } from "@/types/TemplateModule";
 import { v4 as uuidv4 } from "uuid";
 
 // Props
@@ -57,7 +57,7 @@ const props = defineProps({
 const emit = defineEmits(["add-module", "show-plugin-help"]);
 
 // Store
-const presetStore = usePresetStore();
+const presetStore = usePluginModuleStore();
 
 // Filter relevant modules
 const dataviewModules = computed(() => {

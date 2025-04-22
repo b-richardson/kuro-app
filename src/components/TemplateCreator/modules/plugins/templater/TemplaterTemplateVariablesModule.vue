@@ -138,7 +138,7 @@
               placeholder="frontmatter key (e.g., tags, status)"
             />
             <div class="variable-module__hint">
-              Get a value from the file's YAML frontmatter
+              Get a value from the file's frontmatter
             </div>
           </div>
 

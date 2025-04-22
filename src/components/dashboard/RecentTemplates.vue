@@ -6,33 +6,49 @@
         View All
       </button>
     </div>
-    
+
     <div class="templates-carousel">
       <div class="carousel-container" ref="carouselContainer">
-        <div 
-          v-for="template in recentTemplates" 
-          :key="template.id" 
+        <div
+          v-for="template in recentTemplates"
+          :key="template.id"
           class="template-card glass-card"
         >
           <div class="template-card-content" @click="editTemplate(template.id)">
             <h4 class="template-title">{{ template.name }}</h4>
-            <p class="template-description">{{ template.description || 'No description' }}</p>
-            <p class="template-date">Last modified: {{ formatDate(template.lastModified) }}</p>
+            <p class="template-description">
+              {{ template.description || "No description" }}
+            </p>
+            <p class="template-date">
+              Last modified: {{ formatDate(template.lastModified) }}
+            </p>
           </div>
-          
+
           <div class="template-actions">
-            <button class="template-action" title="Edit Template" @click="editTemplate(template.id)">
+            <button
+              class="template-action"
+              title="Edit Template"
+              @click="editTemplate(template.id)"
+            >
               <i class="fas fa-pencil-alt"></i>
             </button>
-            <button class="template-action" title="Export Template" @click="exportTemplate(template.id)">
+            <button
+              class="template-action"
+              title="Export Template"
+              @click="exportTemplate(template.id)"
+            >
               <i class="fas fa-download"></i>
             </button>
-            <button class="template-action" title="Duplicate Template" @click="duplicateTemplate(template.id)">
+            <button
+              class="template-action"
+              title="Duplicate Template"
+              @click="duplicateTemplate(template.id)"
+            >
               <i class="fas fa-copy"></i>
             </button>
           </div>
         </div>
-        
+
         <!-- Empty state for no templates -->
         <div v-if="recentTemplates.length === 0" class="empty-templates">
           <i class="fas fa-file-alt empty-icon"></i>
@@ -42,19 +58,19 @@
           </button>
         </div>
       </div>
-      
+
       <!-- Navigation arrows -->
-      <button 
-        v-if="recentTemplates.length > 3" 
-        class="carousel-nav carousel-prev" 
+      <button
+        v-if="recentTemplates.length > 3"
+        class="carousel-nav carousel-prev"
         @click="scrollCarousel('left')"
         :disabled="isAtStart"
       >
         <i class="fas fa-chevron-left"></i>
       </button>
-      <button 
-        v-if="recentTemplates.length > 3" 
-        class="carousel-nav carousel-next" 
+      <button
+        v-if="recentTemplates.length > 3"
+        class="carousel-nav carousel-next"
         @click="scrollCarousel('right')"
         :disabled="isAtEnd"
       >
@@ -65,11 +81,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
-import { useRouter } from 'vue-router';
-import { useTemplateStore } from '@/stores/template';
-import { useUIStore } from '@/stores/ui';
-import { useActivityStore } from '@/stores/activity';
+import { ref, computed, onMounted } from "vue";
+import { useRouter } from "vue-router";
+import { useTemplateStore } from "@/stores/template";
+import { useUIStore } from "@/stores/ui";
+import { useActivityStore } from "@/stores/activity";
 
 const router = useRouter();
 const templateStore = useTemplateStore();
@@ -83,34 +99,41 @@ const isAtEnd = ref(false);
 const recentTemplates = computed(() => {
   return templateStore.templates
     .slice()
-    .sort((a, b) => new Date(b.lastModified).getTime() - new Date(a.lastModified).getTime())
+    .sort(
+      (a, b) =>
+        new Date(b.lastModified).getTime() - new Date(a.lastModified).getTime()
+    )
     .slice(0, 10); // Limit to 10 most recent
 });
 
 // Format date for display
 const formatDate = (timestamp: number | string): string => {
-  if (!timestamp) return 'Unknown date';
+  if (!timestamp) return "Unknown date";
   const date = new Date(timestamp);
-  return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+  return date.toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
 };
 
 // Template actions
 const editTemplate = (id: string) => {
-  router.push({ name: 'editor', params: { id } });
+  router.push({ name: "editor", params: { id } });
 };
 
 const exportTemplate = (id: string) => {
   const template = templateStore.templateById(id);
   if (template) {
     // In a real app, this would trigger an export workflow
-    uiStore.showToast(`Exporting "${template.name}" template`, 'info');
-    
+    uiStore.showToast(`Exporting "${template.name}" template`, "info");
+
     // Log activity
     activityStore.addActivity(
-      'export',
+      "export",
       template.id,
       template.name,
-      '1' // Default user ID
+      "1" // Default user ID
     );
   }
 };
@@ -120,68 +143,68 @@ const duplicateTemplate = async (id: string) => {
     const template = templateStore.templateById(id);
     if (template) {
       const newId = await templateStore.duplicateTemplate(id);
-      uiStore.showToast(`Duplicated "${template.name}" template`, 'success');
-      
+      uiStore.showToast(`Duplicated "${template.name}" template`, "success");
+
       // Log activity
       activityStore.addActivity(
-        'duplicate',
+        "duplicate",
         newId,
         `${template.name} (Copy)`,
-        '1' // Default user ID
+        "1" // Default user ID
       );
-      
+
       // Navigate to the new template
-      router.push({ name: 'editor', params: { id: newId } });
+      router.push({ name: "editor", params: { id: newId } });
     }
   } catch (error) {
-    uiStore.showToast(`Error duplicating template: ${error}`, 'error');
+    uiStore.showToast(`Error duplicating template: ${error}`, "error");
   }
 };
 
 const viewAllTemplates = () => {
-  router.push({ name: 'library' });
+  router.push({ name: "library" });
 };
 
-const createNewTemplate = () => {
-  const id = templateStore.createNewTemplate();
-  
+const createNewTemplate = async () => {
+  const id = await templateStore.createNewTemplate();
+
   // Log activity
   activityStore.addActivity(
-    'create',
+    "create",
     id,
-    'Untitled Template',
-    '1' // Default user ID
+    "Untitled Template",
+    "1" // Default user ID
   );
-  
-  router.push({ name: 'editor', params: { id } });
+
+  router.push({ name: "editor", params: { id } });
 };
 
 // Carousel navigation
-const scrollCarousel = (direction: 'left' | 'right') => {
+const scrollCarousel = (direction: "left" | "right") => {
   if (!carouselContainer.value) return;
-  
+
   const scrollAmount = 300; // Adjust based on card width + margin
   const currentScroll = carouselContainer.value.scrollLeft;
-  
-  if (direction === 'left') {
+
+  if (direction === "left") {
     carouselContainer.value.scrollTo({
       left: currentScroll - scrollAmount,
-      behavior: 'smooth'
+      behavior: "smooth",
     });
   } else {
     carouselContainer.value.scrollTo({
       left: currentScroll + scrollAmount,
-      behavior: 'smooth'
+      behavior: "smooth",
     });
   }
-  
+
   // Check scroll position after animation
   setTimeout(updateScrollButtons, 300);
 };
 
 const updateScrollButtons = () => {
   if (!carouselContainer.value) return;
-  
+
   const { scrollLeft, scrollWidth, clientWidth } = carouselContainer.value;
   isAtStart.value = scrollLeft <= 10;
   isAtEnd.value = scrollLeft >= scrollWidth - clientWidth - 10;
@@ -190,10 +213,10 @@ const updateScrollButtons = () => {
 // Initialize carousel and scroll buttons
 onMounted(() => {
   updateScrollButtons();
-  
+
   // Add scroll event listener
   if (carouselContainer.value) {
-    carouselContainer.value.addEventListener('scroll', updateScrollButtons);
+    carouselContainer.value.addEventListener("scroll", updateScrollButtons);
   }
 });
 </script>
@@ -399,7 +422,11 @@ onMounted(() => {
   border-radius: var(--radius-md);
   font-weight: 500;
   cursor: pointer;
-  background: linear-gradient(135deg, var(--color-primary-light), var(--color-primary));
+  background: linear-gradient(
+    135deg,
+    var(--color-primary-light),
+    var(--color-primary)
+  );
   color: white;
   border: none;
   box-shadow: 0 2px 4px rgba(var(--color-primary-rgb), 0.2);

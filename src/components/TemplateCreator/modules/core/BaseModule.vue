@@ -99,18 +99,6 @@
       <slot></slot>
     </div>
 
-    <!-- Toast for feedback messages -->
-    <Transition name="toast">
-      <div
-        v-if="showToast"
-        class="template-module-editor-toast"
-        :class="toastType"
-      >
-        <i :class="toastIcon"></i>
-        {{ toastMessage }}
-      </div>
-    </Transition>
-
     <Transition name="modal">
       <div
         v-if="showDeleteConfirm"
@@ -146,13 +134,11 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, onMounted, watch, nextTick, onUnmounted } from "vue";
-import { ModuleType, TemplateModule, ToastType } from "./moduleTypes";
-import { createToastPlaceholder } from "./moduleUtils";
+import { computed, ref, onMounted, nextTick, onUnmounted } from "vue";
+import { TemplateModule } from "@/types/TemplateModule";
 import {
   getPluginDisplayName,
   getModuleIcon,
-  validatePluginSyntax,
   getPluginIcon,
 } from "@/utils/pluginTemplatesUtils";
 
@@ -184,12 +170,6 @@ const isEditing = ref(false);
 const moduleRef = ref<HTMLElement | null>(null);
 const lastActiveElement = ref<HTMLElement | null>(null);
 
-// Toast feedback state
-const showToast = ref(false);
-const toastMessage = ref("");
-const toastType = ref<ToastType>("info");
-const toastTimeout = ref<ReturnType<typeof setTimeout> | null>(null);
-
 // Focus management
 const firstInputRef = ref<HTMLElement | null>(null);
 
@@ -218,9 +198,6 @@ onMounted(() => {
 // Clean up event listeners
 onUnmounted(() => {
   document.removeEventListener("click", handleOutsideClick);
-  if (toastTimeout.value) {
-    clearTimeout(toastTimeout.value);
-  }
 });
 
 // Handle module selection
@@ -248,37 +225,6 @@ const setEditing = (editing: boolean) => {
     lastActiveElement.value = document.activeElement as HTMLElement;
   }
 };
-
-// Toast management - simplified placeholder implementation
-const displayToast = (message: string, type: ToastType = "info") => {
-  // Use the placeholder function to log toast to console
-  createToastPlaceholder(message, type);
-
-  // For backward compatibility, still update the component state
-  // but this will be removed in the future
-  if (toastTimeout.value) {
-    clearTimeout(toastTimeout.value);
-  }
-
-  toastMessage.value = message;
-  toastType.value = type;
-  showToast.value = true;
-
-  toastTimeout.value = setTimeout(() => {
-    showToast.value = false;
-  }, 3000);
-};
-
-const toastIcon = computed(() => {
-  switch (toastType.value) {
-    case "success":
-      return "fas fa-check-circle";
-    case "error":
-      return "fas fa-exclamation-circle";
-    default:
-      return "fas fa-info-circle";
-  }
-});
 
 // Confirm module deletion
 const confirmDeleteModule = () => {
@@ -343,20 +289,6 @@ const pluginIcon = computed(() => {
 // Validation error handling
 const validationError = ref<string | null>(null);
 
-// Validate plugin syntax when content changes
-watch(
-  () => props.module.content,
-  (newContent) => {
-    if (props.module.pluginType) {
-      const result = validatePluginSyntax(props.module.pluginType, newContent);
-      validationError.value = result.isValid ? null : result.error || null;
-    } else {
-      validationError.value = null;
-    }
-  },
-  { deep: true }
-);
-
 /**
  * Move the module up or down
  * @param direction 'up' or 'down'
@@ -411,7 +343,6 @@ const addContentLine = () => {
 // Expose functions to be used by child components
 defineExpose({
   setEditing,
-  displayToast,
   setInputRef,
 });
 </script>
@@ -582,61 +513,6 @@ defineExpose({
   padding: var(--spacing-md);
 }
 
-/* Toast notification styling */
-.template-module-editor-toast {
-  position: absolute;
-  bottom: 10px;
-  right: 10px;
-  background-color: rgba(255, 255, 255, 0.9);
-  color: #333;
-  padding: 8px 12px;
-  border-radius: var(--radius-sm);
-  font-size: 0.875rem;
-  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.1);
-  z-index: 10;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  max-width: 80%;
-  border-left: 3px solid #64748b;
-}
-
-.template-module-editor-toast.success {
-  border-left-color: #10b981;
-}
-
-.template-module-editor-toast.success i {
-  color: #10b981;
-}
-
-.template-module-editor-toast.error {
-  border-left-color: #ef4444;
-}
-
-.template-module-editor-toast.error i {
-  color: #ef4444;
-}
-
-.template-module-editor-toast.info {
-  border-left-color: #3b82f6;
-}
-
-.template-module-editor-toast.info i {
-  color: #3b82f6;
-}
-
-/* Toast animation */
-.toast-enter-active,
-.toast-leave-active {
-  transition: opacity 0.3s, transform 0.3s;
-}
-
-.toast-enter-from,
-.toast-leave-to {
-  opacity: 0;
-  transform: translateY(10px);
-}
-
 /* Keyboard shortcut hints in tooltips */
 button[title]:hover::after {
   content: attr(title);
@@ -683,10 +559,6 @@ button[title]:hover::after {
 .template-module-editor--divider
   .template-module-editor-action[title="Add line"] {
   display: none;
-}
-
-.template-module-editor--yaml {
-  border-top: 3px solid var(--color-text-muted);
 }
 
 .template-module-editor--templaterField {

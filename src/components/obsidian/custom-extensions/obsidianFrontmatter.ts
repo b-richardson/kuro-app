@@ -3,6 +3,17 @@ import { VueNodeViewRenderer } from "@tiptap/vue-3";
 import { InputRule } from "@tiptap/core";
 import RenderFrontmatter from "./RenderFrontmatter.vue";
 
+interface MarkdownSerializerState {
+  write: (content: string) => void;
+}
+
+interface MarkdownNode {
+  attrs: {
+    yaml?: string;
+    [key: string]: any;
+  };
+}
+
 export const ObsidianFrontmatter = Node.create({
   name: "obsidianFrontmatter",
 
@@ -101,18 +112,14 @@ export const ObsidianFrontmatter = Node.create({
   addStorage() {
     return {
       markdown: {
-        serialize: (state, node) => {
-          // Extract the YAML content without our container markers
+        serialize: (state: MarkdownSerializerState, node: MarkdownNode) => {
           const yaml = node.attrs.yaml || "";
 
-          // Look for the frontmatter content, skipping our container markers
           const match = yaml.match(/---\n([\s\S]*?)---/);
 
           if (match) {
-            // Output clean frontmatter without our container markers
             state.write(`---\n${match[1]}---\n\n`);
           } else {
-            // Fallback if no match
             state.write(yaml);
           }
         },
