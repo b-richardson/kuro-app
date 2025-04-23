@@ -47,7 +47,7 @@
                     v-for="(v, i) in line.valueList"
                     :key="i"
                   >
-                    {{ v }}
+                    {{ stripQuotes(v) }}
                   </span>
                 </template>
                 <template v-else>
@@ -124,11 +124,7 @@ const processFrontmatter = () => {
   try {
     const raw = decodeURIComponent(props.node?.attrs?.yaml || "");
     const stripped = raw.replace(/^---\s*\n/, "").replace(/\n---\s*$/, "");
-    const lines = stripped
-      .split("\n")
-      .filter(
-        (line) => line.trim() && line.trim() !== "---" && line.trim() !== "--"
-      );
+    const lines = stripped.split("\n");
 
     const result: {
       type: "key-value";
@@ -138,25 +134,50 @@ const processFrontmatter = () => {
       valueList: string[];
     }[] = [];
 
-    for (const line of lines) {
+    let i = 0;
+    while (i < lines.length) {
+      const line = lines[i].trim();
+      if (!line || line === "---") {
+        i++;
+        continue;
+      }
+
       const colonIndex = line.indexOf(":");
-      if (colonIndex === -1) continue;
+      if (colonIndex === -1) {
+        i++;
+        continue;
+      }
 
       const key = line.substring(0, colonIndex).trim();
       const rawValue = line.substring(colonIndex + 1).trim();
       const hasTemplater = rawValue.includes("<%") && rawValue.includes("%>");
 
       let value = rawValue;
-      let valueList: string[] = [];
+      const valueList: string[] = [];
 
-      if (!hasTemplater && rawValue.startsWith("[") && rawValue.endsWith("]")) {
+      // Handle block-style lists
+      if (value === "") {
+        let j = i + 1;
+        while (j < lines.length && lines[j].trim().startsWith("-")) {
+          const item = lines[j].trim().replace(/^-/, "").trim();
+          valueList.push(item);
+          j++;
+        }
+        i = j - 1;
+        value = ""; // Clear value if list is detected
+      }
+
+      // Handle inline JSON lists
+      else if (!hasTemplater && value.startsWith("[") && value.endsWith("]")) {
         try {
-          const parsed = JSON.parse(rawValue);
+          const parsed = JSON.parse(value);
           if (Array.isArray(parsed)) {
-            valueList = parsed;
+            valueList.push(...parsed);
             value = "";
           }
-        } catch (e) {}
+        } catch (e) {
+          // fail silently
+        }
       }
 
       result.push({
@@ -166,6 +187,8 @@ const processFrontmatter = () => {
         hasTemplater,
         valueList,
       });
+
+      i++;
     }
 
     formattedLines.value = result;
@@ -174,6 +197,8 @@ const processFrontmatter = () => {
     formattedLines.value = [];
   }
 };
+
+const stripQuotes = (str: string) => str.replace(/^["'](.*)["']$/, "$1");
 
 onMounted(() => {
   processFrontmatter();

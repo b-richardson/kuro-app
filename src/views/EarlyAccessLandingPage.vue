@@ -51,6 +51,7 @@
         <div class="container">
           <div class="hero-image">
             <img
+              src="/Screenshot 2025-04-21 at 8.23.19 AM.png"
               alt="Kuro Obsidian Template Builder Interface"
               class="preview-image"
             />

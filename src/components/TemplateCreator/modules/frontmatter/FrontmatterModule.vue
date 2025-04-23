@@ -956,6 +956,7 @@ function generateFrontmatter() {
   // This replaces the quoted Templater syntax with unquoted syntax
   yamlString = yamlString.replace(/"<%(.*?)%>"/g, "<$1>");
   console.log("Final YAML with Templater tags processed:", yamlString);
+  console.log("📄 YAML before return (no extra --- added later):", yamlString);
 
   // Just return the frontmatter without container markers - let the extension handle it
   return `---\n${yamlString}---\n`;
@@ -970,7 +971,10 @@ function updateFrontmatter() {
 
   const frontmatter = generateFrontmatter();
   // Add this console log to see the generated frontmatter
-  console.log("Generated Frontmatter:", frontmatter);
+  console.log(
+    "Generated Frontmatter from updateFrontmatter function:",
+    frontmatter
+  );
   emit("update:content", [frontmatter]);
 }
 

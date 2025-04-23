@@ -47,12 +47,20 @@ export const useDataStoreManager = defineStore("dataStoreManager", {
 
         // Start with a smaller batch for faster initial loading
         // We'll limit it to 20 files to avoid performance issues during development
-        const initialBatch = markdownFiles.slice(0, 20);
+        // const initialBatch = markdownFiles.slice(0, 20);
+
+        // For production, we can load all files at once
+        const initialBatch = markdownFiles;
+
         const totalFiles = initialBatch.length;
 
         let loadedCount = 0;
 
+        // Tracking the time taken for initialization
+        console.time("DataStoreManager: Total initialization time");
+
         // Process each file
+
         for (const filePath of initialBatch) {
           try {
             // Get the note JSON with metadata and content
@@ -87,6 +95,9 @@ export const useDataStoreManager = defineStore("dataStoreManager", {
             // Continue with other files even if one fails
           }
         }
+
+        // Tracking the end time for initialization
+        console.timeEnd("DataStoreManager: Total initialization time");
 
         this.isInitialized = true;
         console.log(

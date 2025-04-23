@@ -297,8 +297,6 @@ const templateDescription = computed({
   },
 });
 
-// Helper functions - export profile handling no longer needed
-
 // UI Interaction methods
 const toggleSidebar = () => {
   isSidebarCollapsed.value = !isSidebarCollapsed.value;
@@ -309,18 +307,10 @@ const toggleViewModeMenu = () => {
   if (showViewModeMenu.value) showProfileMenu.value = false;
 };
 
-// Export profile menu no longer needed
-
-// Plugin menu toggle is no longer needed with ObsidianEditor
-
 const setViewMode = (mode: ViewMode) => {
   currentViewMode.value = mode;
   showViewModeMenu.value = false;
 };
-
-// Export profile setter no longer needed
-
-// Plugin syntax toggles are no longer needed with ObsidianEditor
 
 const setMobileView = (view: string) => {
   mobileView.value = view;
@@ -507,14 +497,6 @@ const saveTemplate = async () => {
       autoSaving.value = false;
     }
   }
-};
-
-/**
- * Export template functionality
- */
-const exportTemplate = () => {
-  // Will be implemented later
-  uiStore.showToast("Export functionality will be implemented soon", "info");
 };
 
 /**

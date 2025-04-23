@@ -64,25 +64,10 @@ function processModule(module: TemplateModule): string {
     return "---";
   }
 
-  // DOBLE CHECK THIS TO SEE IF THIS IS CAUSING THE BUGS WITH PROPERTIES NOT WORK RIGHT IN OBSIDIAN NATIVE
+  // DOBLE CHECK THIS TO SEE IF THIS IS CAUSING THE BUGS WITH PROPERTIES/FRONTMATTER NOT WORK RIGHT IN OBSIDIAN NATIVE
   // Special handling for YAML or Frontmatter module
   if (module.type === "frontmatter") {
-    const content = [...module.content];
-
-    // Make sure the content starts and ends with ---
-    if (content.length > 0 && content[0].trim() !== "---") {
-      content.unshift("---");
-    }
-    if (content.length > 0 && content[content.length - 1].trim() !== "---") {
-      content.push("---");
-    }
-
-    // If it's empty or only has delimiters, add a placeholder
-    if (content.length <= 2) {
-      content.splice(1, 0, "title: Untitled");
-    }
-
-    return content.join("\n");
+    return module.content.join("\n");
   }
 
   // Handle all other module types (including plugin modules)
