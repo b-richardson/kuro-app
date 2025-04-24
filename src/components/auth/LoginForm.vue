@@ -1,5 +1,5 @@
 <template>
-  <div class="auth-container">
+  <div class="login-form-wrapper">
     <div class="auth-card">
       <div class="auth-header">
         <h2 class="auth-title">Welcome Back to Kuro</h2>
@@ -162,73 +162,79 @@ const handle = async (type: "email" | "oauth", provider?: OAuthProvider) => {
 </script>
 
 <style scoped>
-.auth-container {
+.login-form-wrapper {
   display: flex;
-  flex-wrap: wrap;
-  max-width: 1000px;
-  margin: 0 auto;
+  height: 100%;
+  width: 100%;
   background: var(--color-surface);
   border-radius: 1.5rem;
-  overflow: hidden;
   border: 1px solid var(--color-border);
-  height: 100%;
+  overflow: hidden;
+  font-size: 80%;
 }
 
 .auth-card {
   flex: 1;
-  padding: 1.5rem;
-  max-width: 100%;
+  padding: 3rem;
+  display: flex;
+  flex-direction: column;
 }
 
 .auth-header {
   text-align: center;
-  margin-bottom: 1.5rem;
+  margin-bottom: 0.8rem;
 }
+
 .auth-title {
-  font-size: 1.375rem;
-  margin-bottom: 0.5rem;
+  font-size: 1.2rem;
+  margin-bottom: 0.3rem;
 }
+
 .auth-subtitle {
-  font-size: 0.9375rem;
+  font-size: 0.8rem;
   color: var(--color-text-light);
 }
 
 .oauth-section {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
-  margin-bottom: 1.25rem;
+  gap: 0.3rem;
+  margin-bottom: 0.8rem;
 }
+
 .oauth-btn {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.75rem;
-  border-radius: 0.5rem;
+  gap: 0.4rem;
+  padding: 0.5rem;
+  border-radius: 0.4rem;
   font-weight: 500;
   cursor: pointer;
   border: 1px solid var(--color-border);
   background: var(--color-surface-dark);
   color: var(--color-text);
   justify-content: center;
-  font-size: 0.9375rem;
+  font-size: 0.8rem;
 }
+
 .oauth-btn:hover {
   background: var(--color-surface);
 }
+
 .oauth-icon {
-  font-size: 1.125rem;
+  font-size: 0.9rem;
 }
 
 .divider {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: 0.5rem;
   text-align: center;
-  margin: 1.25rem 0;
-  font-size: 0.8125rem;
+  margin: 0.7rem 0;
+  font-size: 0.7rem;
   color: var(--color-text-light);
 }
+
 .divider::before,
 .divider::after {
   content: "";
@@ -237,71 +243,71 @@ const handle = async (type: "email" | "oauth", provider?: OAuthProvider) => {
   background: var(--color-border);
 }
 
-.divider::before {
-  left: 0;
-}
-.divider::after {
-  right: 0;
-}
-
 .auth-form {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 0.6rem;
 }
 
 .form-group {
   display: flex;
   flex-direction: column;
 }
+
 .label-row {
   display: flex;
   justify-content: space-between;
 }
+
 .input-wrapper {
   position: relative;
 }
+
 .input-wrapper i {
   position: absolute;
   top: 50%;
-  left: 0.75rem;
+  left: 0.6rem;
   transform: translateY(-50%);
   color: var(--color-text-light);
-  font-size: 0.875rem;
+  font-size: 0.7rem;
   z-index: 2;
 }
+
 input {
   width: 100%;
-  padding: 0.625rem 2.5rem 0.625rem 2.25rem; /* LEFT for icon, RIGHT for eye */
+  padding: 0.4rem 2rem 0.4rem 1.8rem;
   border: 1px solid var(--color-border);
   background: var(--color-surface-dark);
-  border-radius: 0.5rem;
+  border-radius: 0.4rem;
   color: var(--color-text);
-  font-size: 0.9375rem;
+  font-size: 0.8rem;
   position: relative;
   transition: border-color 0.2s ease;
 }
+
 input:focus {
   outline: none;
   border-color: var(--color-primary);
-  background: var(--color-surface-dark); /* Prevent color change */
-  color: var(--color-text); /* Prevent turning white */
+  background: var(--color-surface-dark);
+  color: var(--color-text);
 }
+
 input:-webkit-autofill {
   box-shadow: 0 0 0px 1000px var(--color-surface-dark) inset !important;
   -webkit-text-fill-color: var(--color-text) !important;
   transition: background-color 9999s ease-in-out 0s;
 }
+
 .toggle-password {
   position: absolute;
-  right: 0.75rem; /* keep a small right margin */
+  right: 0.6rem;
   top: 50%;
   transform: translateY(-50%);
   background: none;
   border: none;
   color: var(--color-text-light);
   cursor: pointer;
-  font-size: 1rem;
+  font-size: 0.8rem;
   padding: 0;
   line-height: 1;
   z-index: 2;
@@ -310,43 +316,44 @@ input:-webkit-autofill {
   justify-content: center;
   height: 100%;
 }
+
 .error-message {
   color: #e53935;
-  font-size: 0.75rem;
-  margin-top: 0.25rem;
-}
-.forgot-link {
-  font-size: 0.75rem;
-  color: var(--color-primary);
+  font-size: 0.65rem;
+  margin-top: 0.2rem;
 }
 
-.remember-me {
-  font-size: 0.8125rem;
-  color: var(--color-text-light);
+.forgot-link {
+  font-size: 0.65rem;
+  color: var(--color-primary);
 }
 
 .submit-btn {
   background: var(--color-primary);
   color: white;
   border: none;
-  border-radius: 0.5rem;
-  padding: 0.75rem;
+  border-radius: 0.4rem;
+  padding: 0.5rem;
   font-weight: 600;
-  font-size: 0.9375rem;
+  font-size: 0.8rem;
   cursor: pointer;
+  margin-top: 0.4rem;
 }
+
 .submit-btn:disabled {
   opacity: 0.7;
   cursor: not-allowed;
 }
+
 .loading-spinner {
-  width: 1.25rem;
-  height: 1.25rem;
+  width: 1rem;
+  height: 1rem;
   border: 2px solid rgba(255, 255, 255, 0.3);
   border-radius: 50%;
   border-top-color: white;
   animation: spin 1s linear infinite;
 }
+
 @keyframes spin {
   to {
     transform: rotate(360deg);
@@ -355,18 +362,19 @@ input:-webkit-autofill {
 
 .auth-footer {
   text-align: center;
-  margin-top: 1.5rem;
-  font-size: 0.8125rem;
+  margin-top: 0.7rem;
+  font-size: 0.7rem;
   color: var(--color-text-light);
 }
+
 .signup-link {
   color: var(--color-primary);
 }
 
 .terms-privacy {
-  font-size: 0.75rem;
+  font-size: 0.65rem;
   text-align: center;
-  margin-top: 1.25rem;
+  margin-top: 0.7rem;
   color: var(--color-text-light);
 }
 
@@ -382,9 +390,9 @@ input:-webkit-autofill {
   z-index: 1;
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
+  gap: 3rem;
   justify-content: center;
-  padding: 1.5rem;
+  padding: 3rem;
   height: 100%;
 }
 
@@ -400,16 +408,21 @@ input:-webkit-autofill {
 
 .benefit-item {
   display: flex;
-  gap: 0.75rem;
+  gap: 1rem;
 }
+
 .benefit-item i {
-  font-size: 1.25rem;
+  font-size: 2rem;
 }
+
 .benefit-item h3 {
-  font-size: 1rem;
+  font-size: 1.2rem;
+  margin: 0 0 0.2rem 0;
 }
+
 .benefit-item p {
-  font-size: 0.875rem;
+  font-size: 0.7rem;
+  margin: 0;
 }
 
 @media (min-width: 992px) {
@@ -417,10 +430,10 @@ input:-webkit-autofill {
     display: block;
   }
 }
+
 @media (max-width: 991px) {
-  .auth-container {
+  .login-form-wrapper {
     flex-direction: column;
-    height: auto;
   }
 }
 </style>

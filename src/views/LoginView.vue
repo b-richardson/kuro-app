@@ -44,5 +44,6 @@ const currentComponent = computed(() => {
 .auth-container {
   max-width: 80%;
   height: 70vh;
+  font-size: 75%; /* This will scale down all rem units by 25% */
 }
 </style>
