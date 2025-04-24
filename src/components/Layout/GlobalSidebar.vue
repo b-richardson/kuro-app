@@ -153,10 +153,7 @@ const getInitials = (email: string) => {
   return username.charAt(0).toUpperCase();
 };
 
-const logout = () => {
-  authStore.logout();
-  router.push({ name: "login" });
-};
+const logout = () => authStore.logout(); // if you don’t need to await anything after
 
 const navigateToSettings = () => {
   router.push({ path: "/settings" });

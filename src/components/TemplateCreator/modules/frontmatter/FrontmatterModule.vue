@@ -13,86 +13,80 @@
     @module-change="$emit('module-change')"
     ref="baseModuleRef"
   >
-    <div class="fm-container">
+    <div class="dv-frontmatter">
       <!-- Empty State -->
-      <div class="fm-empty" v-if="properties.length === 0">
-        <div class="fm-empty-content">
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="40"
-            height="40"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="#FF5733"
-            stroke-width="1.5"
-            class="fm-empty-icon"
-          >
-            <path
-              d="M9 5H2v7l6.29 6.29c.94.94 2.48.94 3.42 0l3.58-3.58c.94-.94.94-2.48 0-3.42L9 5Z"
-            />
-            <path d="M6 9.01V9" />
-            <path d="m15 5 6.3 6.3a2.69 2.69 0 0 1 0 3.79L18 18.31" />
-            <path d="M17 11.99V12" />
-          </svg>
-          <h2 class="fm-empty-title">Add Frontmatter</h2>
-          <p class="fm-empty-description">
-            Organize your note with properties like tags or dates. Try a quick
-            start!
+      <div class="dv-frontmatter-empty" v-if="properties.length === 0">
+        <div class="dv-frontmatter-empty-content">
+          <div class="dv-frontmatter-empty-icon">
+            <i class="fas fa-tag"></i>
+          </div>
+          <h2 class="dv-frontmatter-empty-title">Add Frontmatter</h2>
+          <p class="dv-frontmatter-empty-description">
+            Organize your note with properties like tags or dates.
           </p>
-          <div class="fm-empty-actions">
+          <div class="dv-frontmatter-empty-actions">
             <button
-              class="fm-button fm-button--primary"
+              class="dv-frontmatter-button dv-frontmatter-button--primary"
               @click="startAddingProperty('text')"
             >
               <i class="fas fa-plus"></i> Add Property
             </button>
             <button
-              class="fm-button fm-button--secondary"
+              class="dv-frontmatter-button dv-frontmatter-button--secondary"
               @click="showTemplateModal = true"
             >
               <i class="fas fa-layer-group"></i> Templates
             </button>
           </div>
-          <div class="fm-empty-suggestions">
-            <span>Suggestions:</span>
-            <button
-              v-for="suggestion in propertySuggestions"
-              :key="suggestion.type"
-              class="fm-suggestion"
-              @click="startAddingProperty(suggestion.type)"
-            >
-              <i :class="['fas', suggestion.icon]"></i>
-              {{ suggestion.name }}
-            </button>
+          <div class="dv-frontmatter-empty-suggestions">
+            <span>Quick add:</span>
+            <div class="dv-frontmatter-suggestions-list">
+              <button
+                v-for="suggestion in propertySuggestions"
+                :key="suggestion.type"
+                class="dv-frontmatter-suggestion"
+                @click="startAddingProperty(suggestion.type)"
+              >
+                <i :class="['fas', suggestion.icon]"></i>
+                {{ suggestion.name }}
+              </button>
+            </div>
           </div>
-          <span class="fm-privacy-badge">Local Data</span>
         </div>
       </div>
 
       <!-- Property Panel -->
-      <div class="fm-panel" v-else>
-        <!-- Property List -->
-        <div class="fm-property-list">
-          <div class="fm-list-header">
-            <h3>Properties</h3>
-            <button
-              class="fm-button fm-button--primary fm-button--small"
-              @click="startAddingProperty('text')"
-            >
-              <i class="fas fa-plus"></i> Add
-            </button>
+      <div class="dv-frontmatter-panel" v-else>
+        <!-- Panel Header -->
+        <div class="dv-frontmatter-panel-header">
+          <div class="dv-frontmatter-panel-title">
+            <i class="fas fa-tag"></i>
+            <span>Note Properties</span>
           </div>
-          <div class="fm-list-content">
-            <div
-              v-for="(property, index) in properties"
-              :key="index"
-              class="fm-property-row"
-              :class="{ 'fm-property-row--error': validationErrors[index] }"
-            >
+          <button
+            class="dv-frontmatter-button dv-frontmatter-button--primary dv-frontmatter-button--small"
+            @click="startAddingProperty('text')"
+          >
+            <i class="fas fa-plus"></i> Add Property
+          </button>
+        </div>
+
+        <!-- Property List -->
+        <div class="dv-frontmatter-property-list">
+          <div
+            v-for="(property, index) in properties"
+            :key="index"
+            class="dv-frontmatter-property-row"
+            :class="{
+              'dv-frontmatter-property-row--error': validationErrors[index],
+            }"
+          >
+            <!-- Property Name -->
+            <div class="dv-frontmatter-property-name">
               <input
                 type="text"
                 v-model="property.name"
-                class="fm-input fm-input--name"
+                class="dv-frontmatter-input"
                 placeholder="e.g., tags"
                 @input="validateName(index)"
                 @blur="updateFrontmatter"
@@ -100,8 +94,19 @@
                 :aria-invalid="!!validationErrors[index]?.name"
                 :aria-describedby="'name-error-' + index"
               />
+              <div
+                v-if="validationErrors[index]?.name"
+                class="dv-frontmatter-error-message"
+                :id="'name-error-' + index"
+              >
+                {{ validationErrors[index].name }}
+              </div>
+            </div>
+
+            <!-- Property Type -->
+            <div class="dv-frontmatter-property-type">
               <button
-                class="fm-type-button"
+                class="dv-frontmatter-type-button"
                 @click="startEditingType(index)"
                 :aria-label="'Change type for ' + (property.name || 'property')"
               >
@@ -110,118 +115,122 @@
                 ></i>
                 {{ getPropertyTypeInfo(property.type).name }}
               </button>
-              <div class="fm-value-wrapper">
-                <!-- Text -->
+            </div>
+
+            <!-- Property Value -->
+            <div class="dv-frontmatter-property-value">
+              <!-- Text Input -->
+              <input
+                v-if="property.type === 'text'"
+                type="text"
+                v-model="property.value"
+                class="dv-frontmatter-input"
+                placeholder="Enter text"
+                @input="debounceUpdate"
+                @blur="updateFrontmatter"
+                :aria-label="'Value for ' + (property.name || 'text property')"
+              />
+
+              <!-- Number Input -->
+              <input
+                v-if="property.type === 'number'"
+                type="number"
+                v-model.number="property.value"
+                class="dv-frontmatter-input dv-frontmatter-input--number"
+                placeholder="0"
+                @input="debounceUpdate"
+                @blur="updateFrontmatter"
+                :aria-label="
+                  'Value for ' + (property.name || 'number property')
+                "
+              />
+
+              <!-- Checkbox Toggle -->
+              <label
+                v-if="property.type === 'checkbox'"
+                class="dv-frontmatter-toggle"
+                :aria-label="
+                  'Toggle for ' + (property.name || 'checkbox property')
+                "
+              >
                 <input
-                  v-if="property.type === 'text'"
-                  type="text"
+                  type="checkbox"
                   v-model="property.value"
-                  class="fm-input fm-input--value"
-                  placeholder="Enter text"
-                  @input="debounceUpdate"
-                  @blur="updateFrontmatter"
-                  :aria-label="
-                    'Value for ' + (property.name || 'text property')
-                  "
-                />
-
-                <!-- Number -->
-                <input
-                  v-if="property.type === 'number'"
-                  type="number"
-                  v-model.number="property.value"
-                  class="fm-input fm-input--value fm-input--number"
-                  placeholder="0"
-                  @input="debounceUpdate"
-                  @blur="updateFrontmatter"
-                  :aria-label="
-                    'Value for ' + (property.name || 'number property')
-                  "
-                />
-
-                <!-- Checkbox -->
-                <label
-                  v-if="property.type === 'checkbox'"
-                  class="fm-toggle"
-                  :aria-label="
-                    'Toggle for ' + (property.name || 'checkbox property')
-                  "
-                >
-                  <input
-                    type="checkbox"
-                    v-model="property.value"
-                    @change="updateFrontmatter"
-                  />
-                  <span class="fm-toggle-slider"></span>
-                </label>
-
-                <!-- Date -->
-                <input
-                  v-if="property.type === 'date'"
-                  type="date"
-                  v-model="property.value"
-                  class="fm-input fm-input--value fm-input--date"
-                  @input="debounceUpdate"
                   @change="updateFrontmatter"
-                  :aria-label="'Date for ' + (property.name || 'date property')"
                 />
+                <span class="dv-frontmatter-toggle-slider"></span>
+              </label>
 
-                <!-- Datetime -->
+              <!-- Date Input -->
+              <input
+                v-if="property.type === 'date'"
+                type="date"
+                v-model="property.value"
+                class="dv-frontmatter-input dv-frontmatter-input--date"
+                @input="debounceUpdate"
+                @change="updateFrontmatter"
+                :aria-label="'Date for ' + (property.name || 'date property')"
+              />
+
+              <!-- Datetime Input -->
+              <input
+                v-if="property.type === 'datetime'"
+                type="datetime-local"
+                v-model="property.value"
+                class="dv-frontmatter-input dv-frontmatter-input--datetime"
+                @input="debounceUpdate"
+                @change="updateFrontmatter"
+                :aria-label="
+                  'Date and time for ' + (property.name || 'datetime property')
+                "
+              />
+
+              <!-- Recurring Task Toggle -->
+              <label
+                v-if="property.type === 'isRecurring'"
+                class="dv-frontmatter-toggle"
+                :aria-label="
+                  'Recurring task for ' +
+                  (property.name || 'recurring property')
+                "
+              >
                 <input
-                  v-if="property.type === 'datetime'"
-                  type="datetime-local"
+                  type="checkbox"
                   v-model="property.value"
-                  class="fm-input fm-input--value fm-input--datetime"
-                  @input="debounceUpdate"
                   @change="updateFrontmatter"
-                  :aria-label="
-                    'Date and time for ' +
-                    (property.name || 'datetime property')
-                  "
                 />
+                <span class="dv-frontmatter-toggle-slider">
+                  <i
+                    v-if="property.value"
+                    class="fas fa-redo-alt dv-frontmatter-recurring-icon"
+                  ></i>
+                </span>
+              </label>
 
-                <!-- Recurring Task -->
-                <label
-                  v-if="property.type === 'isRecurring'"
-                  class="fm-toggle fm-toggle--recurring"
-                  :aria-label="
-                    'Recurring task for ' +
-                    (property.name || 'recurring property')
-                  "
-                >
-                  <input
-                    type="checkbox"
-                    v-model="property.value"
-                    @change="updateFrontmatter"
-                  />
-                  <span class="fm-toggle-slider">
-                    <i
-                      v-if="property.value"
-                      class="fas fa-redo-alt fm-recurring-icon"
-                    ></i>
-                  </span>
-                </label>
-
-                <!-- List/Tags -->
-                <div v-if="property.type === 'list'" class="fm-tags">
+              <!-- List/Tags Input -->
+              <div v-if="property.type === 'list'" class="dv-frontmatter-tags">
+                <div class="dv-frontmatter-tags-list">
                   <span
                     v-for="(tag, tagIndex) in property.value"
                     :key="tagIndex"
-                    class="fm-tag"
+                    class="dv-frontmatter-tag"
                   >
                     {{ tag }}
                     <button
                       @click="removeTag(index, tagIndex)"
-                      class="fm-tag-remove"
+                      class="dv-frontmatter-tag-remove"
                       :aria-label="'Remove tag ' + tag"
                     >
                       <i class="fas fa-times"></i>
                     </button>
                   </span>
+                </div>
+                <div class="dv-frontmatter-input-wrapper">
+                  <i class="fas fa-plus-circle dv-frontmatter-input-icon"></i>
                   <input
                     type="text"
                     v-model="tagInputs[index]"
-                    class="fm-input fm-input--tag"
+                    class="dv-frontmatter-input dv-frontmatter-input--tag"
                     placeholder="Add tag"
                     @keydown.enter.prevent="addTag(index)"
                     @blur="addTagOnBlur(index)"
@@ -238,16 +247,21 @@
                     ></option>
                   </datalist>
                 </div>
+              </div>
 
-                <!-- Templater Prompt -->
-                <div
-                  v-if="property.type === 'prompt'"
-                  class="fm-prompt-details"
-                >
+              <!-- Templater Prompt -->
+              <div
+                v-if="property.type === 'prompt'"
+                class="dv-frontmatter-prompt-details"
+              >
+                <div class="dv-frontmatter-input-wrapper">
+                  <i
+                    class="fas fa-question-circle dv-frontmatter-input-icon"
+                  ></i>
                   <input
                     type="text"
                     v-model="property.promptOptions.question"
-                    class="fm-input fm-input--value"
+                    class="dv-frontmatter-input"
                     placeholder="e.g., What's the note title?"
                     @input="debounceUpdate"
                     @blur="updateFrontmatter"
@@ -256,10 +270,13 @@
                       (property.name || 'prompt property')
                     "
                   />
+                </div>
+                <div class="dv-frontmatter-input-wrapper">
+                  <i class="fas fa-reply dv-frontmatter-input-icon"></i>
                   <input
                     type="text"
                     v-model="property.promptOptions.defaultValue"
-                    class="fm-input fm-input--value"
+                    class="dv-frontmatter-input"
                     placeholder="Default answer"
                     @input="debounceUpdate"
                     @blur="updateFrontmatter"
@@ -268,29 +285,38 @@
                       (property.name || 'prompt property')
                     "
                   />
-                  <label class="fm-toggle fm-toggle--prompt">
+                </div>
+                <div class="dv-frontmatter-field-group--inline">
+                  <label class="dv-frontmatter-toggle">
                     <input
                       type="checkbox"
                       v-model="property.promptOptions.multiline"
                       @change="updateFrontmatter"
                     />
-                    <span class="fm-toggle-slider"></span>
-                    Multiline
+                    <span class="dv-frontmatter-toggle-slider"></span>
                   </label>
+                  <span class="dv-frontmatter-toggle-label">
+                    Allow multiline input
+                  </span>
                 </div>
+              </div>
 
-                <!-- File Info -->
+              <!-- File Info Select -->
+              <div
+                class="dv-frontmatter-input-wrapper"
+                v-if="property.type === 'fileInfo'"
+              >
+                <i class="fas fa-file-alt dv-frontmatter-input-icon"></i>
                 <select
-                  v-if="property.type === 'fileInfo'"
                   v-model="property.fileProperty"
-                  class="fm-input fm-input--value fm-select"
+                  class="dv-frontmatter-select"
                   @change="updateFrontmatter"
                   :aria-label="
                     'File information for ' +
                     (property.name || 'file info property')
                   "
                 >
-                  <option value="" disabled>Select...</option>
+                  <option value="" disabled>Select file info...</option>
                   <option
                     v-for="option in filePropertyOptions"
                     :key="option.id"
@@ -300,34 +326,31 @@
                   </option>
                 </select>
               </div>
+            </div>
+
+            <!-- Delete Button -->
+            <div class="dv-frontmatter-property-actions">
               <button
-                class="fm-action-button fm-action-button--delete"
+                class="dv-frontmatter-action-button"
                 @click="removeProperty(index)"
                 :aria-label="'Delete ' + (property.name || 'property')"
               >
                 <i class="fas fa-trash-alt"></i>
               </button>
-              <div
-                v-if="validationErrors[index]?.name"
-                class="fm-error-message"
-                :id="'name-error-' + index"
-              >
-                {{ validationErrors[index].name }}
-              </div>
             </div>
           </div>
         </div>
 
-        <!-- Actions -->
-        <div class="fm-actions">
+        <!-- Panel Actions -->
+        <div class="dv-frontmatter-panel-actions">
           <button
-            class="fm-button fm-button--secondary"
+            class="dv-frontmatter-button dv-frontmatter-button--secondary"
             @click="showTemplateModal = true"
           >
             <i class="fas fa-layer-group"></i> Templates
           </button>
           <button
-            class="fm-button fm-button--destructive"
+            class="dv-frontmatter-button dv-frontmatter-button--destructive"
             @click="confirmClearAll"
           >
             <i class="fas fa-trash-alt"></i> Clear All
@@ -338,30 +361,34 @@
       <!-- Type Selection Modal -->
       <div
         v-if="showTypeModal"
-        class="fm-type-modal-overlay"
+        class="dv-frontmatter-modal-overlay"
         @click="showTypeModal = false"
       >
-        <div class="fm-type-modal" @click.stop>
-          <div class="fm-type-modal-header">
+        <div class="dv-frontmatter-modal" @click.stop>
+          <div class="dv-frontmatter-modal-header">
             <h3>Select Property Type</h3>
             <button
-              class="fm-close-button"
+              class="dv-frontmatter-close-button"
               @click="showTypeModal = false"
               aria-label="Close type modal"
             >
               <i class="fas fa-times"></i>
             </button>
           </div>
-          <div class="fm-type-modal-content">
+          <div class="dv-frontmatter-modal-content">
             <button
               v-for="type in propertyTypes"
               :key="type.id"
-              class="fm-type-option"
+              class="dv-frontmatter-type-option"
               @click="selectType(type.id)"
             >
               <i :class="['fas', type.icon]"></i>
-              <span class="fm-type-name">{{ type.name }}</span>
-              <span class="fm-type-description">{{ type.description }}</span>
+              <div class="dv-frontmatter-type-info">
+                <span class="dv-frontmatter-type-name">{{ type.name }}</span>
+                <span class="dv-frontmatter-type-description">{{
+                  type.description
+                }}</span>
+              </div>
             </button>
           </div>
         </div>
@@ -370,33 +397,40 @@
       <!-- Template Modal -->
       <div
         v-if="showTemplateModal"
-        class="fm-template-modal-overlay"
+        class="dv-frontmatter-modal-overlay"
         @click="showTemplateModal = false"
       >
-        <div class="fm-template-modal" @click.stop>
-          <div class="fm-template-modal-header">
+        <div
+          class="dv-frontmatter-modal dv-frontmatter-modal--large"
+          @click.stop
+        >
+          <div class="dv-frontmatter-modal-header">
             <h3>Quick Start Templates</h3>
             <button
-              class="fm-close-button"
+              class="dv-frontmatter-close-button"
               @click="showTemplateModal = false"
               aria-label="Close template modal"
             >
               <i class="fas fa-times"></i>
             </button>
           </div>
-          <div class="fm-template-modal-content">
-            <div class="fm-template-grid">
+          <div class="dv-frontmatter-modal-content">
+            <div class="dv-frontmatter-template-grid">
               <button
                 v-for="template in quickTemplates"
                 :key="template.id"
-                class="fm-template-option"
+                class="dv-frontmatter-template-option"
                 @click="applyTemplate(template.id)"
               >
                 <i :class="template.icon"></i>
-                <span class="fm-template-name">{{ template.name }}</span>
-                <span class="fm-template-preview">
-                  {{ template.properties.map((p) => p.name).join(", ") }}
-                </span>
+                <div class="dv-frontmatter-template-info">
+                  <span class="dv-frontmatter-template-name">{{
+                    template.name
+                  }}</span>
+                  <span class="dv-frontmatter-template-preview">
+                    {{ template.properties.map((p) => p.name).join(", ") }}
+                  </span>
+                </div>
               </button>
             </div>
           </div>
@@ -809,11 +843,13 @@ function startAddingProperty(type: string) {
   initializeTagInputs();
 
   nextTick(() => {
-    const rows = baseModuleRef.value?.$el.querySelectorAll(".fm-property-row");
+    const rows = baseModuleRef.value?.$el.querySelectorAll(
+      ".dv-frontmatter-property-row"
+    );
     if (rows && rows.length > 0) {
       const newRow = rows[rows.length - 1];
       const nameInput = newRow.querySelector(
-        ".fm-input--name"
+        ".dv-frontmatter-input"
       ) as HTMLInputElement;
       nameInput?.focus();
     }
@@ -1056,438 +1092,504 @@ watch(
 </script>
 
 <style scoped>
-/* Base & Glassmorphism */
-.fm-container {
+/* --- Base & Dark Glassmorphism --- */
+.dv-frontmatter {
   width: 100%;
-  max-width: 600px;
-  background: rgba(20, 25, 35, 0.9);
-  backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  /* Dark glassmorphism base */
+  background: rgba(21, 26, 36, 0.7); /* Dark semi-transparent */
+  backdrop-filter: blur(12px) saturate(150%);
+  -webkit-backdrop-filter: blur(12px) saturate(150%);
+  border: 1px solid rgba(255, 255, 255, 0.1); /* Light border */
   border-radius: 12px;
   padding: 20px;
-  color: #e1e1e6;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  color: var(--text-normal-dark, #e1e1e6); /* Light text */
+  font-family: var(--font-interface, sans-serif);
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
-  max-height: 500px;
-  overflow-y: auto;
+  gap: 20px; /* Consistent gap */
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
 }
 
-/* Empty State */
-.fm-empty {
+/* --- Empty State --- */
+.dv-frontmatter-empty {
   display: flex;
   justify-content: center;
-  align-items: center;
-  padding: 20px;
+  padding: 30px 15px;
 }
 
-.fm-empty-content {
+.dv-frontmatter-empty-content {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 12px;
+  gap: 16px;
   text-align: center;
-  background: rgba(30, 36, 50, 0.7);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  max-width: 400px;
+  background: rgba(30, 36, 50, 0.6); /* Darker section background */
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 10px;
-  padding: 20px;
-  animation: slideUp 0.5s ease-out;
+  padding: 24px;
+  animation: fadeIn 0.3s ease-out;
 }
 
-.fm-empty-icon {
-  animation: glow 2s infinite ease-in-out;
+.dv-frontmatter-empty-icon {
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  background: rgba(96, 165, 250, 0.1);
+  font-size: 22px;
+  color: var(--interactive-accent-light, #60a5fa);
 }
 
-.fm-empty-title {
+.dv-frontmatter-empty-title {
   font-size: 18px;
   font-weight: 600;
-  color: #fff;
+  color: var(--text-title-dark, #ffffff);
+  margin: 0;
 }
 
-.fm-empty-description {
-  font-size: 13px;
-  color: #94a3b8;
+.dv-frontmatter-empty-description {
+  font-size: 14px;
+  color: var(--text-muted-dark, #94a3b8);
+  margin: 0;
   line-height: 1.5;
-  max-width: 300px;
 }
 
-.fm-empty-actions {
+.dv-frontmatter-empty-actions {
   display: flex;
   gap: 12px;
-}
-
-.fm-empty-suggestions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  font-size: 12px;
-  color: #94a3b8;
-  align-items: center;
-}
-
-.fm-suggestion {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 6px;
-  padding: 6px 10px;
-  font-size: 12px;
-  color: #94a3b8;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.fm-suggestion:hover {
-  background: rgba(255, 255, 255, 0.15);
-  color: #e1e1e6;
-}
-
-.fm-suggestion i {
-  color: #60a5fa;
-  font-size: 12px;
-}
-
-.fm-privacy-badge {
-  background: rgba(96, 165, 250, 0.2);
-  color: #60a5fa;
-  padding: 4px 10px;
-  border-radius: 10px;
-  font-size: 11px;
-  font-weight: 500;
   margin-top: 8px;
 }
 
-/* Panel */
-.fm-panel {
+.dv-frontmatter-empty-suggestions {
+  margin-top: 16px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text-muted-dark, #94a3b8);
+}
+
+.dv-frontmatter-suggestions-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+}
+
+.dv-frontmatter-suggestion {
+  background: rgba(15, 20, 30, 0.7); /* Darker input background */
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-size: 12px;
+  color: var(--text-muted-dark, #94a3b8);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.dv-frontmatter-suggestion:hover {
+  background: rgba(30, 36, 50, 0.9);
+  color: var(--text-normal-dark, #e1e1e6);
+}
+
+.dv-frontmatter-suggestion i {
+  color: var(--interactive-accent-light, #60a5fa);
+  font-size: 12px;
+}
+
+/* --- Panel --- */
+.dv-frontmatter-panel {
   display: flex;
   flex-direction: column;
   gap: 16px;
 }
 
-/* Property List */
-.fm-property-list {
-  background: rgba(15, 20, 30, 0.8);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 10px;
-  padding: 12px;
-}
-
-.fm-list-header {
+.dv-frontmatter-panel-header {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  margin-bottom: 12px;
+  justify-content: space-between;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-.fm-list-header h3 {
-  font-size: 14px;
+.dv-frontmatter-panel-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 16px;
   font-weight: 500;
-  color: #e1e1e6;
+  color: var(--text-title-dark, #ffffff);
 }
 
-.fm-list-content {
+.dv-frontmatter-panel-title i {
+  color: var(--interactive-accent-light, #60a5fa);
+}
+
+.dv-frontmatter-panel-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+/* --- Property List --- */
+.dv-frontmatter-property-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.dv-frontmatter-property-row {
+  display: grid;
+  grid-template-columns: 1fr auto 2fr auto;
+  gap: 12px;
+  padding: 12px;
+  background: rgba(30, 36, 50, 0.6); /* Darker section background */
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  transition: border-color 0.2s;
+  align-items: center;
+}
+
+.dv-frontmatter-property-row:hover {
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+.dv-frontmatter-property-row--error {
+  border-color: #a389f4;
+}
+
+.dv-frontmatter-property-name {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.dv-frontmatter-property-value {
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
 
-.fm-property-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px;
-  background: rgba(30, 36, 50, 0.7);
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  border-radius: 8px;
-}
-
-.fm-property-row--error {
-  border-color: #da5858;
-}
-
-.fm-input--name {
-  flex: 1;
-  min-width: 100px;
-}
-
-.fm-type-button {
-  background: rgba(255, 255, 255, 0.05);
+/* --- Type Button --- */
+.dv-frontmatter-type-button {
+  background: rgba(15, 20, 30, 0.7); /* Darker input background */
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 6px;
   padding: 8px 12px;
-  font-size: 12px;
-  color: #94a3b8;
+  font-size: 13px;
+  color: var(--text-muted-dark, #94a3b8);
   display: flex;
   align-items: center;
   gap: 6px;
   cursor: pointer;
   transition: all 0.2s;
+  width: 100%;
+  white-space: nowrap;
 }
 
-.fm-type-button:hover {
-  background: rgba(255, 255, 255, 0.15);
-  color: #e1e1e6;
+.dv-frontmatter-type-button:hover {
+  background: rgba(30, 36, 50, 0.9);
+  border-color: rgba(255, 255, 255, 0.2);
+  color: var(--text-normal-dark, #e1e1e6);
 }
 
-.fm-type-button i {
-  color: #60a5fa;
+.dv-frontmatter-type-button i {
+  color: var(--interactive-accent-light, #60a5fa);
   font-size: 12px;
 }
 
-.fm-value-wrapper {
-  flex: 2;
+/* --- Action Buttons --- */
+.dv-frontmatter-action-button {
+  width: 32px;
+  height: 32px;
   display: flex;
   align-items: center;
-  gap: 8px;
-}
-
-.fm-input--value {
-  flex: 1;
-}
-
-.fm-input--number {
-  width: 80px;
-}
-
-.fm-input--date,
-.fm-input--datetime {
-  width: 140px;
-  padding-right: 30px;
-}
-
-.fm-input--tag {
-  width: 100px;
-}
-
-.fm-action-button {
-  background: none;
-  border: none;
-  color: #94a3b8;
-  font-size: 12px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.fm-action-button--delete:hover {
-  color: #60a5fa;
-}
-
-/* Inputs and Selects */
-.fm-input,
-.fm-select {
-  padding: 8px 12px;
-  background: rgba(15, 20, 30, 0.9);
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  justify-content: center;
+  background: rgba(15, 20, 30, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--text-muted-dark, #94a3b8);
   border-radius: 6px;
-  color: #e1e1e6;
-  font-size: 12px;
-  transition: all 0.2s ease-out;
+  cursor: pointer;
+  transition: all 0.2s;
 }
 
-.fm-input:focus,
-.fm-select:focus {
-  border-color: #60a5fa;
-  box-shadow: 0 0 0 1px rgba(96, 165, 250, 0.25);
+.dv-frontmatter-action-button:hover {
+  background: rgba(220, 38, 38, 0.2);
+  color: rgba(220, 38, 38, 0.8);
+  border-color: rgba(220, 38, 38, 0.3);
 }
 
-.fm-input::placeholder {
-  color: #717a8a;
+/* --- Inputs & Selects --- */
+.dv-frontmatter-input,
+.dv-frontmatter-select {
+  padding: 9px 12px;
+  background: rgba(15, 20, 30, 0.7); /* Darker input background */
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  color: var(--text-normal-dark, #e1e1e6);
+  font-size: 14px;
+  width: 100%;
+  transition: all 0.2s ease-in-out;
 }
 
-.fm-select {
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+.dv-frontmatter-input:focus,
+.dv-frontmatter-select:focus {
+  outline: none;
+  border-color: var(--interactive-accent-light, #60a5fa);
+  box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.3);
+  background: rgba(30, 36, 50, 0.9);
+}
+
+.dv-frontmatter-input::placeholder {
+  color: var(--text-faint-dark, #717a8a);
+}
+
+.dv-frontmatter-select {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
   background-repeat: no-repeat;
-  background-position: right 8px center;
-  padding-right: 24px;
+  background-position: right 10px center;
+  padding-right: 35px;
 }
 
-.fm-input--date::-webkit-calendar-picker-indicator,
-.fm-input--datetime::-webkit-calendar-picker-indicator {
-  filter: invert(0.8);
+.dv-frontmatter-input--number {
+  width: 100px;
+  text-align: center;
+}
+
+.dv-frontmatter-input--date,
+.dv-frontmatter-input--datetime {
+  width: auto;
+}
+
+.dv-frontmatter-input--date::-webkit-calendar-picker-indicator,
+.dv-frontmatter-input--datetime::-webkit-calendar-picker-indicator {
+  filter: invert(0.8); /* Make picker icon lighter on dark background */
   cursor: pointer;
 }
 
-/* Toggle Switch */
-.fm-toggle {
+.dv-frontmatter-input-wrapper {
+  position: relative;
   display: flex;
   align-items: center;
-  gap: 6px;
-  font-size: 12px;
-  color: #e1e1e6;
+  gap: 8px; /* Gap between icon/input/button */
 }
 
-.fm-toggle input {
+.dv-frontmatter-input-icon {
   position: absolute;
+  left: 11px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--icon-color-dark, #94a3b8);
+  font-size: 13px;
+  pointer-events: none; /* Don't interfere with clicks */
+}
+
+.dv-frontmatter-input-wrapper .dv-frontmatter-input,
+.dv-frontmatter-input-wrapper .dv-frontmatter-select {
+  padding-left: 34px; /* Space for icon */
+  flex-grow: 1; /* Allow input/select to grow */
+}
+
+/* --- Toggle Switch --- */
+.dv-frontmatter-toggle {
+  position: relative;
+  display: inline-block;
+  width: 40px;
+  height: 22px;
+  flex-shrink: 0; /* Prevent toggle from shrinking */
+}
+.dv-frontmatter-toggle input {
   opacity: 0;
   width: 0;
   height: 0;
 }
-
-.fm-toggle-slider {
-  position: relative;
-  width: 32px;
-  height: 18px;
-  background: rgba(0, 0, 0, 0.3);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 18px;
-  cursor: pointer;
-  transition: all 0.3s;
-}
-
-.fm-toggle-slider:before {
-  content: "";
+.dv-frontmatter-toggle-slider {
   position: absolute;
-  width: 14px;
-  height: 14px;
-  left: 1px;
-  bottom: 1px;
-  background: #ccc;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  transition: 0.3s;
+  border-radius: 22px;
+}
+.dv-frontmatter-toggle-slider:before {
+  position: absolute;
+  content: "";
+  height: 16px;
+  width: 16px;
+  left: 2px;
+  bottom: 2px;
+  background-color: #ccc; /* Lighter grey knob */
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  transition: 0.3s;
   border-radius: 50%;
-  transition: all 0.3s;
+}
+.dv-frontmatter-toggle input:checked + .dv-frontmatter-toggle-slider {
+  background-color: var(--interactive-accent-light, #60a5fa);
+  border-color: var(--interactive-accent-light, #60a5fa);
+}
+.dv-frontmatter-toggle input:focus-visible + .dv-frontmatter-toggle-slider {
+  /* Use focus-visible */
+  box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.3);
+}
+.dv-frontmatter-toggle input:checked + .dv-frontmatter-toggle-slider:before {
+  transform: translateX(18px);
+  background-color: #fff; /* White knob when active */
 }
 
-.fm-toggle input:checked + .fm-toggle-slider {
-  background: #60a5fa;
-  border-color: #60a5fa;
+.dv-frontmatter-toggle-label {
+  font-size: 14px;
+  color: var(--text-normal-dark, #e1e1e6);
+  cursor: pointer; /* Make label clickable too */
+  margin-left: 8px;
 }
 
-.fm-toggle input:checked + .fm-toggle-slider:before {
-  transform: translateX(14px);
-  background: #fff;
-}
-
-.fm-toggle--recurring .fm-toggle-slider {
-  display: flex;
-  align-items: center;
-  justify-content: flex-start;
-  padding-left: 2px;
-}
-
-.fm-recurring-icon {
+.dv-frontmatter-recurring-icon {
   font-size: 10px;
   color: #fff;
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
   animation: spin 4s linear infinite;
 }
 
-.fm-toggle--prompt {
-  margin-top: 6px;
+.dv-frontmatter-field-group--inline {
+  display: flex;
+  align-items: center;
+  margin-top: 8px;
 }
 
-/* Tags */
-.fm-tags {
+/* --- Tags --- */
+.dv-frontmatter-tags {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.dv-frontmatter-tags-list {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
-  align-items: center;
+  min-height: 32px;
 }
 
-.fm-tag {
-  background: rgba(96, 165, 250, 0.25);
-  color: #60a5fa;
-  padding: 4px 8px;
-  border-radius: 6px;
-  font-size: 11px;
+.dv-frontmatter-tag {
+  background: rgba(96, 165, 250, 0.15);
+  color: var(--interactive-accent-light, #60a5fa);
+  padding: 5px 10px;
+  border-radius: 4px;
+  font-size: 13px;
   display: flex;
   align-items: center;
-  gap: 4px;
-  transition: all 0.2s;
-}
-
-.fm-tag-remove {
-  background: none;
-  border: none;
-  color: #94a3b8;
-  font-size: 8px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.fm-tag-remove:hover {
-  color: #e57373;
-}
-
-/* Prompt Details */
-.fm-prompt-details {
-  display: flex;
-  flex-direction: column;
   gap: 6px;
 }
 
-/* Error Message */
-.fm-error-message {
-  font-size: 11px;
-  color: #da5858;
+.dv-frontmatter-tag-remove {
+  background: none;
+  border: none;
+  color: inherit;
+  opacity: 0.7;
+  cursor: pointer;
+  padding: 0;
+  font-size: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.dv-frontmatter-tag-remove:hover {
+  opacity: 1;
+}
+
+.dv-frontmatter-input--tag {
+  flex: 1;
+  min-width: 120px;
+}
+
+/* --- Prompt Details --- */
+.dv-frontmatter-prompt-details {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* --- Error Message --- */
+.dv-frontmatter-error-message {
+  font-size: 12px;
+  color: rgba(220, 38, 38, 0.8);
   margin-top: 4px;
 }
 
-/* Buttons */
-.fm-button {
+/* --- Buttons --- */
+.dv-frontmatter-button {
   padding: 8px 14px;
-  border-radius: 8px;
-  font-size: 12px;
+  border-radius: 6px;
+  font-size: 13px;
   font-weight: 500;
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   cursor: pointer;
   transition: all 0.2s ease-out;
   border: 1px solid transparent;
 }
 
-.fm-button--primary {
-  background: #60a5fa;
-  color: #fff;
+.dv-frontmatter-button--primary {
+  background: var(--interactive-accent-light, #60a5fa);
+  color: var(--text-on-accent, #111);
 }
 
-.fm-button--primary:hover {
-  background: #60a5fa;
-  box-shadow: 0 2px 8px rgba(255, 87, 51, 0.3);
+.dv-frontmatter-button--primary:hover {
+  background: var(--interactive-accent-light, #60a5fa);
+  filter: brightness(1.1);
 }
 
-.fm-button--secondary {
+.dv-frontmatter-button--secondary {
   background: rgba(255, 255, 255, 0.05);
   border-color: rgba(255, 255, 255, 0.1);
-  color: #94a3b8;
+  color: var(--text-muted-dark, #94a3b8);
 }
 
-.fm-button--secondary:hover {
+.dv-frontmatter-button--secondary:hover {
   background: rgba(255, 255, 255, 0.15);
-  color: #e1e1e6;
+  color: var(--text-normal-dark, #e1e1e6);
 }
 
-.fm-button--destructive {
-  background: rgba(218, 88, 88, 0.1);
-  border-color: rgba(218, 88, 88, 0.2);
-  color: #da5858;
+.dv-frontmatter-button--destructive {
+  background: rgba(220, 38, 38, 0.1);
+  border-color: rgba(220, 38, 38, 0.2);
+  color: rgba(220, 38, 38, 0.8);
 }
 
-.fm-button--destructive:hover {
-  background: rgba(218, 88, 88, 0.2);
-  color: #e57373;
+.dv-frontmatter-button--destructive:hover {
+  background: rgba(220, 38, 38, 0.2);
+  color: rgb(220, 38, 38);
 }
 
-.fm-button--small {
+.dv-frontmatter-button--small {
   padding: 6px 10px;
-  font-size: 11px;
-}
-
-.fm-button i {
   font-size: 12px;
 }
 
-/* Actions */
-.fm-actions {
-  display: flex;
-  gap: 12px;
-  justify-content: flex-end;
+.dv-frontmatter-button i {
+  font-size: 12px;
 }
 
-/* Type Modal */
-.fm-type-modal-overlay {
+/* --- Modals --- */
+.dv-frontmatter-modal-overlay {
   position: fixed;
   top: 0;
   left: 0;
@@ -1502,185 +1604,163 @@ watch(
   animation: fadeIn 0.3s ease-out;
 }
 
-.fm-type-modal {
-  background: rgba(20, 25, 35, 0.9);
-  backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.15);
+.dv-frontmatter-modal {
+  background: rgba(21, 26, 36, 0.95);
+  backdrop-filter: blur(12px) saturate(150%);
+  -webkit-backdrop-filter: blur(12px) saturate(150%);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 12px;
   width: 90%;
   max-width: 400px;
   padding: 20px;
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
   animation: slideUp 0.3s ease-out;
 }
 
-.fm-type-modal-header {
+.dv-frontmatter-modal--large {
+  max-width: 500px;
+}
+
+.dv-frontmatter-modal-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
   margin-bottom: 16px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-.fm-type-modal-header h3 {
+.dv-frontmatter-modal-header h3 {
   font-size: 16px;
   font-weight: 600;
-  color: #e1e1e6;
+  color: var(--text-title-dark, #ffffff);
+  margin: 0;
 }
 
-.fm-type-modal-content {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.fm-type-option {
-  background: rgba(30, 36, 50, 0.7);
+.dv-frontmatter-close-button {
+  background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 8px;
-  padding: 10px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  cursor: pointer;
-  transition: all 0.2s ease-out;
-}
-
-.fm-type-option:hover {
-  background: rgba(30, 36, 50, 0.9);
-  border-color: #60a5fa;
-}
-
-.fm-type-option i {
-  color: #60a5fa;
-  font-size: 14px;
-}
-
-.fm-type-name {
-  font-size: 13px;
-  font-weight: 500;
-  color: #e1e1e6;
-  flex: 1;
-}
-
-.fm-type-description {
-  font-size: 11px;
-  color: #94a3b8;
-}
-
-/* Template Modal */
-.fm-template-modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.7);
-  backdrop-filter: blur(4px);
+  color: var(--text-muted-dark, #94a3b8);
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 2000;
-  animation: fadeIn 0.3s ease-out;
+  cursor: pointer;
+  transition: all 0.2s;
 }
 
-.fm-template-modal {
-  background: rgba(20, 25, 35, 0.9);
-  backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 12px;
-  width: 90%;
-  max-width: 500px;
-  padding: 20px;
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
-  animation: slideUp 0.3s ease-out;
+.dv-frontmatter-close-button:hover {
+  background: rgba(255, 255, 255, 0.15);
+  color: var(--text-normal-dark, #e1e1e6);
 }
 
-.fm-template-modal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 16px;
-}
-
-.fm-template-modal-header h3 {
-  font-size: 16px;
-  font-weight: 600;
-  color: #e1e1e6;
-}
-
-.fm-template-modal-content {
+.dv-frontmatter-modal-content {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
+  max-height: 60vh;
+  overflow-y: auto;
 }
 
-.fm-template-grid {
+/* Type Options */
+.dv-frontmatter-type-option {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  background: rgba(30, 36, 50, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: left;
+}
+
+.dv-frontmatter-type-option:hover {
+  background: rgba(96, 165, 250, 0.15);
+  border-color: rgba(96, 165, 250, 0.3);
+}
+
+.dv-frontmatter-type-option i {
+  font-size: 16px;
+  color: var(--interactive-accent-light, #60a5fa);
+  width: 20px;
+  text-align: center;
+}
+
+.dv-frontmatter-type-info {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.dv-frontmatter-type-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-normal-dark, #e1e1e6);
+}
+
+.dv-frontmatter-type-description {
+  font-size: 12px;
+  color: var(--text-muted-dark, #94a3b8);
+  margin-top: 2px;
+}
+
+/* Template Grid */
+.dv-frontmatter-template-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
   gap: 12px;
 }
 
-.fm-template-option {
-  background: rgba(30, 36, 50, 0.7);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 8px;
-  padding: 12px;
+.dv-frontmatter-template-option {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 12px;
+  padding: 14px;
+  background: rgba(30, 36, 50, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
   cursor: pointer;
-  transition: all 0.2s ease-out;
+  transition: all 0.2s;
+  text-align: left;
 }
 
-.fm-template-option:hover {
-  background: rgba(30, 36, 50, 0.9);
-  border-color: #60a5fa;
+.dv-frontmatter-template-option:hover {
+  background: rgba(96, 165, 250, 0.15);
+  border-color: rgba(96, 165, 250, 0.3);
 }
 
-.fm-template-option i {
-  color: #60a5fa;
-  font-size: 16px;
+.dv-frontmatter-template-option i {
+  font-size: 18px;
+  color: var(--interactive-accent-light, #60a5fa);
+  width: 24px;
+  text-align: center;
 }
 
-.fm-template-name {
-  font-size: 13px;
-  font-weight: 500;
-  color: #e1e1e6;
+.dv-frontmatter-template-info {
+  display: flex;
+  flex-direction: column;
   flex: 1;
 }
 
-.fm-template-preview {
-  font-size: 11px;
-  color: #94a3b8;
-  margin-top: 4px;
-  display: block;
-}
-
-.fm-close-button {
-  background: none;
-  border: none;
-  color: #94a3b8;
-  cursor: pointer;
+.dv-frontmatter-template-name {
   font-size: 14px;
-  transition: all 0.2s;
+  font-weight: 500;
+  color: var(--text-normal-dark, #e1e1e6);
 }
 
-.fm-close-button:hover {
-  color: #e1e1e6;
+.dv-frontmatter-template-preview {
+  font-size: 12px;
+  color: var(--text-muted-dark, #94a3b8);
+  margin-top: 4px;
+  line-height: 1.4;
+  word-break: break-word;
 }
 
-/* Animations */
-@keyframes slideUp {
-  from {
-    transform: translateY(20px);
-    opacity: 0;
-  }
-  to {
-    transform: translateY(0);
-    opacity: 1;
-  }
-}
-
+/* --- Animations --- */
 @keyframes fadeIn {
   from {
     opacity: 0;
@@ -1690,15 +1770,14 @@ watch(
   }
 }
 
-@keyframes glow {
-  0% {
-    stroke: #ff5733;
+@keyframes slideUp {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
   }
-  50% {
-    stroke: #e64e2e;
-  }
-  100% {
-    stroke: #ff5733;
+  to {
+    transform: translateY(0);
+    opacity: 1;
   }
 }
 
@@ -1711,47 +1790,33 @@ watch(
   }
 }
 
-/* Responsive */
+/* --- Responsive --- */
 @media (max-width: 600px) {
-  .fm-container {
+  .dv-frontmatter {
     padding: 16px;
   }
 
-  .fm-empty-content {
-    padding: 16px;
-  }
-
-  .fm-empty-actions {
-    flex-direction: column;
+  .dv-frontmatter-property-row {
+    grid-template-columns: 1fr;
     gap: 8px;
   }
 
-  .fm-property-row {
+  .dv-frontmatter-property-name,
+  .dv-frontmatter-property-type,
+  .dv-frontmatter-property-value {
+    width: 100%;
+  }
+
+  .dv-frontmatter-property-actions {
+    justify-self: flex-end;
+    margin-top: 8px;
+  }
+
+  .dv-frontmatter-empty-actions {
     flex-direction: column;
-    align-items: stretch;
   }
 
-  .fm-value-wrapper {
-    flex: 1;
-  }
-
-  .fm-input--name,
-  .fm-input--value {
-    width: 100%;
-  }
-
-  .fm-type-button {
-    width: 100%;
-    justify-content: flex-start;
-  }
-
-  .fm-type-modal,
-  .fm-template-modal {
-    width: 95%;
-    padding: 16px;
-  }
-
-  .fm-template-grid {
+  .dv-frontmatter-template-grid {
     grid-template-columns: 1fr;
   }
 }

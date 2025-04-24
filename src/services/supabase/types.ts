@@ -129,3 +129,13 @@ export interface UserProfile {
   subscription_period_end: string | null;
   stripe_payment_method_id: string | null;
 }
+
+// Interface for user_settings table
+export interface UserSettings {
+  id: string;
+  created_at: string; // ISO timestamp
+  updated_at: string | null;
+  user_id: string | null;
+  encrypted_obsidian_api_key: string | null;
+  encrypted_obsidian_port: string | null;
+}

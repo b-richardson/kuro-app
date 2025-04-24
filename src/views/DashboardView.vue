@@ -1,57 +1,27 @@
 <template>
   <div class="dashboard-container">
-    <!-- Auth not ready yet -->
-    <div v-if="authStore.isLoading" class="loading-container">
-      <div class="loader"></div>
-      <p>Loading dashboard...</p>
-    </div>
-
-    <!-- Not authenticated -->
-    <div v-else-if="!authStore.isAuthenticated" class="unauthorized-container">
-      <div class="unauthorized-content">
-        <i class="fas fa-lock fa-3x"></i>
-        <h2>Authentication Required</h2>
-        <p>Please log in to access the dashboard</p>
-        <button @click="redirectToLogin" class="login-button">Log In</button>
-      </div>
-    </div>
-
-    <!-- Authenticated -->
-    <template v-else>
-      <UserGreeting />
-      <RecentTemplates />
-      <RecentActivity />
-      <QuickLinks />
-    </template>
+    <UserGreeting />
+    <RecentTemplates />
+    <RecentActivity />
+    <QuickLinks />
   </div>
 </template>
 
 <script setup lang="ts">
 import { onMounted } from "vue";
-import { useRouter } from "vue-router";
 import { useTemplateStore } from "@/stores/template";
-import { useAuthStore } from "@/stores/auth";
 import UserGreeting from "@/components/dashboard/UserGreeting.vue";
 import RecentTemplates from "@/components/dashboard/RecentTemplates.vue";
 import RecentActivity from "@/components/dashboard/RecentActivity.vue";
 import QuickLinks from "@/components/dashboard/QuickLinks.vue";
 
-const router = useRouter();
 const templateStore = useTemplateStore();
-const authStore = useAuthStore();
 
-const redirectToLogin = () => {
-  router.push({ name: "login" });
-};
-
-// Load templates if authenticated
 onMounted(async () => {
-  if (authStore.isAuthenticated) {
-    try {
-      await templateStore.loadTemplates();
-    } catch (err) {
-      console.error("Error loading templates:", err);
-    }
+  try {
+    await templateStore.loadTemplates();
+  } catch (err) {
+    console.error("Error loading templates:", err);
   }
 });
 </script>

@@ -1,25 +1,23 @@
-import { createApp } from 'vue'
-import { createPinia } from 'pinia'
-import './style.css'
-import App from './App.vue'
-import router from './router'
+import { createApp } from "vue";
+import { createPinia } from "pinia";
+import "./style.css";
+import App from "./App.vue";
+import router from "./router";
+import { setAuthRouter } from "@/stores/auth";
 
 // Import Font Awesome CSS
-import '@fortawesome/fontawesome-free/css/all.min.css'
+import "@fortawesome/fontawesome-free/css/all.min.css";
 
 // Import Obsidian theme globally
-import './components/obsidian/obsidian-theme.css'
+import "./components/obsidian/obsidian-theme.css";
 
-// Add debug flag to help with navigation debugging
-console.log('📝 Obsidian Template Creator Debug: Application starting...');
-console.log('📝 If you see navigation issues, check the console for detailed logs');
+console.log("📝 App started");
 
-const app = createApp(App)
-const pinia = createPinia()
+const app = createApp(App);
+const pinia = createPinia();
 
-// Use plugins
-app.use(router)
-app.use(pinia)
+app.use(pinia); // ✅ Register Pinia first
+app.use(router); // ✅ Then router
+setAuthRouter(router); // ✅ Then inject router into auth store (after stores exist)
 
-// Mount app
-app.mount('#app')
+app.mount("#app");

@@ -14,6 +14,13 @@ import {
   signInWithOAuth as signInWithOAuthService,
 } from "@/services/supabase/auth";
 
+import type { Router } from "vue-router";
+
+let router: Router | null = null;
+export const setAuthRouter = (r: Router) => {
+  router = r;
+};
+
 export const useAuthStore = defineStore("auth", () => {
   // State
   const user = ref<User | null>(null);
@@ -54,6 +61,11 @@ export const useAuthStore = defineStore("auth", () => {
           user.value = data.user;
         } else {
           user.value = null;
+
+          // Redirect if logged out while on a protected route
+          if (router && router.currentRoute.value.meta.requiresAuth) {
+            router.push({ name: "login" });
+          }
         }
       });
 
@@ -124,9 +136,6 @@ export const useAuthStore = defineStore("auth", () => {
     }
   };
 
-  /**
-   * Send password reset
-   */
   const resetPassword = async (email: string): Promise<boolean> => {
     error.value = null;
     try {
@@ -142,9 +151,6 @@ export const useAuthStore = defineStore("auth", () => {
     }
   };
 
-  /**
-   * Update password after reset
-   */
   const updatePassword = async (password: string): Promise<boolean> => {
     error.value = null;
     try {
@@ -160,9 +166,6 @@ export const useAuthStore = defineStore("auth", () => {
     }
   };
 
-  /**
-   * Validate user session
-   */
   const checkAuth = async (): Promise<boolean> => {
     error.value = null;
     try {
@@ -188,9 +191,6 @@ export const useAuthStore = defineStore("auth", () => {
     }
   };
 
-  /**
-   * Logout user
-   */
   const logout = async (): Promise<boolean> => {
     error.value = null;
     try {
@@ -209,9 +209,6 @@ export const useAuthStore = defineStore("auth", () => {
     }
   };
 
-  /**
-   * OAuth sign in
-   */
   const signInWithOAuth = async (
     provider: Provider,
     options: { redirectTo?: string } = {}
@@ -245,7 +242,7 @@ export const useAuthStore = defineStore("auth", () => {
         return false;
       }
 
-      const { data } = await getSession(); // Refresh the local session
+      const { data } = await getSession();
       session.value = data.session;
       user.value = data.session?.user || null;
 
@@ -257,18 +254,13 @@ export const useAuthStore = defineStore("auth", () => {
   };
 
   return {
-    // State
     user,
     session,
     error,
     isLoading,
     initialized,
-
-    // Getters
     isAuthenticated,
     userId,
-
-    // Actions
     initialize,
     login,
     register,

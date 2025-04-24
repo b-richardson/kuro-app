@@ -15,9 +15,10 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted } from "vue";
+import { onMounted, computed } from "vue";
 import { useRouter } from "vue-router";
 import { useAuthStore } from "@/stores/auth";
+import { useAppInit } from "@/composables/useAppInit";
 
 import GradientBackground from "@/components/UI/GradientBackground.vue";
 import GlobalSidebar from "@/components/Layout/GlobalSidebar.vue";
@@ -32,9 +33,9 @@ const isSidebarVisible = computed(() => {
   return authStore.isAuthenticated && route.meta?.hideSidebar !== true;
 });
 
-// Init logic
+// App boot logic after mount
 onMounted(async () => {
-  await authStore.initialize();
+  await useAppInit();
 });
 </script>
 
