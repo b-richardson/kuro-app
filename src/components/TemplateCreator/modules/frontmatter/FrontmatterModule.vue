@@ -13,21 +13,19 @@
     @module-change="$emit('module-change')"
     ref="baseModuleRef"
   >
-    <div class="obsidian-properties">
+    <div class="fm-container">
       <!-- Empty State -->
-      <div class="properties-empty" v-if="properties.length === 0">
-        <div class="properties-empty__icon">
+      <div class="fm-empty" v-if="properties.length === 0">
+        <div class="fm-empty-content">
           <svg
             xmlns="http://www.w3.org/2000/svg"
-            width="24"
-            height="24"
+            width="40"
+            height="40"
             viewBox="0 0 24 24"
             fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            class="lucide lucide-tags"
+            stroke="#FF5733"
+            stroke-width="1.5"
+            class="fm-empty-icon"
           >
             <path
               d="M9 5H2v7l6.29 6.29c.94.94 2.48.94 3.42 0l3.58-3.58c.94-.94.94-2.48 0-3.42L9 5Z"
@@ -36,348 +34,369 @@
             <path d="m15 5 6.3 6.3a2.69 2.69 0 0 1 0 3.79L18 18.31" />
             <path d="M17 11.99V12" />
           </svg>
-        </div>
-        <div class="properties-empty__message">
-          Add properties like tags, dates, or status to organize this note.
-        </div>
-        <div class="properties-actions">
-          <button
-            class="properties-add-button properties-add-button--primary"
-            @click="addNewProperty('text')"
-          >
-            <i class="fas fa-plus"></i> Add Property
-          </button>
-          <button
-            class="properties-template-button"
-            @click="toggleTemplateDrawer"
-          >
-            <i class="fas fa-layer-group"></i> Use Template
-            <i
-              :class="[
-                'fas',
-                showTemplateDrawer ? 'fa-chevron-up' : 'fa-chevron-down',
-                'properties-dropdown-arrow',
-              ]"
-            ></i>
-          </button>
-          <div
-            class="properties-dropdown-menu properties-dropdown-menu--template"
-            v-if="showTemplateDrawer"
-          >
+          <h2 class="fm-empty-title">Add Frontmatter</h2>
+          <p class="fm-empty-description">
+            Organize your note with properties like tags or dates. Try a quick
+            start!
+          </p>
+          <div class="fm-empty-actions">
             <button
-              v-for="template in quickTemplates"
-              :key="template.id"
-              class="properties-dropdown-item"
-              @click="applyTemplate(template.id)"
+              class="fm-button fm-button--primary"
+              @click="startAddingProperty('text')"
             >
-              <i :class="template.icon"></i>
-              <span>{{ template.name }}</span>
+              <i class="fas fa-plus"></i> Add Property
+            </button>
+            <button
+              class="fm-button fm-button--secondary"
+              @click="showTemplateModal = true"
+            >
+              <i class="fas fa-layer-group"></i> Templates
+            </button>
+          </div>
+          <div class="fm-empty-suggestions">
+            <span>Suggestions:</span>
+            <button
+              v-for="suggestion in propertySuggestions"
+              :key="suggestion.type"
+              class="fm-suggestion"
+              @click="startAddingProperty(suggestion.type)"
+            >
+              <i :class="['fas', suggestion.icon]"></i>
+              {{ suggestion.name }}
+            </button>
+          </div>
+          <span class="fm-privacy-badge">Local Data</span>
+        </div>
+      </div>
+
+      <!-- Property Panel -->
+      <div class="fm-panel" v-else>
+        <!-- Property List -->
+        <div class="fm-property-list">
+          <div class="fm-list-header">
+            <h3>Properties</h3>
+            <button
+              class="fm-button fm-button--primary fm-button--small"
+              @click="startAddingProperty('text')"
+            >
+              <i class="fas fa-plus"></i> Add
+            </button>
+          </div>
+          <div class="fm-list-content">
+            <div
+              v-for="(property, index) in properties"
+              :key="index"
+              class="fm-property-row"
+              :class="{ 'fm-property-row--error': validationErrors[index] }"
+            >
+              <input
+                type="text"
+                v-model="property.name"
+                class="fm-input fm-input--name"
+                placeholder="e.g., tags"
+                @input="validateName(index)"
+                @blur="updateFrontmatter"
+                :aria-label="'Name for property ' + (index + 1)"
+                :aria-invalid="!!validationErrors[index]?.name"
+                :aria-describedby="'name-error-' + index"
+              />
+              <button
+                class="fm-type-button"
+                @click="startEditingType(index)"
+                :aria-label="'Change type for ' + (property.name || 'property')"
+              >
+                <i
+                  :class="['fas', getPropertyTypeInfo(property.type).icon]"
+                ></i>
+                {{ getPropertyTypeInfo(property.type).name }}
+              </button>
+              <div class="fm-value-wrapper">
+                <!-- Text -->
+                <input
+                  v-if="property.type === 'text'"
+                  type="text"
+                  v-model="property.value"
+                  class="fm-input fm-input--value"
+                  placeholder="Enter text"
+                  @input="debounceUpdate"
+                  @blur="updateFrontmatter"
+                  :aria-label="
+                    'Value for ' + (property.name || 'text property')
+                  "
+                />
+
+                <!-- Number -->
+                <input
+                  v-if="property.type === 'number'"
+                  type="number"
+                  v-model.number="property.value"
+                  class="fm-input fm-input--value fm-input--number"
+                  placeholder="0"
+                  @input="debounceUpdate"
+                  @blur="updateFrontmatter"
+                  :aria-label="
+                    'Value for ' + (property.name || 'number property')
+                  "
+                />
+
+                <!-- Checkbox -->
+                <label
+                  v-if="property.type === 'checkbox'"
+                  class="fm-toggle"
+                  :aria-label="
+                    'Toggle for ' + (property.name || 'checkbox property')
+                  "
+                >
+                  <input
+                    type="checkbox"
+                    v-model="property.value"
+                    @change="updateFrontmatter"
+                  />
+                  <span class="fm-toggle-slider"></span>
+                </label>
+
+                <!-- Date -->
+                <input
+                  v-if="property.type === 'date'"
+                  type="date"
+                  v-model="property.value"
+                  class="fm-input fm-input--value fm-input--date"
+                  @input="debounceUpdate"
+                  @change="updateFrontmatter"
+                  :aria-label="'Date for ' + (property.name || 'date property')"
+                />
+
+                <!-- Datetime -->
+                <input
+                  v-if="property.type === 'datetime'"
+                  type="datetime-local"
+                  v-model="property.value"
+                  class="fm-input fm-input--value fm-input--datetime"
+                  @input="debounceUpdate"
+                  @change="updateFrontmatter"
+                  :aria-label="
+                    'Date and time for ' +
+                    (property.name || 'datetime property')
+                  "
+                />
+
+                <!-- Recurring Task -->
+                <label
+                  v-if="property.type === 'isRecurring'"
+                  class="fm-toggle fm-toggle--recurring"
+                  :aria-label="
+                    'Recurring task for ' +
+                    (property.name || 'recurring property')
+                  "
+                >
+                  <input
+                    type="checkbox"
+                    v-model="property.value"
+                    @change="updateFrontmatter"
+                  />
+                  <span class="fm-toggle-slider">
+                    <i
+                      v-if="property.value"
+                      class="fas fa-redo-alt fm-recurring-icon"
+                    ></i>
+                  </span>
+                </label>
+
+                <!-- List/Tags -->
+                <div v-if="property.type === 'list'" class="fm-tags">
+                  <span
+                    v-for="(tag, tagIndex) in property.value"
+                    :key="tagIndex"
+                    class="fm-tag"
+                  >
+                    {{ tag }}
+                    <button
+                      @click="removeTag(index, tagIndex)"
+                      class="fm-tag-remove"
+                      :aria-label="'Remove tag ' + tag"
+                    >
+                      <i class="fas fa-times"></i>
+                    </button>
+                  </span>
+                  <input
+                    type="text"
+                    v-model="tagInputs[index]"
+                    class="fm-input fm-input--tag"
+                    placeholder="Add tag"
+                    @keydown.enter.prevent="addTag(index)"
+                    @blur="addTagOnBlur(index)"
+                    :aria-label="
+                      'Add tag for ' + (property.name || 'list property')
+                    "
+                    list="suggested-tags"
+                  />
+                  <datalist id="suggested-tags">
+                    <option
+                      v-for="tag in suggestedTags"
+                      :key="tag"
+                      :value="tag"
+                    ></option>
+                  </datalist>
+                </div>
+
+                <!-- Templater Prompt -->
+                <div
+                  v-if="property.type === 'prompt'"
+                  class="fm-prompt-details"
+                >
+                  <input
+                    type="text"
+                    v-model="property.promptOptions.question"
+                    class="fm-input fm-input--value"
+                    placeholder="e.g., What's the note title?"
+                    @input="debounceUpdate"
+                    @blur="updateFrontmatter"
+                    :aria-label="
+                      'Prompt question for ' +
+                      (property.name || 'prompt property')
+                    "
+                  />
+                  <input
+                    type="text"
+                    v-model="property.promptOptions.defaultValue"
+                    class="fm-input fm-input--value"
+                    placeholder="Default answer"
+                    @input="debounceUpdate"
+                    @blur="updateFrontmatter"
+                    :aria-label="
+                      'Default answer for ' +
+                      (property.name || 'prompt property')
+                    "
+                  />
+                  <label class="fm-toggle fm-toggle--prompt">
+                    <input
+                      type="checkbox"
+                      v-model="property.promptOptions.multiline"
+                      @change="updateFrontmatter"
+                    />
+                    <span class="fm-toggle-slider"></span>
+                    Multiline
+                  </label>
+                </div>
+
+                <!-- File Info -->
+                <select
+                  v-if="property.type === 'fileInfo'"
+                  v-model="property.fileProperty"
+                  class="fm-input fm-input--value fm-select"
+                  @change="updateFrontmatter"
+                  :aria-label="
+                    'File information for ' +
+                    (property.name || 'file info property')
+                  "
+                >
+                  <option value="" disabled>Select...</option>
+                  <option
+                    v-for="option in filePropertyOptions"
+                    :key="option.id"
+                    :value="option.code"
+                  >
+                    {{ option.name }}
+                  </option>
+                </select>
+              </div>
+              <button
+                class="fm-action-button fm-action-button--delete"
+                @click="removeProperty(index)"
+                :aria-label="'Delete ' + (property.name || 'property')"
+              >
+                <i class="fas fa-trash-alt"></i>
+              </button>
+              <div
+                v-if="validationErrors[index]?.name"
+                class="fm-error-message"
+                :id="'name-error-' + index"
+              >
+                {{ validationErrors[index].name }}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="fm-actions">
+          <button
+            class="fm-button fm-button--secondary"
+            @click="showTemplateModal = true"
+          >
+            <i class="fas fa-layer-group"></i> Templates
+          </button>
+          <button
+            class="fm-button fm-button--destructive"
+            @click="confirmClearAll"
+          >
+            <i class="fas fa-trash-alt"></i> Clear All
+          </button>
+        </div>
+      </div>
+
+      <!-- Type Selection Modal -->
+      <div
+        v-if="showTypeModal"
+        class="fm-type-modal-overlay"
+        @click="showTypeModal = false"
+      >
+        <div class="fm-type-modal" @click.stop>
+          <div class="fm-type-modal-header">
+            <h3>Select Property Type</h3>
+            <button
+              class="fm-close-button"
+              @click="showTypeModal = false"
+              aria-label="Close type modal"
+            >
+              <i class="fas fa-times"></i>
+            </button>
+          </div>
+          <div class="fm-type-modal-content">
+            <button
+              v-for="type in propertyTypes"
+              :key="type.id"
+              class="fm-type-option"
+              @click="selectType(type.id)"
+            >
+              <i :class="['fas', type.icon]"></i>
+              <span class="fm-type-name">{{ type.name }}</span>
+              <span class="fm-type-description">{{ type.description }}</span>
             </button>
           </div>
         </div>
       </div>
 
-      <!-- Properties List -->
-      <div class="properties-list" v-else>
-        <!-- Action Bar when properties exist -->
-        <div class="properties-actions properties-actions--existing">
-          <div class="properties-add-dropdown">
-            <button class="properties-add-button" @click="toggleAddDrawer">
-              <i class="fas fa-plus"></i> Add Property
-              <i
-                :class="[
-                  'fas',
-                  showAddDrawer ? 'fa-chevron-up' : 'fa-chevron-down',
-                  'properties-dropdown-arrow',
-                ]"
-              ></i>
-            </button>
-          </div>
-
-          <div class="properties-template-dropdown">
+      <!-- Template Modal -->
+      <div
+        v-if="showTemplateModal"
+        class="fm-template-modal-overlay"
+        @click="showTemplateModal = false"
+      >
+        <div class="fm-template-modal" @click.stop>
+          <div class="fm-template-modal-header">
+            <h3>Quick Start Templates</h3>
             <button
-              class="properties-template-button"
-              @click="toggleTemplateDrawer"
+              class="fm-close-button"
+              @click="showTemplateModal = false"
+              aria-label="Close template modal"
             >
-              <i class="fas fa-layer-group"></i> Templates
-              <i
-                :class="[
-                  'fas',
-                  showTemplateDrawer ? 'fa-chevron-up' : 'fa-chevron-down',
-                  'properties-dropdown-arrow',
-                ]"
-              ></i>
+              <i class="fas fa-times"></i>
             </button>
           </div>
-        </div>
-
-        <!-- Add Property Drawer -->
-        <div
-          v-if="showAddDrawer"
-          class="properties-drawer properties-drawer--add"
-        >
-          <div class="properties-drawer-grid">
-            <button
-              v-for="type in propertyTypes"
-              :key="type.id"
-              class="properties-drawer-item"
-              @click="addNewProperty(type.id)"
-            >
-              <i :class="type.icon"></i>
-              <span>{{ type.name }}</span>
-            </button>
-          </div>
-        </div>
-
-        <!-- Templates Drawer -->
-        <div
-          v-if="showTemplateDrawer"
-          class="properties-drawer properties-drawer--template"
-        >
-          <div class="properties-drawer-grid">
-            <button
-              v-for="template in quickTemplates"
-              :key="template.id"
-              class="properties-drawer-item"
-              @click="applyTemplate(template.id)"
-            >
-              <i :class="template.icon"></i>
-              <span>{{ template.name }}</span>
-            </button>
-          </div>
-        </div>
-
-        <!-- Property Rows -->
-        <div
-          v-for="(property, index) in properties"
-          :key="index"
-          class="property-container"
-        >
-          <div class="property-row">
-            <!-- Type Selector/Icon -->
-            <div class="property-type-selector">
+          <div class="fm-template-modal-content">
+            <div class="fm-template-grid">
               <button
-                @click="toggleTypeDrawer(index)"
-                class="property-type-button"
+                v-for="template in quickTemplates"
+                :key="template.id"
+                class="fm-template-option"
+                @click="applyTemplate(template.id)"
               >
-                <i :class="getPropertyTypeInfo(property.type).icon"></i>
-              </button>
-            </div>
-
-            <!-- Property Name -->
-            <input
-              type="text"
-              v-model="property.name"
-              class="property-name-input"
-              placeholder="Property name"
-              @input="debounceUpdate"
-              @blur="updateFrontmatter"
-            />
-
-            <!-- Property Value (Dynamic Component) -->
-            <div class="property-value-cell">
-              <!-- Text Input -->
-              <input
-                v-if="property.type === 'text'"
-                type="text"
-                v-model="property.value"
-                class="property-value-input property-value-input--text"
-                placeholder="Text value"
-                @input="debounceUpdate"
-                @blur="updateFrontmatter"
-              />
-
-              <!-- Number Input -->
-              <input
-                v-if="property.type === 'number'"
-                type="number"
-                v-model.number="property.value"
-                class="property-value-input property-value-input--number"
-                placeholder="0"
-                @input="debounceUpdate"
-                @blur="updateFrontmatter"
-              />
-
-              <!-- Checkbox (Boolean) Input -->
-              <div
-                v-if="
-                  property.type === 'checkbox' || property.type === 'boolean'
-                "
-                class="property-value-input--checkbox"
-              >
-                <input
-                  type="checkbox"
-                  :id="'prop-checkbox-' + index"
-                  v-model="property.value"
-                  @change="updateFrontmatter"
-                />
-                <label
-                  :for="'prop-checkbox-' + index"
-                  class="checkbox-custom-label"
-                ></label>
-              </div>
-
-              <!-- Date Input -->
-              <input
-                v-if="property.type === 'date'"
-                type="date"
-                v-model="property.value"
-                class="property-value-input property-value-input--date"
-                @input="debounceUpdate"
-                @change="updateFrontmatter"
-              />
-
-              <!-- DateTime Input -->
-              <input
-                v-if="property.type === 'datetime'"
-                type="datetime-local"
-                v-model="property.value"
-                class="property-value-input property-value-input--datetime"
-                @input="debounceUpdate"
-                @change="updateFrontmatter"
-              />
-
-              <!-- isRecurring Checkbox -->
-              <div
-                v-if="property.type === 'isRecurring'"
-                class="property-value-input--checkbox property-value-input--recurring"
-              >
-                <input
-                  type="checkbox"
-                  :id="'prop-recurring-' + index"
-                  v-model="property.value"
-                  @change="updateFrontmatter"
-                />
-                <label
-                  :for="'prop-recurring-' + index"
-                  class="checkbox-custom-label"
-                >
-                  <span v-if="property.value" class="recurring-indicator">
-                    <i class="fas fa-redo-alt"></i>
-                  </span>
-                </label>
-                <span class="recurring-label">Recurring task</span>
-              </div>
-
-              <!-- List (Tags) Input -->
-              <div
-                v-if="property.type === 'list' || property.type === 'tags'"
-                class="property-value-input--list"
-              >
-                <div class="property-tags">
-                  <span
-                    v-for="(tag, tagIndex) in property.value"
-                    :key="tagIndex"
-                    class="property-tag"
-                  >
-                    {{ tag }}
-                    <button
-                      @click="removeTag(index, tagIndex)"
-                      class="property-tag-remove"
-                    >
-                      <i class="fas fa-times"></i>
-                    </button>
-                  </span>
-                </div>
-                <input
-                  type="text"
-                  v-model="tagInputs[index]"
-                  class="property-tag-entry-input"
-                  placeholder="Add item..."
-                  @keydown.enter.prevent="addTag(index)"
-                  @blur="addTagOnBlur(index)"
-                />
-              </div>
-
-              <!-- Templater Prompt -->
-              <div
-                v-if="property.type === 'prompt'"
-                class="property-value-input--prompt"
-              >
-                <div class="prompt-editor">
-                  <div class="prompt-field">
-                    <label>Question to ask:</label>
-                    <input
-                      type="text"
-                      v-model="property.promptOptions.question"
-                      placeholder="e.g., What is the title?"
-                      class="prompt-input"
-                      @input="debounceUpdate"
-                    />
-                  </div>
-                  <div class="prompt-field">
-                    <label>Default answer:</label>
-                    <input
-                      type="text"
-                      v-model="property.promptOptions.defaultValue"
-                      placeholder="Optional default value"
-                      class="prompt-input"
-                      @input="debounceUpdate"
-                    />
-                  </div>
-                  <div class="prompt-checkbox">
-                    <input
-                      type="checkbox"
-                      :id="'multiline-' + index"
-                      v-model="property.promptOptions.multiline"
-                      @change="updateFrontmatter"
-                    />
-                    <label :for="'multiline-' + index"
-                      >Allow multiple lines</label
-                    >
-                  </div>
-                </div>
-              </div>
-
-              <!-- Templater File Info -->
-              <div
-                v-if="
-                  property.type === 'fileInfo' ||
-                  property.type === 'fileProperty'
-                "
-                class="property-value-input--fileinfo"
-              >
-                <div class="fileinfo-selector">
-                  <select
-                    v-model="property.fileProperty"
-                    class="fileinfo-select"
-                    @change="updateFrontmatter"
-                  >
-                    <option value="" disabled>
-                      Select file information...
-                    </option>
-                    <option
-                      v-for="option in filePropertyOptions"
-                      :key="option.id"
-                      :value="option.code"
-                    >
-                      {{ option.name }}
-                    </option>
-                  </select>
-                </div>
-              </div>
-            </div>
-
-            <!-- Delete Button -->
-            <button
-              class="property-delete-button"
-              @click="removeProperty(index)"
-            >
-              <i class="fas fa-trash-alt"></i>
-            </button>
-          </div>
-
-          <!-- Type Drawer -->
-          <div v-if="activeTypeDrawer === index" class="property-type-drawer">
-            <div class="property-type-drawer-grid">
-              <button
-                v-for="type in propertyTypes"
-                :key="type.id"
-                class="property-type-drawer-item"
-                @click="changePropertyType(index, type.id)"
-              >
-                <i :class="type.icon"></i>
-                <span>{{ type.name }}</span>
+                <i :class="template.icon"></i>
+                <span class="fm-template-name">{{ template.name }}</span>
+                <span class="fm-template-preview">
+                  {{ template.properties.map((p) => p.name).join(", ") }}
+                </span>
               </button>
             </div>
           </div>
@@ -393,7 +412,7 @@ import BaseModule from "@/components/TemplateCreator/modules/core/BaseModule.vue
 import { TemplateModule } from "@/types/TemplateModule";
 import YAML from "yaml";
 
-// Define props
+// Props
 const props = defineProps<{
   module: TemplateModule;
   index: number;
@@ -402,7 +421,7 @@ const props = defineProps<{
   autoFocus?: boolean;
 }>();
 
-// Define emits
+// Emits
 const emit = defineEmits<{
   (e: "update:content", content: string[]): void;
   (e: "update", modules: TemplateModule[]): void;
@@ -412,84 +431,119 @@ const emit = defineEmits<{
   (e: "module-change"): void;
 }>();
 
-// Reference to base module
+// Refs
 const baseModuleRef = ref<InstanceType<typeof BaseModule> | null>(null);
-
-// UI state
-const showAddDrawer = ref(false);
-const showTemplateDrawer = ref(false);
-const activeTypeDrawer = ref<number | null>(null);
+const showTemplateModal = ref(false);
+const showTypeModal = ref(false);
+const editingPropertyIndex = ref<number | null>(null);
 let updateTimeout: ReturnType<typeof setTimeout> | null = null;
 
-// Property Types with human-friendly names and icons
+// Property Types
 const propertyTypes = [
-  { id: "text", name: "Text", icon: "fas fa-font" },
-  { id: "list", name: "List / Tags", icon: "fas fa-tags" }, // "tags" in the original, "list" in UI
-  { id: "number", name: "Number", icon: "fas fa-hashtag" },
-  { id: "checkbox", name: "Checkbox", icon: "far fa-check-square" }, // "boolean" in the original, "checkbox" in UI
-  { id: "date", name: "Date", icon: "fas fa-calendar-alt" },
-  { id: "datetime", name: "Date & Time", icon: "fas fa-clock" },
-  { id: "isRecurring", name: "Recurring Task", icon: "fas fa-redo-alt" },
-  { id: "prompt", name: "Ask a Question", icon: "fas fa-terminal" },
-  { id: "fileInfo", name: "Dynamic Value", icon: "fas fa-cogs" }, // "fileProperty" in the original, "fileInfo" in UI
+  {
+    id: "text",
+    name: "Text",
+    icon: "fa-font",
+    description: "Simple text, like a title or note.",
+  },
+  {
+    id: "list",
+    name: "Tags",
+    icon: "fa-tags",
+    description: "Multiple tags for categorization.",
+  },
+  {
+    id: "number",
+    name: "Number",
+    icon: "fa-hashtag",
+    description: "Numeric value, like a rating.",
+  },
+  {
+    id: "checkbox",
+    name: "Checkbox",
+    icon: "fa-check-square",
+    description: "True/false toggle.",
+  },
+  {
+    id: "date",
+    name: "Date",
+    icon: "fa-calendar-alt",
+    description: "Calendar date, like a due date.",
+  },
+  {
+    id: "datetime",
+    name: "Date & Time",
+    icon: "fa-clock",
+    description: "Date with time.",
+  },
+  {
+    id: "isRecurring",
+    name: "Recurring",
+    icon: "fa-redo-alt",
+    description: "Mark as recurring task.",
+  },
+  {
+    id: "prompt",
+    name: "Prompt",
+    icon: "fa-terminal",
+    description: "Ask a question on note creation.",
+  },
+  {
+    id: "fileInfo",
+    name: "Dynamic",
+    icon: "fa-cogs",
+    description: "Note metadata, like file name.",
+  },
 ];
 
-// Get property type info by ID
-function getPropertyTypeInfo(typeId: string) {
-  // Map old type names to new UI type names
-  const typeMap: Record<string, string> = {
-    tags: "list",
-    boolean: "checkbox",
-    fileProperty: "fileInfo",
-  };
+// Property Suggestions
+const propertySuggestions = [
+  { type: "list", name: "Tags", icon: "fa-tags" },
+  { type: "date", name: "Date", icon: "fa-calendar-alt" },
+  { type: "checkbox", name: "Completed", icon: "fa-check-square" },
+];
 
-  // Convert old type to new UI type if needed
-  const uiTypeId = typeMap[typeId] || typeId;
-
-  return propertyTypes.find((t) => t.id === uiTypeId) || propertyTypes[0]; // Default to text
-}
-
-// Common file property options
+// File Property Options
 const filePropertyOptions = [
   {
     id: "fileName",
     name: "File Name",
-    icon: "fas fa-file-signature",
+    icon: "fa-file-signature",
     code: "<% tp.file.title %>",
   },
   {
     id: "folderPath",
     name: "Folder Path",
-    icon: "fas fa-folder",
+    icon: "fa-folder",
     code: "<% tp.file.folder %>",
   },
   {
     id: "creation",
     name: "Creation Date",
-    icon: "fas fa-calendar-plus",
+    icon: "fa-calendar-plus",
     code: '<% tp.file.creation_date("YYYY-MM-DD") %>',
   },
   {
     id: "modified",
     name: "Modified Date",
-    icon: "fas fa-calendar-check",
+    icon: "fa-calendar-check",
     code: '<% tp.file.last_modified_date("YYYY-MM-DD") %>',
   },
   {
     id: "currentDate",
     name: "Today's Date",
-    icon: "fas fa-calendar-day",
+    icon: "fa-calendar-day",
     code: '<% tp.date.now("YYYY-MM-DD") %>',
   },
   {
     id: "currentTime",
     name: "Current Time",
-    icon: "fas fa-clock",
+    icon: "fa-clock",
     code: '<% tp.date.now("HH:mm") %>',
   },
 ];
 
-// Template presets with clear names
+// Template Presets
 const quickTemplates = [
   {
     id: "basic",
@@ -498,14 +552,14 @@ const quickTemplates = [
     properties: [
       {
         name: "date",
-        type: "fileProperty",
+        type: "fileInfo",
         value: "",
         fileProperty: '<% tp.date.now("YYYY-MM-DD") %>',
         promptOptions: { question: "", defaultValue: "", multiline: false },
       },
       {
         name: "tags",
-        type: "tags",
+        type: "list",
         value: [],
         fileProperty: null,
         promptOptions: { question: "", defaultValue: "", multiline: false },
@@ -533,14 +587,14 @@ const quickTemplates = [
       },
       {
         name: "start-date",
-        type: "fileProperty",
+        type: "fileInfo",
         value: "",
         fileProperty: '<% tp.date.now("YYYY-MM-DD") %>',
         promptOptions: { question: "", defaultValue: "", multiline: false },
       },
       {
         name: "tags",
-        type: "tags",
+        type: "list",
         value: ["project"],
         fileProperty: null,
         promptOptions: { question: "", defaultValue: "", multiline: false },
@@ -561,21 +615,21 @@ const quickTemplates = [
       },
       {
         name: "date",
-        type: "fileProperty",
+        type: "fileInfo",
         value: "",
         fileProperty: '<% tp.date.now("YYYY-MM-DD") %>',
         promptOptions: { question: "", defaultValue: "", multiline: false },
       },
       {
         name: "participants",
-        type: "tags",
+        type: "list",
         value: [],
         fileProperty: null,
         promptOptions: { question: "", defaultValue: "", multiline: false },
       },
       {
         name: "tags",
-        type: "tags",
+        type: "list",
         value: ["meeting"],
         fileProperty: null,
         promptOptions: { question: "", defaultValue: "", multiline: false },
@@ -618,7 +672,7 @@ const quickTemplates = [
       },
       {
         name: "date-read",
-        type: "fileProperty",
+        type: "fileInfo",
         value: "",
         fileProperty: '<% tp.date.now("YYYY-MM-DD") %>',
         promptOptions: { question: "", defaultValue: "", multiline: false },
@@ -632,7 +686,7 @@ const quickTemplates = [
       },
       {
         name: "tags",
-        type: "tags",
+        type: "list",
         value: ["book", "literature"],
         fileProperty: null,
         promptOptions: { question: "", defaultValue: "", multiline: false },
@@ -641,7 +695,7 @@ const quickTemplates = [
   },
 ];
 
-// Module state
+// Module State
 const properties = ref<
   Array<{
     name: string;
@@ -655,141 +709,64 @@ const properties = ref<
     };
   }>
 >([]);
-
-// Input tracking
 const tagInputs = ref<Record<number, string>>({});
+const validationErrors = ref<Record<number, { name?: string }>>({});
+const suggestedTags = ref<string[]>(["project", "todo", "meeting", "book"]);
 
-// Initialize component
-onMounted(() => {
-  // Parse existing content if it exists
+// Initialization
+onMounted(async () => {
   if (props.module.content.length > 0) {
     parseExistingFrontmatter(props.module.content[0]);
   }
   initializeTagInputs();
-
-  // Set up click handler to close dropdowns when clicking outside
-  document.addEventListener("click", handleOutsideClick);
+  await fetchSuggestedTags();
 });
 
-// Clean up event listeners
 onBeforeUnmount(() => {
-  document.removeEventListener("click", handleOutsideClick);
+  if (updateTimeout) clearTimeout(updateTimeout);
 });
 
-// Handle clicks outside the component
-function handleOutsideClick(e: Event) {
-  const target = e.target as HTMLElement;
-  if (baseModuleRef.value && !baseModuleRef.value.$el.contains(target)) {
-    // Close all drawers if clicking outside
-    closeDrawers();
+// Fetch Suggested Tags (Simulated API call)
+async function fetchSuggestedTags() {
+  try {
+    // Placeholder: Replace with obsidianApiService call
+    suggestedTags.value = [
+      "project",
+      "todo",
+      "meeting",
+      "book",
+      "journal",
+      "idea",
+    ];
+  } catch (error) {
+    console.error("Error fetching tags:", error);
   }
 }
 
-// Helper functions
-function truncate(str: string, len: number) {
-  return str.length > len ? str.substring(0, len) + "..." : str;
+// Property Type Info
+function getPropertyTypeInfo(typeId: string) {
+  return propertyTypes.find((t) => t.id === typeId) || propertyTypes[0];
 }
 
-// Toggle functions
-function toggleAddDrawer() {
-  closeDrawers();
-  showAddDrawer.value = !showAddDrawer.value;
-}
-
-function toggleTemplateDrawer() {
-  closeDrawers();
-  showTemplateDrawer.value = !showTemplateDrawer.value;
-}
-
-function toggleTypeDrawer(index: number) {
-  // Close all other dropdowns first
-  closeDrawers();
-
-  // Toggle the drawer for this index
-  activeTypeDrawer.value = activeTypeDrawer.value === index ? null : index;
-}
-
-function closeDrawers() {
-  activeTypeDrawer.value = null;
-  showAddDrawer.value = false;
-  showTemplateDrawer.value = false;
-}
-// Apply a template
-function applyTemplate(templateId: string) {
-  const template = quickTemplates.find((t) => t.id === templateId);
-  if (template) {
-    // Deep clone the template properties
-    properties.value = JSON.parse(JSON.stringify(template.properties));
-    initializeTagInputs();
-    updateFrontmatter();
-  }
-  showTemplateDrawer.value = false; // Close drawer
-}
-
-// Add a new property
-function addNewProperty(type: string) {
-  // Map UI type to data type if needed
-  const dataTypeMap: Record<string, string> = {
-    list: "tags",
-    checkbox: "boolean",
-    fileInfo: "fileProperty",
-  };
-
-  const dataType = dataTypeMap[type] || type;
-
-  const newProp = {
-    name: "",
-    type: dataType, // Use the data type for storage
-    value: getDefaultValueForType(dataType),
-    fileProperty: null,
-    promptOptions: {
-      question: "",
-      defaultValue: "",
-      multiline: false,
-    },
-  };
-
-  properties.value.push(newProp);
-  initializeTagInputs(); // Ensure tag input state exists
-
-  // Focus the new property's name input
-  nextTick(() => {
-    const rows = baseModuleRef.value?.$el.querySelectorAll(".property-row");
-    if (rows && rows.length > 0) {
-      const newRow = rows[rows.length - 1];
-      const nameInput = newRow.querySelector(
-        ".property-name-input"
-      ) as HTMLInputElement;
-      nameInput?.focus();
-    }
-  });
-
-  updateFrontmatter();
-  showAddDrawer.value = false; // Close drawer after adding
-}
-
-// Get default value based on property type
+// Default Value by Type
 function getDefaultValueForType(type: string): any {
   switch (type) {
     case "text":
       return "";
-    case "tags":
     case "list":
       return [];
     case "number":
       return 0;
-    case "boolean":
     case "checkbox":
       return false;
     case "date":
-      return formatDate(new Date()); // Current date in YYYY-MM-DD
+      return formatDate(new Date());
     case "datetime":
-      return formatDateTime(new Date()); // Current date-time in YYYY-MM-DDTHH:MM
+      return formatDateTime(new Date());
     case "isRecurring":
       return false;
     case "prompt":
       return "";
-    case "fileProperty":
     case "fileInfo":
       return "";
     default:
@@ -797,7 +774,7 @@ function getDefaultValueForType(type: string): any {
   }
 }
 
-// Helper functions for date formatting
+// Date Formatting
 function formatDate(date: Date): string {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
@@ -812,62 +789,103 @@ function formatDateTime(date: Date): string {
   )}:${String(date.getMinutes()).padStart(2, "0")}`;
 }
 
-// Handle property type change
-function changePropertyType(index: number, newType: string) {
-  // Map UI type to data type if needed
-  const dataTypeMap: Record<string, string> = {
-    list: "tags",
-    checkbox: "boolean",
-    fileInfo: "fileProperty",
+// Type Selection
+function startEditingType(index: number) {
+  editingPropertyIndex.value = index;
+  showTypeModal.value = true;
+}
+
+function startAddingProperty(type: string) {
+  const newProp = {
+    name: "",
+    type,
+    value: getDefaultValueForType(type),
+    fileProperty: null,
+    promptOptions: { question: "", defaultValue: "", multiline: false },
   };
 
-  // Some types don't need mapping (keep as is)
-  const skipMapping = ["date", "datetime", "isRecurring"];
+  properties.value.push(newProp);
+  const newIndex = properties.value.length - 1;
+  initializeTagInputs();
 
-  const dataType = skipMapping.includes(newType)
-    ? newType
-    : dataTypeMap[newType] || newType;
+  nextTick(() => {
+    const rows = baseModuleRef.value?.$el.querySelectorAll(".fm-property-row");
+    if (rows && rows.length > 0) {
+      const newRow = rows[rows.length - 1];
+      const nameInput = newRow.querySelector(
+        ".fm-input--name"
+      ) as HTMLInputElement;
+      nameInput?.focus();
+    }
+  });
 
+  updateFrontmatter();
+}
+
+function selectType(typeId: string) {
+  if (editingPropertyIndex.value !== null) {
+    const index = editingPropertyIndex.value;
+    const prop = properties.value[index];
+    if (prop.type !== typeId) {
+      prop.type = typeId;
+      prop.value = getDefaultValueForType(typeId);
+      if (typeId !== "fileInfo") prop.fileProperty = null;
+      if (typeId !== "prompt")
+        prop.promptOptions = {
+          question: "",
+          defaultValue: "",
+          multiline: false,
+        };
+      validateName(index);
+      updateFrontmatter();
+    }
+  }
+  showTypeModal.value = false;
+  editingPropertyIndex.value = null;
+}
+
+// Validation
+function validateName(index: number) {
   const prop = properties.value[index];
-  if (prop.type === dataType) {
-    activeTypeDrawer.value = null;
-    return; // No change
+  const errors: { name?: string } = {};
+
+  if (!prop.name.trim()) {
+    errors.name = "Name required";
+  } else if (!/^[a-zA-Z0-9_-]+$/.test(prop.name)) {
+    errors.name = "Use letters, numbers, hyphens, underscores";
+  } else if (
+    properties.value.some((p, i) => i !== index && p.name === prop.name)
+  ) {
+    errors.name = "Name already used";
   }
 
-  prop.type = dataType;
-  prop.value = getDefaultValueForType(dataType);
-
-  // Reset specific fields if type changes away from them
-  if (dataType !== "fileProperty") prop.fileProperty = null;
-  if (dataType !== "prompt")
-    prop.promptOptions = { question: "", defaultValue: "", multiline: false };
-
-  initializeTagInputs(); // Re-init in case it changed to/from list
-  updateFrontmatter();
-  activeTypeDrawer.value = null; // Close drawer
+  validationErrors.value[index] = errors;
+  debounceUpdate();
 }
 
-// Remove a property
+// Property Management
 function removeProperty(index: number) {
   properties.value.splice(index, 1);
-  initializeTagInputs(); // Recalculate tag inputs
+  delete validationErrors.value[index];
+  initializeTagInputs();
   updateFrontmatter();
 }
 
-// Debounce update to avoid excessive YAML generation on every keypress
-function debounceUpdate() {
-  if (updateTimeout) clearTimeout(updateTimeout);
-  updateTimeout = setTimeout(() => {
+function confirmClearAll() {
+  if (confirm("Remove all properties? This cannot be undone.")) {
+    properties.value = [];
+    validationErrors.value = {};
+    tagInputs.value = {};
     updateFrontmatter();
-  }, 500); // 500ms delay
+  }
 }
 
-// Tag handling
+// Tag Handling
 function initializeTagInputs() {
   const newTagInputs: Record<number, string> = {};
   properties.value.forEach((prop, index) => {
-    if (prop.type === "tags") {
-      newTagInputs[index] = tagInputs.value[index] || ""; // Preserve existing input if possible
+    if (prop.type === "list") {
+      newTagInputs[index] = tagInputs.value[index] || "";
     }
   });
   tagInputs.value = newTagInputs;
@@ -877,92 +895,83 @@ function addTag(propIndex: number) {
   const tagValue = tagInputs.value[propIndex]?.trim();
   const prop = properties.value[propIndex];
 
-  if (tagValue && prop && (prop.type === "tags" || prop.type === "list")) {
-    // Ensure value is an array
-    if (!Array.isArray(prop.value)) {
-      prop.value = [];
-    }
-    // Add if not already present
+  if (tagValue && prop && prop.type === "list") {
+    if (!Array.isArray(prop.value)) prop.value = [];
     if (!prop.value.includes(tagValue)) {
       prop.value.push(tagValue);
+      if (!suggestedTags.value.includes(tagValue)) {
+        suggestedTags.value.push(tagValue);
+      }
       updateFrontmatter();
     }
-    // Clear input
     tagInputs.value[propIndex] = "";
   }
 }
 
 function addTagOnBlur(propIndex: number) {
-  // Add the tag if there's text in the input when blurring
-  const tagValue = tagInputs.value[propIndex]?.trim();
-  if (tagValue) {
+  if (tagInputs.value[propIndex]?.trim()) {
     addTag(propIndex);
   }
 }
 
 function removeTag(propIndex: number, tagIndex: number) {
   const prop = properties.value[propIndex];
-  if (
-    prop &&
-    (prop.type === "tags" || prop.type === "list") &&
-    Array.isArray(prop.value)
-  ) {
+  if (prop && prop.type === "list" && Array.isArray(prop.value)) {
     prop.value.splice(tagIndex, 1);
     updateFrontmatter();
   }
 }
 
-// Generate YAML frontmatter from properties
+// Template Handling
+function applyTemplate(templateId: string) {
+  const template = quickTemplates.find((t) => t.id === templateId);
+  if (template) {
+    properties.value = JSON.parse(JSON.stringify(template.properties));
+    initializeTagInputs();
+    updateFrontmatter();
+  }
+  showTemplateModal.value = false;
+}
+
+// Debounce Update
+function debounceUpdate() {
+  if (updateTimeout) clearTimeout(updateTimeout);
+  updateTimeout = setTimeout(() => {
+    updateFrontmatter();
+  }, 300);
+}
+
+// Generate Frontmatter
 function generateFrontmatter() {
   const frontmatterObj: Record<string, any> = {};
 
   for (const prop of properties.value) {
     if (!prop.name.trim()) continue;
 
-    // For file property type, use the property code directly
-    if (prop.type === "fileProperty" && prop.fileProperty) {
+    if (prop.type === "fileInfo" && prop.fileProperty) {
       frontmatterObj[prop.name] = prop.fileProperty;
-    }
-    // For prompt type, generate tp.system.prompt syntax
-    else if (prop.type === "prompt" && prop.promptOptions.question) {
+    } else if (prop.type === "prompt" && prop.promptOptions.question) {
       let promptCode = `<% await tp.system.prompt("${prop.promptOptions.question}"`;
-
-      // Add default value if provided
       if (prop.promptOptions.defaultValue) {
         promptCode += `, "${prop.promptOptions.defaultValue}"`;
       }
-
-      // Add multiline parameter if enabled
       if (prop.promptOptions.multiline) {
-        if (!prop.promptOptions.defaultValue) {
-          promptCode += ', ""'; // Add empty default if none provided
-        }
+        if (!prop.promptOptions.defaultValue) promptCode += ', ""';
         promptCode += `, {multi: true}`;
       }
-
       promptCode += ") %>";
       frontmatterObj[prop.name] = promptCode;
-    }
-    // For other types, use the value
-    else {
+    } else {
       frontmatterObj[prop.name] = prop.value;
     }
   }
 
-  // Generate YAML string
   let yamlString = YAML.stringify(frontmatterObj);
-
-  // Handle special case for Templater tags
-  // This replaces the quoted Templater syntax with unquoted syntax
   yamlString = yamlString.replace(/"<%(.*?)%>"/g, "<$1>");
-  console.log("Final YAML with Templater tags processed:", yamlString);
-  console.log("📄 YAML before return (no extra --- added later):", yamlString);
-
-  // Just return the frontmatter without container markers - let the extension handle it
   return `---\n${yamlString}---\n`;
 }
 
-// Update frontmatter and emit content
+// Update Frontmatter
 function updateFrontmatter() {
   if (properties.value.length === 0) {
     emit("update:content", []);
@@ -970,25 +979,16 @@ function updateFrontmatter() {
   }
 
   const frontmatter = generateFrontmatter();
-  // Add this console log to see the generated frontmatter
-  console.log(
-    "Generated Frontmatter from updateFrontmatter function:",
-    frontmatter
-  );
   emit("update:content", [frontmatter]);
 }
 
-// Parse existing frontmatter
+// Parse Existing Frontmatter
 function parseExistingFrontmatter(content: string) {
   try {
-    // Extract YAML content between --- markers
     const match = content.match(/^---\n([\s\S]*?)\n---/);
     if (!match) return;
 
-    // Convert Templater syntax to be parseable by YAML
-    // This converts unquoted <% ... %> to quoted "<%...%>" for parsing
     let yamlContent = match[1].replace(/<%(.*?)%>/g, '"<%$1%>"');
-
     const parsed = YAML.parse(yamlContent);
 
     const newProperties = [];
@@ -997,71 +997,42 @@ function parseExistingFrontmatter(content: string) {
       let propertyType = "text";
       let propertyValue = value;
       let fileProperty = null;
-      let promptOptions = {
-        question: "",
-        defaultValue: "",
-        multiline: false,
-      };
+      let promptOptions = { question: "", defaultValue: "", multiline: false };
 
-      // Check for templater tags
       if (typeof value === "string") {
         if (value.includes("tp.file.") || value.includes("tp.date.")) {
-          propertyType = "fileProperty";
+          propertyType = "fileInfo";
           fileProperty = value;
           propertyValue = "";
-        }
-        // Check for prompt syntax
-        else if (value.includes("tp.system.prompt")) {
+        } else if (value.includes("tp.system.prompt")) {
           propertyType = "prompt";
-
-          // Extract question
           const questionMatch = value.match(/tp\.system\.prompt\("([^"]+)"/);
-          if (questionMatch) {
-            promptOptions.question = questionMatch[1];
-          }
-
-          // Extract default value
+          if (questionMatch) promptOptions.question = questionMatch[1];
           const defaultMatch = value.match(
             /tp\.system\.prompt\("[^"]+",\s*"([^"]*)"/
           );
-          if (defaultMatch) {
-            promptOptions.defaultValue = defaultMatch[1];
-          }
-
-          // Check for multiline option
+          if (defaultMatch) promptOptions.defaultValue = defaultMatch[1];
           promptOptions.multiline = value.includes("multi: true");
-
           propertyValue = "";
-        }
-        // Check for date format
-        else if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+        } else if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
           propertyType = "date";
-        }
-        // Check for datetime format
-        else if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2})?$/.test(value)) {
+        } else if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2})?$/.test(value)) {
           propertyType = "datetime";
         }
-      }
-      // Determine type based on JavaScript type
-      else if (typeof value === "number") {
+      } else if (typeof value === "number") {
         propertyType = "number";
       } else if (typeof value === "boolean") {
-        // Check for special boolean property names
-        if (key === "isRecurring") {
-          propertyType = "isRecurring";
-        } else {
-          propertyType = "boolean";
-        }
+        propertyType = key === "isRecurring" ? "isRecurring" : "checkbox";
       } else if (Array.isArray(value)) {
-        propertyType = "tags";
+        propertyType = "list";
       }
 
       newProperties.push({
         name: key,
         type: propertyType,
         value: propertyValue,
-        fileProperty: fileProperty,
-        promptOptions: promptOptions,
+        fileProperty,
+        promptOptions,
       });
     }
 
@@ -1072,7 +1043,7 @@ function parseExistingFrontmatter(content: string) {
   }
 }
 
-// Watch for external content changes
+// Watch Content Changes
 watch(
   () => props.module.content,
   (newContent) => {
@@ -1085,368 +1056,650 @@ watch(
 </script>
 
 <style scoped>
-/* Base & Layout */
-.obsidian-properties {
+/* Base & Glassmorphism */
+.fm-container {
   width: 100%;
-  background: var(--background-secondary, #2f333a);
-  border: 1px solid var(--background-modifier-border, #3f444b);
-  border-radius: 8px;
-  padding: 16px;
-  color: var(--text-normal, #e2e8f0);
-  font-family: var(--font-interface, sans-serif);
+  max-width: 600px;
+  background: rgba(20, 25, 35, 0.9);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 12px;
+  padding: 20px;
+  color: #e1e1e6;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   display: flex;
   flex-direction: column;
-  gap: 12px;
-}
-
-.properties-list {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.property-row {
-  display: grid;
-  grid-template-columns: [type] 30px [name] 1fr [value] 1.5fr [delete] 30px;
-  gap: 8px;
-  align-items: center;
-  padding: 4px 0;
-  border-radius: 4px;
-  transition: background-color 0.15s ease-in-out;
-}
-
-.property-row:hover {
-  background-color: var(--background-secondary-alt, #3a3e44);
+  gap: 16px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+  max-height: 500px;
+  overflow-y: auto;
 }
 
 /* Empty State */
-.properties-empty {
+.fm-empty {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+}
+
+.fm-empty-content {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 16px;
-  padding: 32px 20px;
+  gap: 12px;
   text-align: center;
-  color: var(--text-muted, #94a3b8);
+  background: rgba(30, 36, 50, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  padding: 20px;
+  animation: slideUp 0.5s ease-out;
 }
 
-.properties-empty__icon {
-  font-size: 32px;
-  color: var(--text-faint, #64748b);
+.fm-empty-icon {
+  animation: glow 2s infinite ease-in-out;
 }
 
-.properties-empty__icon svg {
-  stroke-width: 1.5px;
+.fm-empty-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #fff;
 }
 
-.properties-empty__message {
-  font-size: 15px;
-  max-width: 300px;
+.fm-empty-description {
+  font-size: 13px;
+  color: #94a3b8;
   line-height: 1.5;
+  max-width: 300px;
 }
 
-/* Actions (Buttons & Dropdowns) */
-.properties-actions {
+.fm-empty-actions {
   display: flex;
   gap: 12px;
-  width: 100%;
-  justify-content: center;
-  position: relative;
 }
 
-.properties-actions--existing {
-  justify-content: flex-start;
-  margin-bottom: 8px;
-  padding-bottom: 8px;
-  border-bottom: 1px solid var(--background-modifier-border, #3f444b);
+.fm-empty-suggestions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 12px;
+  color: #94a3b8;
+  align-items: center;
 }
 
-.properties-add-button,
-.properties-template-button {
-  padding: 6px 12px;
+.fm-suggestion {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 6px;
-  font-size: 13px;
-  font-weight: 500;
-  display: inline-flex;
+  padding: 6px 10px;
+  font-size: 12px;
+  color: #94a3b8;
+  display: flex;
   align-items: center;
   gap: 6px;
   cursor: pointer;
-  transition: background-color 0.2s, border-color 0.2s, color 0.2s;
-  border: 1px solid var(--background-modifier-border, #3f444b);
-  background-color: var(--background-primary, #282c34);
-  color: var(--text-muted, #94a3b8);
+  transition: all 0.2s;
 }
 
-.properties-add-button:hover,
-.properties-template-button:hover {
-  background-color: var(--background-secondary, #2f333a);
-  border-color: var(--interactive-accent-hover, #5c8df6);
-  color: var(--text-normal, #e2e8f0);
+.fm-suggestion:hover {
+  background: rgba(255, 255, 255, 0.15);
+  color: #e1e1e6;
 }
 
-.properties-add-button i,
-.properties-template-button i {
+.fm-suggestion i {
+  color: #60a5fa;
   font-size: 12px;
 }
 
-.properties-add-button--primary {
-  background-color: var(--interactive-accent, #4a7de7);
-  border-color: var(--interactive-accent, #4a7de7);
-  color: white;
+.fm-privacy-badge {
+  background: rgba(96, 165, 250, 0.2);
+  color: #60a5fa;
+  padding: 4px 10px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 500;
+  margin-top: 8px;
 }
 
-.properties-add-button--primary:hover {
-  background-color: var(--interactive-accent-hover, #5c8df6);
-  border-color: var(--interactive-accent-hover, #5c8df6);
+/* Panel */
+.fm-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
-.properties-dropdown-arrow {
-  font-size: 10px;
-  opacity: 0.7;
-  margin-left: 4px;
+/* Property List */
+.fm-property-list {
+  background: rgba(15, 20, 30, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  padding: 12px;
 }
 
-/* Dropdown Menus */
-.properties-add-dropdown,
-.properties-template-dropdown,
-.property-type-selector {
-  position: relative;
+.fm-list-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
 }
 
-.properties-dropdown-menu {
-  position: absolute;
-  top: calc(100% + 4px);
-  left: 0;
-  min-width: 200px;
-  background: var(--background-secondary-alt, #3a3e44);
-  border: 1px solid var(--background-modifier-border-hover, #4a4f56);
+.fm-list-header h3 {
+  font-size: 14px;
+  font-weight: 500;
+  color: #e1e1e6;
+}
+
+.fm-list-content {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.fm-property-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  background: rgba(30, 36, 50, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+}
+
+.fm-property-row--error {
+  border-color: #da5858;
+}
+
+.fm-input--name {
+  flex: 1;
+  min-width: 100px;
+}
+
+.fm-type-button {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 6px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-  z-index: 100;
-  padding: 4px;
-  max-height: 300px;
-  overflow-y: auto;
-  animation: fadeIn 0.15s ease-out forwards;
-}
-
-.property-type-dropdown {
-  left: -4px;
-  min-width: 180px;
-}
-
-.properties-dropdown-menu--template {
-  left: auto;
-  right: 0;
-}
-
-.properties-dropdown-item {
-  width: 100%;
   padding: 8px 12px;
-  text-align: left;
-  background: transparent;
-  border: none;
-  color: var(--text-normal, #e2e8f0);
-  font-size: 13px;
-  cursor: pointer;
+  font-size: 12px;
+  color: #94a3b8;
   display: flex;
   align-items: center;
-  gap: 10px;
-  border-radius: 4px;
-  transition: background-color 0.15s;
+  gap: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
 }
 
-.properties-dropdown-item:hover {
-  background-color: var(--background-modifier-hover, #4a4f56);
+.fm-type-button:hover {
+  background: rgba(255, 255, 255, 0.15);
+  color: #e1e1e6;
 }
 
-.properties-dropdown-item i {
-  width: 16px;
-  text-align: center;
-  color: var(--text-muted, #94a3b8);
+.fm-type-button i {
+  color: #60a5fa;
   font-size: 12px;
 }
 
-.properties-dropdown-item:hover i {
-  color: var(--interactive-accent, #4a7de7);
-}
-
-/* Property Row Elements */
-
-/* Type Selector */
-.property-type-button {
-  grid-column: type;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  border-radius: 4px;
-  background: transparent;
-  border: none;
-  color: var(--text-muted, #94a3b8);
-  cursor: pointer;
-  transition: background-color 0.15s, color 0.15s;
-}
-
-.property-type-button:hover {
-  background-color: var(--background-modifier-hover, #4a4f56);
-  color: var(--text-normal, #e2e8f0);
-}
-
-.property-type-button i {
-  font-size: 14px;
-}
-
-/* Name Input */
-.property-name-input {
-  grid-column: name;
-  background: transparent;
-  border: none;
-  padding: 6px 8px;
-  color: var(--text-normal, #e2e8f0);
-  font-size: 14px;
-  border-radius: 4px;
-  width: 100%;
-  transition: background-color 0.15s, box-shadow 0.15s;
-  outline: none;
-}
-
-.property-name-input:focus {
-  background-color: var(--background-primary, #282c34);
-  box-shadow: 0 0 0 1px var(--interactive-accent, #4a7de7);
-}
-
-.property-name-input::placeholder {
-  color: var(--text-faint, #64748b);
-  font-style: italic;
-}
-
-/* Value Cell & Inputs */
-.property-value-cell {
-  grid-column: value;
-  display: flex;
-  align-items: center;
-}
-
-.property-value-input,
-.property-value-input--checkbox,
-.property-value-input--list,
-.property-value-input--prompt,
-.property-value-input--fileinfo {
-  width: 100%;
-}
-
-.property-value-input {
-  background: transparent;
-  border: none;
-  padding: 6px 8px;
-  color: var(--text-normal, #e2e8f0);
-  font-size: 14px;
-  border-radius: 4px;
-  transition: background-color 0.15s, box-shadow 0.15s;
-  outline: none;
-}
-
-.property-value-input:focus {
-  background-color: var(--background-primary, #282c34);
-  box-shadow: 0 0 0 1px var(--interactive-accent, #4a7de7);
-}
-
-.property-value-input::placeholder {
-  color: var(--text-faint, #64748b);
-  font-style: italic;
-}
-
-/* Date and DateTime inputs */
-.property-value-input--date,
-.property-value-input--datetime {
-  cursor: pointer;
-  padding-right: 28px;
-  min-width: 140px;
-  background-color: var(--background-primary, #282c34);
-  border: 1px solid var(--background-modifier-border, #3f444b);
-}
-
-.property-value-input--date::-webkit-calendar-picker-indicator,
-.property-value-input--datetime::-webkit-calendar-picker-indicator {
-  opacity: 0.6;
-  cursor: pointer;
-  filter: invert(0.7);
-}
-
-.property-value-input--date:hover::-webkit-calendar-picker-indicator,
-.property-value-input--datetime:hover::-webkit-calendar-picker-indicator {
-  opacity: 1;
-}
-
-/* Checkbox */
-.property-value-input--checkbox {
-  display: flex;
-  align-items: center;
-  justify-content: flex-start;
-  height: 28px;
-  padding: 0 8px;
-  position: relative;
-}
-
-.property-value-input--checkbox input[type="checkbox"] {
-  appearance: none;
-  -webkit-appearance: none;
-  width: 18px;
-  height: 18px;
-  border: 1px solid var(--text-faint, #64748b);
-  border-radius: 3px;
-  background-color: var(--background-primary, #282c34);
-  cursor: pointer;
-  position: relative;
-  transition: background-color 0.15s, border-color 0.15s;
-  margin: 0;
-  z-index: 1;
-}
-
-.property-value-input--checkbox input[type="checkbox"]:checked {
-  background-color: var(--interactive-accent, #4a7de7);
-  border-color: var(--interactive-accent, #4a7de7);
-}
-
-.property-value-input--checkbox input[type="checkbox"]:checked::before {
-  content: "";
-  position: absolute;
-  top: 2px;
-  left: 5px;
-  width: 4px;
-  height: 8px;
-  border: solid white;
-  border-width: 0 2px 2px 0;
-  transform: rotate(45deg);
-}
-
-.property-value-input--checkbox .checkbox-custom-label {
-  position: absolute;
-  left: 8px;
-  width: 18px;
-  height: 18px;
-  cursor: pointer;
-}
-
-/* isRecurring checkbox styling */
-.property-value-input--recurring {
+.fm-value-wrapper {
+  flex: 2;
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
-.recurring-indicator {
-  color: var(--interactive-accent, #4a7de7);
-  font-size: 12px;
-  animation: spin 4s linear infinite;
-  display: inline-block;
+.fm-input--value {
+  flex: 1;
 }
 
-.recurring-label {
+.fm-input--number {
+  width: 80px;
+}
+
+.fm-input--date,
+.fm-input--datetime {
+  width: 140px;
+  padding-right: 30px;
+}
+
+.fm-input--tag {
+  width: 100px;
+}
+
+.fm-action-button {
+  background: none;
+  border: none;
+  color: #94a3b8;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.fm-action-button--delete:hover {
+  color: #60a5fa;
+}
+
+/* Inputs and Selects */
+.fm-input,
+.fm-select {
+  padding: 8px 12px;
+  background: rgba(15, 20, 30, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 6px;
+  color: #e1e1e6;
+  font-size: 12px;
+  transition: all 0.2s ease-out;
+}
+
+.fm-input:focus,
+.fm-select:focus {
+  border-color: #60a5fa;
+  box-shadow: 0 0 0 1px rgba(96, 165, 250, 0.25);
+}
+
+.fm-input::placeholder {
+  color: #717a8a;
+}
+
+.fm-select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  padding-right: 24px;
+}
+
+.fm-input--date::-webkit-calendar-picker-indicator,
+.fm-input--datetime::-webkit-calendar-picker-indicator {
+  filter: invert(0.8);
+  cursor: pointer;
+}
+
+/* Toggle Switch */
+.fm-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: #e1e1e6;
+}
+
+.fm-toggle input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.fm-toggle-slider {
+  position: relative;
+  width: 32px;
+  height: 18px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 18px;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.fm-toggle-slider:before {
+  content: "";
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  left: 1px;
+  bottom: 1px;
+  background: #ccc;
+  border-radius: 50%;
+  transition: all 0.3s;
+}
+
+.fm-toggle input:checked + .fm-toggle-slider {
+  background: #60a5fa;
+  border-color: #60a5fa;
+}
+
+.fm-toggle input:checked + .fm-toggle-slider:before {
+  transform: translateX(14px);
+  background: #fff;
+}
+
+.fm-toggle--recurring .fm-toggle-slider {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  padding-left: 2px;
+}
+
+.fm-recurring-icon {
+  font-size: 10px;
+  color: #fff;
+  animation: spin 4s linear infinite;
+}
+
+.fm-toggle--prompt {
+  margin-top: 6px;
+}
+
+/* Tags */
+.fm-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.fm-tag {
+  background: rgba(96, 165, 250, 0.25);
+  color: #60a5fa;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  transition: all 0.2s;
+}
+
+.fm-tag-remove {
+  background: none;
+  border: none;
+  color: #94a3b8;
+  font-size: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.fm-tag-remove:hover {
+  color: #e57373;
+}
+
+/* Prompt Details */
+.fm-prompt-details {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* Error Message */
+.fm-error-message {
+  font-size: 11px;
+  color: #da5858;
+  margin-top: 4px;
+}
+
+/* Buttons */
+.fm-button {
+  padding: 8px 14px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease-out;
+  border: 1px solid transparent;
+}
+
+.fm-button--primary {
+  background: #60a5fa;
+  color: #fff;
+}
+
+.fm-button--primary:hover {
+  background: #60a5fa;
+  box-shadow: 0 2px 8px rgba(255, 87, 51, 0.3);
+}
+
+.fm-button--secondary {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.1);
+  color: #94a3b8;
+}
+
+.fm-button--secondary:hover {
+  background: rgba(255, 255, 255, 0.15);
+  color: #e1e1e6;
+}
+
+.fm-button--destructive {
+  background: rgba(218, 88, 88, 0.1);
+  border-color: rgba(218, 88, 88, 0.2);
+  color: #da5858;
+}
+
+.fm-button--destructive:hover {
+  background: rgba(218, 88, 88, 0.2);
+  color: #e57373;
+}
+
+.fm-button--small {
+  padding: 6px 10px;
+  font-size: 11px;
+}
+
+.fm-button i {
+  font-size: 12px;
+}
+
+/* Actions */
+.fm-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+}
+
+/* Type Modal */
+.fm-type-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  animation: fadeIn 0.3s ease-out;
+}
+
+.fm-type-modal {
+  background: rgba(20, 25, 35, 0.9);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 12px;
+  width: 90%;
+  max-width: 400px;
+  padding: 20px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+  animation: slideUp 0.3s ease-out;
+}
+
+.fm-type-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.fm-type-modal-header h3 {
+  font-size: 16px;
+  font-weight: 600;
+  color: #e1e1e6;
+}
+
+.fm-type-modal-content {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.fm-type-option {
+  background: rgba(30, 36, 50, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease-out;
+}
+
+.fm-type-option:hover {
+  background: rgba(30, 36, 50, 0.9);
+  border-color: #60a5fa;
+}
+
+.fm-type-option i {
+  color: #60a5fa;
+  font-size: 14px;
+}
+
+.fm-type-name {
   font-size: 13px;
-  color: var(--text-muted, #94a3b8);
-  margin-left: 4px;
+  font-weight: 500;
+  color: #e1e1e6;
+  flex: 1;
+}
+
+.fm-type-description {
+  font-size: 11px;
+  color: #94a3b8;
+}
+
+/* Template Modal */
+.fm-template-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  animation: fadeIn 0.3s ease-out;
+}
+
+.fm-template-modal {
+  background: rgba(20, 25, 35, 0.9);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 12px;
+  width: 90%;
+  max-width: 500px;
+  padding: 20px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+  animation: slideUp 0.3s ease-out;
+}
+
+.fm-template-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.fm-template-modal-header h3 {
+  font-size: 16px;
+  font-weight: 600;
+  color: #e1e1e6;
+}
+
+.fm-template-modal-content {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.fm-template-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 12px;
+}
+
+.fm-template-option {
+  background: rgba(30, 36, 50, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease-out;
+}
+
+.fm-template-option:hover {
+  background: rgba(30, 36, 50, 0.9);
+  border-color: #60a5fa;
+}
+
+.fm-template-option i {
+  color: #60a5fa;
+  font-size: 16px;
+}
+
+.fm-template-name {
+  font-size: 13px;
+  font-weight: 500;
+  color: #e1e1e6;
+  flex: 1;
+}
+
+.fm-template-preview {
+  font-size: 11px;
+  color: #94a3b8;
+  margin-top: 4px;
+  display: block;
+}
+
+.fm-close-button {
+  background: none;
+  border: none;
+  color: #94a3b8;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s;
+}
+
+.fm-close-button:hover {
+  color: #e1e1e6;
+}
+
+/* Animations */
+@keyframes slideUp {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes glow {
+  0% {
+    stroke: #ff5733;
+  }
+  50% {
+    stroke: #e64e2e;
+  }
+  100% {
+    stroke: #ff5733;
+  }
 }
 
 @keyframes spin {
@@ -1458,364 +1711,48 @@ watch(
   }
 }
 
-/* List / Tags */
-.property-value-input--list {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px;
-  padding: 3px 0;
-  min-height: 28px;
-}
-
-.property-tags {
-  display: contents;
-}
-
-.property-tag {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 2px 8px;
-  background: var(--background-modifier-hover, #4a4f56);
-  border-radius: 10px;
-  font-size: 12px;
-  color: var(--text-muted, #94a3b8);
-  white-space: nowrap;
-}
-
-.property-tag-remove {
-  width: 14px;
-  height: 14px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 50%;
-  border: none;
-  color: var(--text-faint, #64748b);
-  cursor: pointer;
-  font-size: 8px;
-  transition: background-color 0.15s, color 0.15s;
-}
-
-.property-tag-remove:hover {
-  background: var(--background-modifier-error, #da5858);
-  color: white;
-}
-
-.property-tag-entry-input {
-  flex-grow: 1;
-  background: transparent;
-  border: none;
-  padding: 4px 0;
-  color: var(--text-normal, #e2e8f0);
-  font-size: 14px;
-  outline: none;
-  min-width: 80px;
-}
-
-.property-tag-entry-input::placeholder {
-  color: var(--text-faint, #64748b);
-}
-
-/* Prompt Editor */
-.prompt-editor {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  background: var(--background-primary, #282c34);
-  border: 1px solid var(--background-modifier-border, #3f444b);
-  border-radius: 6px;
-  padding: 8px;
-  width: 100%;
-}
-
-.prompt-field {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.prompt-field label {
-  font-size: 12px;
-  color: var(--text-muted, #94a3b8);
-  font-weight: 500;
-}
-
-.prompt-input {
-  background: var(--background-secondary, #2f333a);
-  border: 1px solid var(--background-modifier-border, #3f444b);
-  border-radius: 4px;
-  padding: 6px 8px;
-  color: var(--text-normal, #e2e8f0);
-  font-size: 13px;
-  width: 100%;
-}
-
-.prompt-input:focus {
-  border-color: var(--interactive-accent, #4a7de7);
-  outline: none;
-}
-
-.prompt-checkbox {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-top: 4px;
-}
-
-.prompt-checkbox input[type="checkbox"] {
-  appearance: none;
-  -webkit-appearance: none;
-  width: 16px;
-  height: 16px;
-  border: 1px solid var(--text-faint, #64748b);
-  border-radius: 3px;
-  background-color: var(--background-secondary, #2f333a);
-  cursor: pointer;
-  position: relative;
-  margin: 0;
-}
-
-.prompt-checkbox input[type="checkbox"]:checked {
-  background-color: var(--interactive-accent, #4a7de7);
-  border-color: var(--interactive-accent, #4a7de7);
-}
-
-.prompt-checkbox input[type="checkbox"]:checked::before {
-  content: "";
-  position: absolute;
-  top: 2px;
-  left: 5px;
-  width: 4px;
-  height: 8px;
-  border: solid white;
-  border-width: 0 2px 2px 0;
-  transform: rotate(45deg);
-}
-
-.prompt-checkbox label {
-  font-size: 13px;
-  color: var(--text-muted, #94a3b8);
-  cursor: pointer;
-}
-
-/* File Info Selector */
-.fileinfo-selector {
-  width: 100%;
-}
-
-.fileinfo-select {
-  width: 100%;
-  background: var(--background-primary, #282c34);
-  border: 1px solid var(--background-modifier-border, #3f444b);
-  border-radius: 4px;
-  padding: 6px 8px;
-  color: var(--text-normal, #e2e8f0);
-  font-size: 13px;
-  appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='rgba(148, 163, 184, 1)' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 8px center;
-  background-size: 16px;
-  cursor: pointer;
-}
-
-.fileinfo-select:focus {
-  border-color: var(--interactive-accent, #4a7de7);
-  outline: none;
-}
-
-/* Delete Button */
-.property-delete-button {
-  grid-column: delete;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  border-radius: 4px;
-  background: transparent;
-  border: none;
-  color: var(--text-faint, #64748b);
-  cursor: pointer;
-  opacity: 0;
-  transition: opacity 0.15s, color 0.15s, background-color 0.15s;
-}
-
-.property-row:hover .property-delete-button {
-  opacity: 1;
-}
-
-.property-delete-button:hover {
-  color: var(--text-error, #e57373);
-  background-color: var(
-    --background-modifier-error-hover,
-    rgba(218, 88, 88, 0.2)
-  );
-}
-
-.property-delete-button i {
-  font-size: 14px;
-}
-
-/* Property Action Drawer at the top of the module */
-.properties-drawer {
-  background: var(--background-primary, #282c34);
-  border: 1px solid var(--background-modifier-border, #3f444b);
-  border-radius: 6px;
-  margin: 2px 0 8px;
-  padding: 8px;
-  animation: fadeIn 0.15s ease-out;
-}
-
-.properties-drawer-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-  gap: 6px;
-}
-
-.properties-drawer-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
-  border-radius: 4px;
-  background: var(--background-secondary, #2f333a);
-  border: 1px solid var(--background-modifier-border, #3f444b);
-  color: var(--text-normal, #e2e8f0);
-  cursor: pointer;
-  transition: all 0.2s;
-  text-align: left;
-}
-
-.properties-drawer-item:hover {
-  background: var(--background-modifier-hover, #4a4f56);
-  border-color: var(--interactive-accent, #4a7de7);
-}
-
-.properties-drawer-item i {
-  width: 16px;
-  text-align: center;
-  color: var(--interactive-accent, #4a7de7);
-  font-size: 14px;
-}
-
-/* Container for property row and its drawer */
-.property-container {
-  display: flex;
-  flex-direction: column;
-  margin-bottom: 2px;
-}
-
-/* The property row itself - keep your existing styles */
-.property-row {
-  display: grid;
-  grid-template-columns: [type] 30px [name] 1fr [value] 1.5fr [delete] 30px;
-  gap: 8px;
-  align-items: center;
-  padding: 4px 0;
-  border-radius: 4px;
-  transition: background-color 0.15s ease-in-out;
-}
-
-/* Property Type Drawer */
-.property-type-drawer {
-  background: var(--background-primary, #282c34);
-  border: 1px solid var(--background-modifier-border, #3f444b);
-  border-radius: 0 0 6px 6px;
-  margin: 2px 0 8px;
-  padding: 8px;
-  animation: fadeIn 0.15s ease-out;
-}
-
-.property-type-drawer-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-  gap: 6px;
-}
-
-.property-type-drawer-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 10px;
-  border-radius: 4px;
-  background: var(--background-secondary, #2f333a);
-  border: 1px solid var(--background-modifier-border, #3f444b);
-  color: var(--text-normal, #e2e8f0);
-  cursor: pointer;
-  transition: all 0.2s;
-  text-align: left;
-}
-
-.property-type-drawer-item:hover {
-  background: var(--background-modifier-hover, #4a4f56);
-  border-color: var(--interactive-accent, #4a7de7);
-}
-
-.property-type-drawer-item i {
-  width: 16px;
-  text-align: center;
-  color: var(--interactive-accent, #4a7de7);
-  font-size: 14px;
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(-5px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-/* Animations */
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(-5px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-/* Focus Ring */
-*:focus-visible {
-  outline: 2px solid var(--interactive-accent, #4a7de7);
-  outline-offset: 1px;
-  box-shadow: none;
-}
-
-/* Responsive adjustments */
-@media (max-width: 768px) {
-  .property-row {
-    grid-template-columns: [type] 30px [name] 1fr [delete] 30px;
-    grid-template-rows: auto auto;
+/* Responsive */
+@media (max-width: 600px) {
+  .fm-container {
+    padding: 16px;
   }
 
-  .property-name-input {
-    grid-column: name;
-    grid-row: 1;
+  .fm-empty-content {
+    padding: 16px;
   }
 
-  .property-value-cell {
-    grid-column: type / delete;
-    grid-row: 2;
-    margin-left: 30px;
+  .fm-empty-actions {
+    flex-direction: column;
+    gap: 8px;
   }
 
-  .property-type-button {
-    grid-row: 1;
+  .fm-property-row {
+    flex-direction: column;
+    align-items: stretch;
   }
 
-  .property-delete-button {
-    grid-row: 1;
+  .fm-value-wrapper {
+    flex: 1;
+  }
+
+  .fm-input--name,
+  .fm-input--value {
+    width: 100%;
+  }
+
+  .fm-type-button {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .fm-type-modal,
+  .fm-template-modal {
+    width: 95%;
+    padding: 16px;
+  }
+
+  .fm-template-grid {
+    grid-template-columns: 1fr;
   }
 }
 </style>

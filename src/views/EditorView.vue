@@ -17,7 +17,20 @@
           placeholder="Add a description (optional)"
           @input="markAsModified"
         />
-        <!-- Tags will be added in a future iteration -->
+      </div>
+
+      <!-- Autosave indicator -->
+      <div class="autosave-indicator" :data-status="saveStatus">
+        <i
+          class="fas"
+          :class="{
+            'fa-circle-notch': saveStatus === 'idle',
+            'fa-circle-notch fa-spin': saveStatus === 'saving',
+            'fa-check-circle': saveStatus === 'success',
+            'fa-exclamation-triangle': saveStatus === 'error',
+          }"
+        />
+        <span>Autosave</span>
       </div>
     </div>
 
@@ -195,12 +208,6 @@
       </div>
     </div>
 
-    <!-- Autosave indicator -->
-    <div class="autosave-indicator" v-if="autoSaving">
-      <i class="fas fa-sync-alt fa-spin"></i>
-      <span>Autosaving...</span>
-    </div>
-
     <!-- Confirmation dialog for unsaved changes -->
     <ConfirmationDialog
       v-if="uiStore.showConfirmDialog"
@@ -271,7 +278,8 @@ const isPreviewFocused = ref(false);
 const isLoading = ref(false); // General loading state for operations
 const moduleCanvasRef = ref<InstanceType<typeof ModuleCanvas> | null>(null);
 
-// Plugin syntax is now natively handled by ObsidianEditor
+// Autosave state for indicator
+const saveStatus = ref<"idle" | "saving" | "success" | "error">("idle");
 
 // Theme
 const isDarkTheme = inject("theme", ref(true));
@@ -641,26 +649,21 @@ const abortController = ref<AbortController | null>(null);
 // Improved autosave functionality with proper error handling and debouncing
 const debouncedAutosave = debounce(
   async () => {
-    // Don't attempt to save if component is not mounted or if nothing was modified
     if (!isMounted.value || !uiStore.isModified) return;
 
-    // Cancel any pending autosave operations
     if (abortController.value) {
       abortController.value.abort();
     }
 
-    // Create a new abort controller for this save operation
     abortController.value = new AbortController();
     const signal = abortController.value.signal;
 
-    // Set autosaving state
     autoSaving.value = true;
+    saveStatus.value = "saving"; // 👈 NEW
 
     try {
-      // Create a promise that can be tracked
       autosavePromise.value = templateStore.saveCurrentTemplate();
 
-      // Wait for save to complete, being mindful of abort signals
       await Promise.race([
         autosavePromise.value,
         new Promise((_, reject) => {
@@ -670,18 +673,16 @@ const debouncedAutosave = debounce(
         }),
       ]);
 
-      // Only update UI state if save completed successfully and component is still mounted
       if (isMounted.value && !signal.aborted) {
         uiStore.setModified(false);
-        console.log("Autosave completed successfully");
+        saveStatus.value = "success"; // 👈 NEW
       }
     } catch (error) {
-      // Only log errors if they're not just from an aborted save
       if (isMounted.value && !signal.aborted) {
         console.error("Autosave failed:", error);
+        saveStatus.value = "error"; // 👈 NEW
       }
     } finally {
-      // Clear state if component is still mounted
       if (isMounted.value && !signal.aborted) {
         autoSaving.value = false;
         autosavePromise.value = null;
@@ -690,8 +691,8 @@ const debouncedAutosave = debounce(
     }
   },
   3000,
-  { maxWait: 10000 }
-); // Add maxWait to ensure saves happen at least every 10 seconds
+  { maxWait: 10000 } // Max wait time of 10 seconds to make sure regular saving occurs
+);
 
 // Close dropdowns when clicking outside
 const closeDropdowns = (event: MouseEvent) => {
@@ -705,6 +706,14 @@ watch(mobileView, (newView) => {
   document
     .querySelector(".editor-view")
     ?.setAttribute("data-mobile-view", newView);
+});
+
+watch(saveStatus, (newStatus) => {
+  if (newStatus === "success" || newStatus === "error") {
+    setTimeout(() => {
+      saveStatus.value = "idle";
+    }, 3000);
+  }
 });
 
 // Lifecycle hooks
@@ -792,7 +801,43 @@ onUnmounted(() => {
 }
 
 .top-toolbar {
+  position: relative;
   border-bottom: 1px solid var(--glass-border);
+}
+
+/* Autosave indicator */
+.autosave-indicator {
+  position: absolute;
+  top: 50%;
+  right: var(--spacing-md);
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  font-size: 0.75rem;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: var(--radius-sm);
+  transition: background 0.3s ease, color 0.3s ease, opacity 0.3s ease;
+  opacity: 0.8;
+}
+
+.autosave-indicator i {
+  transition: transform 0.3s ease, color 0.3s ease;
+}
+
+.autosave-indicator[data-status="saving"] {
+  color: var(--color-text-secondary);
+  opacity: 1;
+}
+
+.autosave-indicator[data-status="success"] {
+  color: #09ac56; /* green */
+  opacity: 1;
+}
+
+.autosave-indicator[data-status="error"] {
+  color: #f56565; /* red */
+  opacity: 1;
 }
 
 .bottom-toolbar {
@@ -1247,25 +1292,6 @@ onUnmounted(() => {
 .view-toggle-button.active {
   background: var(--color-primary);
   color: white;
-}
-
-/* Autosave indicator */
-.autosave-indicator {
-  position: fixed;
-  bottom: var(--spacing-lg);
-  right: var(--spacing-lg);
-  background: var(--glass-background);
-  backdrop-filter: blur(var(--glass-blur));
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius-sm);
-  padding: var(--spacing-xs) var(--spacing-sm);
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-xs);
-  font-size: 0.75rem;
-  color: var(--color-text-secondary);
-  animation: fadeIn 0.3s ease-out;
-  z-index: 100;
 }
 
 @keyframes fadeIn {
