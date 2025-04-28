@@ -220,6 +220,13 @@
       @confirm="uiStore.handleConfirmDialogConfirm()"
       @cancel="uiStore.handleConfirmDialogCancel()"
     />
+
+    <!-- Push to Vault Confirmation Modal -->
+    <PushToVaultModal
+      :is-open="showPushToVaultModal"
+      :destination-path="destinationPath"
+      @close="showPushToVaultModal = false"
+    />
   </div>
 </template>
 
@@ -243,6 +250,7 @@ import { v4 as uuidv4 } from "uuid";
 import { TemplateModule } from "@/types/TemplateModule";
 import { ViewMode } from "@/types/Editor";
 import { generateMarkdown } from "@/utils/markdownUtils";
+import PushToVaultModal from "@/components/modals/PushToVaultModal.vue";
 
 // Import components
 import TemplateModuleLibrary from "@/components/ModuleLibrary/TemplateModuleLibrary.vue";
@@ -277,6 +285,8 @@ const currentViewMode = ref<ViewMode>("Rendered");
 const isPreviewFocused = ref(false);
 const isLoading = ref(false); // General loading state for operations
 const moduleCanvasRef = ref<InstanceType<typeof ModuleCanvas> | null>(null);
+const showPushToVaultModal = ref(false);
+const destinationPath = ref("");
 
 // Autosave state for indicator
 const saveStatus = ref<"idle" | "saving" | "success" | "error">("idle");
@@ -579,10 +589,8 @@ const pushToVault = async () => {
     );
 
     if (result) {
-      uiStore.showToast(
-        `Template successfully pushed to your vault at ${destinationPath}`,
-        "success"
-      );
+      showPushToVaultModal.value = true;
+      console.log("File pushed to vault successfully:", result);
     } else {
       throw new Error("Failed to push template to vault. Unknown error.");
     }

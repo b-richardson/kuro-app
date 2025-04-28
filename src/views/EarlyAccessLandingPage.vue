@@ -23,15 +23,16 @@
             >
               {{ item.label }}
             </a>
-            <router-link to="/login" class="nav-link" @click="closeNav"
+            <!-- <router-link to="/login" class="nav-link" @click="closeNav"
               >Login</router-link
-            >
-            <router-link
+            > -->
+            <!-- No login for the waitlist page -->
+            <!-- <router-link
               to="/editor"
               class="btn btn-primary nav-cta"
               @click="closeNav"
               >Try Editor</router-link
-            >
+            > -->
           </div>
 
           <button
@@ -96,7 +97,7 @@
               </div>
               <div class="badge">
                 <i class="icon-obsidian"></i>
-                <span>Live Vault Sync</span>
+                <span>Push Youre Templates Directly to Your Vault</span>
               </div>
             </div>
           </div>
@@ -228,7 +229,7 @@
       </section>
 
       <!-- Testimonials Section -->
-      <section class="testimonials-section">
+      <!-- <section class="testimonials-section">
         <div class="container">
           <div class="section-heading">
             <h2 class="section-title">From Obsidian Users Like You</h2>
@@ -265,7 +266,7 @@
             </swiper-slide>
           </swiper>
         </div>
-      </section>
+      </section> -->
 
       <!-- Pricing Section -->
       <section id="pricing" class="pricing-section">
@@ -273,7 +274,8 @@
           <div class="section-heading">
             <h2 class="section-title">Pricing That Fits Your Flow</h2>
             <p class="section-subtitle">
-              Start free, upgrade when you’re ready for more power
+              Start free or go Pro after the beta. All features free during the
+              beta — limited spots. Reserve your spot now!
             </p>
           </div>
 
@@ -312,12 +314,9 @@
                 </li>
               </ul>
 
-              <router-link
-                to="/waitlist?plan=free"
-                class="btn btn-outline btn-block"
-              >
-                Join Free Waitlist
-              </router-link>
+              <a href="#waitlist" class="btn btn-outline btn-block">
+                Join Waitlist
+              </a>
             </div>
 
             <div class="pricing-card featured">
@@ -339,15 +338,12 @@
                 </li>
               </ul>
 
-              <router-link
-                :to="`/signup?plan=${billingCycle}`"
-                class="btn btn-primary btn-block"
-              >
-                Upgrade to Pro
-              </router-link>
+              <a href="#waitlist" class="btn btn-primary btn-block">
+                Join Waitlist
+              </a>
 
               <p class="guarantee">
-                7-day money-back guarantee, no questions asked
+                Test all Pro features free during the beta
               </p>
             </div>
           </div>
@@ -407,11 +403,11 @@
         <div class="container">
           <div class="cta-card">
             <div class="cta-content">
-              <h2>Make Obsidian Templates a Breeze</h2>
+              <h2>Effortless Obsidian Templates</h2>
               <p>
-                Say goodbye to syntax headaches. Kuro’s visual editor lets you
-                build templates with live vault data in minutes. Join the beta
-                and start crafting today!
+                Build powerful templates in minutes with Kuro’s no-code editor
+                and live vault previews. Get early access to test all features
+                free in beta—limited spots!
               </p>
 
               <form @submit.prevent="submitEmail" class="cta-form">
@@ -429,8 +425,13 @@
                     required
                     class="cta-input"
                   />
-                  <button type="submit" class="btn btn-primary btn-lg">
-                    Join Waitlist
+                  <button
+                    type="submit"
+                    class="btn btn-primary btn-lg"
+                    :disabled="isJoining"
+                  >
+                    <span v-if="!isJoining">Get Early Access</span>
+                    <i v-else class="fas fa-spinner fa-spin"></i>
                   </button>
                 </div>
 
@@ -464,7 +465,7 @@
                 <span class="logo-text">Kuro</span>
               </router-link>
               <p class="brand-tagline">
-                Forge templates with volcanic simplicity.
+                Build smarter notes, no code required.
               </p>
               <div class="social-links">
                 <a
@@ -550,7 +551,7 @@ interface NavItem {
 const navigationItems = ref<NavItem[]>([
   { label: "Features", link: "#features" },
   { label: "How It Works", link: "#workflow" },
-  { label: "For Who", link: "#user-types" },
+  { label: "Who It's For", link: "#user-types" },
   { label: "Pricing", link: "#pricing" },
   { label: "FAQ", link: "#faq" },
   { label: "Waitlist", link: "#waitlist" },
@@ -582,6 +583,7 @@ const email = ref("");
 const name = ref("");
 const success = ref(false);
 const error = ref("");
+const isJoining = ref(false);
 
 // Features section
 interface Feature {
@@ -669,9 +671,9 @@ const workflowSteps = ref<WorkflowStep[]>([
 ]);
 
 const tabs = ref<WorkflowTab[]>([
-  { name: "Pick", icon: "fas fa-puzzle-piece", gif: "select.gif" },
-  { name: "Tweak", icon: "fas fa-sliders-h", gif: "configure.gif" },
-  { name: "Sync", icon: "fas fa-file-export", gif: "export.gif" },
+  { name: "Pick", icon: "fas fa-puzzle-piece", gif: "select-04-28-25.gif" },
+  { name: "Tweak", icon: "fas fa-sliders-h", gif: "configure-04-28-25.gif" },
+  { name: "Sync", icon: "fas fa-file-export", gif: "push-04-28-25.gif" },
 ]);
 
 const workflowCaptions = ref<WorkflowCaption[]>([
@@ -1035,6 +1037,7 @@ const currentYear = computed(() => new Date().getFullYear());
 const submitEmail = async () => {
   success.value = false;
   error.value = "";
+  isJoining.value = true;
 
   try {
     await addToWaitlist({ email: email.value, name: name.value || undefined });
@@ -1050,6 +1053,8 @@ const submitEmail = async () => {
     error.value = err.message.includes("duplicate")
       ? "You're already on the list!"
       : "Something went wrong. Try again.";
+  } finally {
+    isJoining.value = false; // Reset to false when submission completes
   }
 };
 
