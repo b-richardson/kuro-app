@@ -348,9 +348,11 @@
             </div>
           </div>
 
-          <div class="pricing-note">
-            <i class="icon-shield"></i>
-            <p>Upgrade, downgrade, or cancel anytime. No hidden fees.</p>
+          <div class="section-heading">
+            <div class="pricing-note">
+              <i class="icon-shield"></i>
+              <p>Upgrade, downgrade, or cancel anytime. No hidden fees.</p>
+            </div>
           </div>
         </div>
       </section>
@@ -390,8 +392,8 @@
           <div class="more-questions">
             <p>
               Still curious? Reach out anytime.
-              <router-link to="/contact" class="text-link"
-                >Contact Support</router-link
+              <a href="mailto:admin@buildwithkuro.com" class="text-link"
+                >Contact Support</a
               >
             </p>
           </div>
@@ -493,11 +495,11 @@
                   <li v-for="link in group.links" :key="link.text">
                     <component
                       :is="link.isExternal ? 'a' : 'router-link'"
-                      :to="!link.isExternal ? link.url : undefined"
-                      :href="link.isExternal ? link.url : undefined"
+                      :to="!link.isExternal ? undefined : undefined"
+                      :href="link.isExternal ? undefined : undefined"
                       :target="link.isExternal ? '_blank' : undefined"
                       :rel="link.isExternal ? 'noopener noreferrer' : undefined"
-                      class="footer-link"
+                      class="footer-link disabled"
                     >
                       {{ link.text }}
                     </component>
@@ -1005,18 +1007,18 @@ const linkGroups = ref<LinkGroup[]>([
     links: [
       {
         text: "Discord",
-        url: "https://discord.gg/kuro-community",
+        url: "",
         isExternal: true,
       },
       {
         text: "Twitter",
-        url: "https://twitter.com/buildwithkuro",
+        url: "",
         isExternal: true,
       },
-      { text: "GitHub", url: "https://github.com/kuro-app", isExternal: true },
+      { text: "GitHub", url: "", isExternal: true },
       {
-        text: "Obsidian Forum",
-        url: "https://forum.obsidian.md/tag/kuro",
+        text: "BlueSky",
+        url: "https://bsky.app/profile/buildwithkuro.bsky.social",
         isExternal: true,
       },
     ],
@@ -1025,7 +1027,7 @@ const linkGroups = ref<LinkGroup[]>([
     title: "Company",
     links: [
       { text: "About", url: "/about", isExternal: false },
-      { text: "Contact", url: "/contact", isExternal: false },
+      { text: "Contact", url: "/contact", isExternal: true },
       { text: "Jobs", url: "/jobs", isExternal: false },
       { text: "Press Kit", url: "/press", isExternal: false },
     ],
@@ -2222,6 +2224,13 @@ section {
   transform: translateY(8px);
 }
 
+.pricing-note {
+  font-size: 1.125rem;
+  color: var(--color-text-light);
+  max-width: 700px;
+  margin: 0 auto;
+}
+
 /* Footer Section */
 .app-footer {
   background: var(--color-surface-dark);
@@ -2291,6 +2300,12 @@ section {
   flex: 1 1 60%;
   display: flex;
   gap: var(--spacing-lg);
+}
+
+.footer-link.disabled {
+  pointer-events: none; /* Prevents clicks and hover effects */
+  opacity: 0.6; /* Fades the link to indicate it’s disabled */
+  cursor: not-allowed; /* Shows a "not allowed" cursor */
 }
 
 .link-group {
