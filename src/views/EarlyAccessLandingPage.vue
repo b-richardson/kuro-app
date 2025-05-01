@@ -72,13 +72,10 @@
             </p>
 
             <div class="hero-buttons">
-              <router-link
-                to="/early-access#waitlist"
-                class="btn btn-primary btn-lg"
-              >
+              <a href="#waitlist" class="btn btn-primary btn-lg">
                 <span>Join Beta Waitlist</span>
                 <i class="icon-arrow-right"></i>
-              </router-link>
+              </a>
 
               <a href="#workflow" class="btn btn-outline btn-lg">
                 <span>How It Works</span>
