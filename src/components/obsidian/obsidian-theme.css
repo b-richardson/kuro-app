@@ -1,0 +1,657 @@
+/* Obsidian Theme CSS - Matches native Obsidian markdown rendering
+   This file provides styling that closely resembles Obsidian's default appearance */
+
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+/* Base variables for Obsidian theme */
+:root {
+  /* Dark theme variables (default) */
+  --obsidian-background: #202020;
+  --obsidian-background-secondary: #262626;
+  --obsidian-background-secondary-alt: #343434;
+  --obsidian-background-modifier-border: rgba(255, 255, 255, 0.1);
+  --obsidian-text-normal: rgba(255, 255, 255, 0.87);
+  --obsidian-text-muted: rgba(255, 255, 255, 0.6);
+  --obsidian-text-faint: rgba(255, 255, 255, 0.4);
+  --obsidian-interactive-normal: rgba(255, 255, 255, 0.75);
+  --obsidian-interactive-accent: #7f6df2;
+  --obsidian-interactive-accent-hover: #8875ff;
+  --obsidian-accent: #6d5fe7;
+  --obsidian-accent-1: rgba(109, 95, 231, 0.2);
+  --obsidian-accent-2: rgba(109, 95, 231, 0.4);
+  
+  /* Typography */
+  --obsidian-font-text: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, sans-serif;
+  --obsidian-font-ui: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, sans-serif;
+  --obsidian-font-monospace: "JetBrains Mono", "Fira Code", Menlo, SFMono-Regular, Consolas, monospace;
+  --obsidian-font-size-normal: 16px;
+  --obsidian-font-size-code: 0.9em;
+  --obsidian-line-height: 1.65;
+  
+  /* Callout colors */
+  --obsidian-callout-note: #0288d1;
+  --obsidian-callout-info: #039be5;
+  --obsidian-callout-tip: #00bfa5;
+  --obsidian-callout-success: #00c853;
+  --obsidian-callout-question: #64dd17;
+  --obsidian-callout-warning: #ff9100;
+  --obsidian-callout-failure: #ff5252;
+  --obsidian-callout-danger: #ff1744;
+  --obsidian-callout-bug: #f50057;
+  --obsidian-callout-example: #7c4dff;
+  --obsidian-callout-quote: #9e9e9e;
+  
+  /* Spacing */
+  --obsidian-size-2: 2px;
+  --obsidian-size-4: 4px;
+  --obsidian-size-8: 8px;
+  --obsidian-size-12: 12px;
+  --obsidian-size-16: 16px;
+  --obsidian-size-24: 24px;
+  --obsidian-size-32: 32px;
+  --obsidian-size-40: 40px;
+  
+  /* Borders */
+  --obsidian-border-radius: 4px;
+  --obsidian-border-width: 1px;
+}
+
+/* Light theme overrides */
+.obsidian-light-theme {
+  --obsidian-background: #fafafa;
+  --obsidian-background-secondary: #f2f3f5;
+  --obsidian-background-secondary-alt: #e3e5e8;
+  --obsidian-background-modifier-border: rgba(0, 0, 0, 0.1);
+  --obsidian-text-normal: rgba(0, 0, 0, 0.9);
+  --obsidian-text-muted: rgba(0, 0, 0, 0.6);
+  --obsidian-text-faint: rgba(0, 0, 0, 0.4);
+  --obsidian-interactive-normal: rgba(0, 0, 0, 0.8);
+  --obsidian-interactive-accent: #7f6df2;
+  --obsidian-interactive-accent-hover: #8875ff;
+  --obsidian-accent: #705dcf;
+  --obsidian-accent-1: rgba(112, 93, 207, 0.2);
+  --obsidian-accent-2: rgba(112, 93, 207, 0.4);
+}
+
+/* --- Obsidian Editor Core Styling --- */
+
+/* 
+  Theme styles for Obsidian content
+  This contains all styling for markdown elements that appear in the editor
+*/
+
+/* --- Typography --- */
+
+/* Paragraphs */
+.obsidian-editor p {
+  margin: 0 0 var(--obsidian-size-16) 0;
+  line-height: var(--obsidian-line-height);
+}
+
+/* Remove bottom margin from paragraphs inside list items - this is the key fix! */
+.obsidian-editor li p {
+  margin: 0; /* Zero margin for paragraphs in list items */
+}
+
+/* Headlines */
+.obsidian-editor h1,
+.obsidian-editor h2,
+.obsidian-editor h3,
+.obsidian-editor h4,
+.obsidian-editor h5,
+.obsidian-editor h6 {
+  margin: var(--obsidian-size-24) 0 var(--obsidian-size-12) 0;
+  line-height: 1.3;
+  font-weight: 600;
+  color: var(--obsidian-text-normal);
+}
+
+.obsidian-editor h1 {
+  font-size: 2em;
+  border-bottom: var(--obsidian-border-width) solid var(--obsidian-background-modifier-border);
+  padding-bottom: var(--obsidian-size-8);
+  margin-bottom: var(--obsidian-size-16);
+}
+
+.obsidian-editor h2 {
+  font-size: 1.6em;
+  margin-bottom: var(--obsidian-size-12);
+}
+
+.obsidian-editor h3 {
+  font-size: 1.37em;
+}
+
+.obsidian-editor h4 {
+  font-size: 1.25em;
+}
+
+.obsidian-editor h5 {
+  font-size: 1.12em;
+}
+
+.obsidian-editor h6 {
+  font-size: 1em;
+}
+
+/* Simple, clean list styling that matches Obsidian */
+.obsidian-editor ul,
+.obsidian-editor ol {
+  margin: 0 0 0 1.5em;  /* Only horizontal indent, no vertical spacing */
+  padding-left: 0;
+}
+
+/* Basic list item styling */
+.obsidian-editor li {
+  position: relative;
+}
+
+/* Remove margins from paragraphs in list items - THE MOST IMPORTANT FIX */
+.obsidian-editor li p {
+  margin: 0;
+}
+
+/* Bullet list styles */
+.obsidian-editor ul {
+  list-style-type: disc;
+}
+
+.obsidian-editor ul ul {
+  list-style-type: circle;
+  margin-left: 1.5em;
+}
+
+.obsidian-editor ul ul ul {
+  list-style-type: square;
+}
+
+/* Ordered list styles */
+.obsidian-editor ol {
+  list-style-type: decimal;
+}
+
+.obsidian-editor ol ol {
+  list-style-type: lower-alpha;
+  margin-left: 1.5em;
+}
+
+.obsidian-editor ol ol ol {
+  list-style-type: lower-roman;
+}
+
+/* List item specific styling */
+.obsidian-editor .obsidian-list-item {
+  padding: 0; /* No padding for tightest possible spacing */
+  line-height: 1.3; /* Match Obsidian's compact line height */
+  margin: 0; /* No margins for list items */
+}
+
+/* Blockquotes - styled to match Obsidian's appearance exactly */
+.obsidian-editor blockquote {
+  margin: var(--obsidian-size-16) 0;
+  padding: var(--obsidian-size-8) var(--obsidian-size-16);
+  border-left: 4px solid var(--obsidian-interactive-accent);
+  background-color: var(--obsidian-background-secondary);
+  border-radius: var(--obsidian-border-radius);
+  color: var(--obsidian-text-normal);
+  font-style: italic;
+}
+
+.obsidian-editor blockquote p:first-of-type {
+  margin-top: 0;
+}
+
+.obsidian-editor blockquote p:last-of-type {
+  margin-bottom: 0;
+}
+
+/* Code blocks and inline code - precisely match Obsidian's appearance */
+.obsidian-editor pre {
+  font-family: var(--obsidian-font-monospace);
+  font-size: var(--obsidian-font-size-code);
+  line-height: 1.5;
+  padding: var(--obsidian-size-16);
+  margin: var(--obsidian-size-16) 0;
+  background-color: var(--obsidian-background-secondary-alt);
+  border-radius: var(--obsidian-border-radius);
+  overflow-x: auto;
+  white-space: pre-wrap;
+  position: relative;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
+}
+
+.obsidian-editor code {
+  font-family: var(--obsidian-font-monospace);
+  font-size: var(--obsidian-font-size-code);
+  background-color: var(--obsidian-background-secondary);
+  border-radius: var(--obsidian-border-radius);
+  padding: 0.1em 0.3em;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+}
+
+.obsidian-editor pre code {
+  background-color: transparent;
+  padding: 0;
+  border-radius: 0;
+  display: block;
+  overflow-x: auto;
+  max-width: 100%;
+}
+
+/* Syntax highlighting colors - more muted to match Obsidian */
+.obsidian-editor pre code .token.comment {
+  color: var(--obsidian-text-faint);
+}
+
+.obsidian-editor pre code .token.keyword {
+  color: #c792ea;
+}
+
+.obsidian-editor pre code .token.string {
+  color: #c3e88d;
+}
+
+.obsidian-editor pre code .token.function {
+  color: #82aaff;
+}
+
+.obsidian-editor pre code .token.number {
+  color: #f78c6c;
+}
+
+.obsidian-editor pre code .token.operator {
+  color: #89ddff;
+}
+
+/* Light theme adjustments for code blocks */
+.obsidian-editor.obsidian-light-theme pre {
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.obsidian-editor.obsidian-light-theme pre code .token.comment {
+  color: #676b79;
+}
+
+.obsidian-editor.obsidian-light-theme pre code .token.keyword {
+  color: #7c4dff;
+}
+
+.obsidian-editor.obsidian-light-theme pre code .token.string {
+  color: #4caf50;
+}
+
+.obsidian-editor.obsidian-light-theme pre code .token.function {
+  color: #2196f3;
+}
+
+.obsidian-editor.obsidian-light-theme pre code .token.number {
+  color: #f57c00;
+}
+
+.obsidian-editor.obsidian-light-theme pre code .token.operator {
+  color: #0288d1;
+}
+
+/* Links */
+.obsidian-editor a {
+  color: var(--obsidian-interactive-accent);
+  text-decoration: none;
+  transition: color 0.15s ease;
+}
+
+.obsidian-editor a:hover {
+  color: var(--obsidian-interactive-accent-hover);
+  text-decoration: underline;
+}
+
+/* Obsidian internal links */
+.obsidian-editor .obsidian-internal-link {
+  color: var(--obsidian-interactive-accent);
+  text-decoration: none;
+  border-bottom: 1px solid var(--obsidian-accent-1);
+}
+
+.obsidian-editor .obsidian-internal-link:hover {
+  color: var(--obsidian-interactive-accent-hover);
+  border-bottom-color: var(--obsidian-accent-2);
+}
+
+/* Tables */
+.obsidian-editor table {
+  width: 100%;
+  margin: var(--obsidian-size-16) 0;
+  border-collapse: collapse;
+  border-spacing: 0;
+  overflow: hidden;
+  border-radius: var(--obsidian-border-radius);
+}
+
+.obsidian-editor th {
+  background-color: var(--obsidian-background-secondary-alt);
+  padding: var(--obsidian-size-8) var(--obsidian-size-12);
+  text-align: left;
+  font-weight: 600;
+  border-bottom: 2px solid var(--obsidian-background-modifier-border);
+}
+
+.obsidian-editor td {
+  padding: var(--obsidian-size-8) var(--obsidian-size-12);
+  border-bottom: 1px solid var(--obsidian-background-modifier-border);
+}
+
+.obsidian-editor tr:nth-child(even) {
+  background-color: var(--obsidian-background-secondary);
+}
+
+/* Horizontal rule - exactly match Obsidian's styling */
+.obsidian-editor hr,
+.obsidian-editor .obsidian-hr {
+  margin: var(--obsidian-size-24) 0;
+  height: var(--obsidian-border-width);
+  background-color: var(--obsidian-background-modifier-border);
+  border: none;
+  display: block;
+  box-sizing: content-box;
+  width: 100%;
+  min-width: 100%;
+  opacity: 0.5;
+}
+
+/* Images */
+.obsidian-editor img {
+  max-width: 100%;
+  border-radius: var(--obsidian-border-radius);
+  vertical-align: middle;
+}
+
+/* Checkboxes */
+.obsidian-editor input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  margin: 0 var(--obsidian-size-4) 0 0;
+  vertical-align: middle;
+  cursor: pointer;
+}
+
+/* --- Obsidian specific elements --- */
+
+/* Dataview styling */
+.obsidian-editor .dataview-block-container {
+  margin: var(--obsidian-size-16) 0;
+}
+
+.obsidian-editor .dataview-preview {
+  padding: var(--obsidian-size-16);
+  background-color: var(--obsidian-background-secondary);
+  border-radius: var(--obsidian-border-radius);
+  border: var(--obsidian-border-width) solid var(--obsidian-background-modifier-border);
+}
+
+.obsidian-editor .dataview-preview .dataview-header {
+  margin-bottom: var(--obsidian-size-12);
+  padding-bottom: var(--obsidian-size-8);
+  border-bottom: var(--obsidian-border-width) solid var(--obsidian-background-modifier-border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.obsidian-editor .dataview-preview .query-output {
+  font-family: var(--obsidian-font-text);
+  line-height: var(--obsidian-line-height);
+}
+
+/* Hide the raw code when previewing */
+.obsidian-editor .dataview-wrapper pre,
+.obsidian-editor .dataview-wrapper code {
+  display: none;
+}
+
+/* Callouts */
+.obsidian-editor .obsidian-callout {
+  margin: var(--obsidian-size-16) 0;
+  padding: var(--obsidian-size-16);
+  border-radius: var(--obsidian-border-radius);
+  border-left: 4px solid;
+  display: flex;
+  align-items: flex-start;
+}
+
+.obsidian-editor .obsidian-callout::before {
+  content: attr(data-callout-icon);
+  margin-right: var(--obsidian-size-8);
+  font-size: 1.2em;
+}
+
+.obsidian-editor .obsidian-callout[data-callout-type="note"] {
+  background-color: rgba(var(--obsidian-callout-note-rgb, 2, 136, 209), 0.1);
+  border-color: var(--obsidian-callout-note);
+}
+
+.obsidian-editor .obsidian-callout[data-callout-type="info"] {
+  background-color: rgba(var(--obsidian-callout-info-rgb, 3, 155, 229), 0.1);
+  border-color: var(--obsidian-callout-info);
+}
+
+.obsidian-editor .obsidian-callout[data-callout-type="tip"] {
+  background-color: rgba(var(--obsidian-callout-tip-rgb, 0, 191, 165), 0.1);
+  border-color: var(--obsidian-callout-tip);
+}
+
+.obsidian-editor .obsidian-callout[data-callout-type="success"] {
+  background-color: rgba(var(--obsidian-callout-success-rgb, 0, 200, 83), 0.1);
+  border-color: var(--obsidian-callout-success);
+}
+
+.obsidian-editor .obsidian-callout[data-callout-type="question"] {
+  background-color: rgba(var(--obsidian-callout-question-rgb, 100, 221, 23), 0.1);
+  border-color: var(--obsidian-callout-question);
+}
+
+.obsidian-editor .obsidian-callout[data-callout-type="warning"] {
+  background-color: rgba(var(--obsidian-callout-warning-rgb, 255, 145, 0), 0.1);
+  border-color: var(--obsidian-callout-warning);
+}
+
+.obsidian-editor .obsidian-callout[data-callout-type="failure"] {
+  background-color: rgba(var(--obsidian-callout-failure-rgb, 255, 82, 82), 0.1);
+  border-color: var(--obsidian-callout-failure);
+}
+
+.obsidian-editor .obsidian-callout[data-callout-type="danger"] {
+  background-color: rgba(var(--obsidian-callout-danger-rgb, 255, 23, 68), 0.1);
+  border-color: var(--obsidian-callout-danger);
+}
+
+.obsidian-editor .obsidian-callout[data-callout-type="bug"] {
+  background-color: rgba(var(--obsidian-callout-bug-rgb, 245, 0, 87), 0.1);
+  border-color: var(--obsidian-callout-bug);
+}
+
+.obsidian-editor .obsidian-callout[data-callout-type="example"] {
+  background-color: rgba(var(--obsidian-callout-example-rgb, 124, 77, 255), 0.1);
+  border-color: var(--obsidian-callout-example);
+}
+
+.obsidian-editor .obsidian-callout[data-callout-type="quote"] {
+  background-color: rgba(var(--obsidian-callout-quote-rgb, 158, 158, 158), 0.1);
+  border-color: var(--obsidian-callout-quote);
+}
+
+/* Templater Variables */
+.obsidian-editor .obsidian-template-var {
+  color: var(--obsidian-interactive-accent);
+  background-color: var(--obsidian-accent-1);
+  padding: 0.1em 0.3em;
+  border-radius: var(--obsidian-border-radius);
+  font-family: var(--obsidian-font-monospace);
+  font-size: var(--obsidian-font-size-code);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+/* Frontmatter */
+.obsidian-editor .frontmatter-container {
+  background-color: var(--obsidian-background-secondary-alt);
+  padding: var(--obsidian-size-12);
+  margin-bottom: var(--obsidian-size-24);
+  border-radius: var(--obsidian-border-radius);
+  font-family: var(--obsidian-font-monospace);
+  font-size: var(--obsidian-font-size-code);
+  line-height: 1.5;
+}
+
+.obsidian-editor .frontmatter-container .frontmatter-section {
+  margin-bottom: var(--obsidian-size-4);
+}
+
+.obsidian-editor .frontmatter-container .frontmatter-key {
+  color: var(--obsidian-interactive-accent);
+}
+
+.obsidian-editor .frontmatter-container .frontmatter-separator {
+  margin: 0 var(--obsidian-size-4);
+  color: var(--obsidian-text-muted);
+}
+
+.obsidian-editor .frontmatter-container .frontmatter-value {
+  color: var(--obsidian-text-normal);
+}
+
+/* Task lists - styled to match Obsidian exactly */
+.obsidian-editor ul[data-type="taskList"] {
+  list-style-type: none;
+  padding-left: 0;
+  margin-left: 0;
+}
+
+.obsidian-editor li[data-type="taskItem"] {
+  display: flex;
+  align-items: flex-start;
+  margin-bottom: var(--obsidian-size-4);
+  position: relative;
+  line-height: 1.5;
+}
+
+.obsidian-editor li[data-type="taskItem"] > label {
+  margin-right: var(--obsidian-size-8);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.obsidian-editor li[data-type="taskItem"] > label > input[type="checkbox"] {
+  margin: 0;
+  cursor: pointer;
+  width: 16px;
+  height: 16px;
+  border-radius: 3px;
+  vertical-align: middle;
+  appearance: none;
+  -webkit-appearance: none;
+  border: 1px solid var(--obsidian-text-muted);
+  position: relative;
+  top: 0;
+}
+
+/* Checked state */
+.obsidian-editor li[data-type="taskItem"] > label > input[type="checkbox"]:checked {
+  background-color: var(--obsidian-interactive-accent);
+  border-color: var(--obsidian-interactive-accent);
+}
+
+.obsidian-editor li[data-type="taskItem"] > label > input[type="checkbox"]:checked::after {
+  content: '✓';
+  color: white;
+  position: absolute;
+  left: 2px;
+  top: -1px;
+  font-size: 12px;
+}
+
+/* Text with checked task should be more muted */
+.obsidian-editor li[data-type="taskItem"][data-checked="true"] > div {
+  color: var(--obsidian-text-muted);
+  text-decoration: line-through;
+}
+
+/* Dark mode color overrides for dataview */
+.obsidian-editor.obsidian-dark-theme .dataview-preview {
+  background-color: var(--obsidian-background-secondary);
+  border-color: var(--obsidian-background-modifier-border);
+}
+
+.obsidian-editor.obsidian-dark-theme .dataview-preview .note-title {
+  color: var(--obsidian-interactive-accent);
+}
+
+.obsidian-editor.obsidian-dark-theme .dataview-preview .metadata {
+  color: var(--obsidian-text-muted);
+}
+
+/* Light mode overrides for dataview */
+.obsidian-editor.obsidian-light-theme .dataview-preview {
+  background-color: var(--obsidian-background-secondary);
+  border-color: var(--obsidian-background-modifier-border);
+}
+
+.obsidian-editor.obsidian-light-theme .dataview-preview .note-title {
+  color: var(--obsidian-interactive-accent);
+}
+
+.obsidian-editor.obsidian-light-theme .dataview-preview .metadata {
+  color: var(--obsidian-text-muted);
+}
+
+/* Helper RGB color values for callouts */
+:root {
+  --obsidian-callout-note-rgb: 2, 136, 209;
+  --obsidian-callout-info-rgb: 3, 155, 229;
+  --obsidian-callout-tip-rgb: 0, 191, 165;
+  --obsidian-callout-success-rgb: 0, 200, 83;
+  --obsidian-callout-question-rgb: 100, 221, 23;
+  --obsidian-callout-warning-rgb: 255, 145, 0;
+  --obsidian-callout-failure-rgb: 255, 82, 82;
+  --obsidian-callout-danger-rgb: 255, 23, 68;
+  --obsidian-callout-bug-rgb: 245, 0, 87;
+  --obsidian-callout-example-rgb: 124, 77, 255;
+  --obsidian-callout-quote-rgb: 158, 158, 158;
+  --obsidian-interactive-accent-rgb: 127, 109, 242;
+}
+
+/* Enhanced typography - fine-tuning for perfect match with Obsidian */
+.obsidian-editor {
+  letter-spacing: -0.01em;
+  word-spacing: 0.01em;
+}
+
+.obsidian-editor strong {
+  font-weight: 600;
+}
+
+.obsidian-editor em {
+  font-style: italic;
+}
+
+.obsidian-editor s {
+  text-decoration: line-through;
+}
+
+.obsidian-editor mark {
+  background-color: rgba(var(--obsidian-interactive-accent-rgb), 0.15);
+  color: var(--obsidian-text-normal);
+  padding: 0 2px;
+  border-radius: 2px;
+}
+
+/* Fix spacing around headers */
+.obsidian-editor h1:first-child,
+.obsidian-editor h2:first-child,
+.obsidian-editor h3:first-child,
+.obsidian-editor h4:first-child,
+.obsidian-editor h5:first-child,
+.obsidian-editor h6:first-child {
+  margin-top: 0;
+}

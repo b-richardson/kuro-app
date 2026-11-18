@@ -1,0 +1,12 @@
+The following placeholder images need to be created and placed in this directory:
+
+1. obsidian-settings.png - Screenshot of Obsidian settings button
+2. obsidian-plugins.png - Screenshot of Community Plugins section
+3. obsidian-search-plugin.png - Screenshot of searching for "Local REST API" plugin
+4. obsidian-enable-plugin.png - Screenshot of enabling the plugin
+5. obsidian-rest-settings.png - Screenshot of the REST API plugin settings
+6. obsidian-generate-key.png - Screenshot of generating an API key
+7. obsidian-copy-key.png - Screenshot of copying the API key
+8. browser-warning.png - Screenshot of browser certificate warning
+
+You can create these screenshots while setting up the plugin yourself or source appropriate images.

@@ -1,0 +1,418 @@
+/* Font imports */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap');
+
+:root {
+  /* Base Colors (Updated for refined aesthetics) */
+  --color-base: #21222C;
+  --color-surface: rgba(255, 255, 255, 0.1); /* unchanged, ideal for glassmorphism */
+  
+  /* Primary and Secondary Action Colors (Updated palette) */
+  --color-primary: #8866E9;
+  --color-primary-light: #A78BFA;  /* lighter variant for subtle highlights */
+  --color-primary-dark: #6D4AC6;   /* darker variant for hover effects */
+  --color-primary-rgb: 136, 102, 233;
+  --color-secondary: #6366F1;
+  
+  /* Background Gradient Colors (Refined to match new palette) */
+  --color-background-gradient-from: #21222C;
+  --color-background-gradient-to: #2B2C37;
+  
+  /* Functional Colors (Improved readability & aesthetics) */
+  --color-success: #4ADE80; /* vibrant, modern green */
+  --color-warning: #FBBF24; /* warm, inviting amber */
+  --color-error: #F87171;   /* soft, approachable red */
+  --color-info: #29B6F6;    /* unchanged, good info-blue already */
+  
+  /* Text Colors (slightly adjusted for better clarity & accessibility) */
+  --color-text: rgba(255, 255, 255, 0.95); /* excellent readability */
+  --color-text-secondary: rgba(255, 255, 255, 0.75); /* ideal for secondary info */
+  --color-text-tertiary: rgba(255, 255, 255, 0.5); /* ideal for placeholders, etc */
+  --color-text-dark: #334155; /* retained for potential contrast use */
+  
+  /* Glass Effect (modified to remove blur effect) */
+  --glass-background: rgba(255, 255, 255, 0.1);
+  --glass-border: rgba(255, 255, 255, 0.15);
+  --glass-shadow: 0 4px 24px -8px rgba(0, 0, 0, 0.3);
+  --glass-blur: 0px; /* Set to 0 to prevent blur effects */
+  
+  /* Spacing (unchanged—ideal already for your UI layout) */
+  --spacing-xs: 3px;
+  --spacing-sm: 6px;
+  --spacing-md: 12px;
+  --spacing-lg: 18px;
+  --spacing-xl: 24px;
+  
+  /* Border Radius (unchanged—perfect for glassmorphism) */
+  --radius-sm: 4px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-full: 9999px;
+  
+  /* Animation (unchanged—ideal subtle animations) */
+  --transition-fast: 150ms ease;
+  --transition-standard: 250ms ease-out;
+  --transition-slow: 350ms cubic-bezier(0.4, 0.0, 0.2, 1);
+  
+  /* Editor Specific (unchanged—your current sizing setup is excellent) */
+  --editor-width: 50%;
+  --editor-sidebar-width: 250px;
+  
+  /* Legacy variables maintained for compatibility */
+  --space-xs: var(--spacing-xs);
+  --space-sm: var(--spacing-sm);
+  --space-md: var(--spacing-md);
+  --space-lg: var(--spacing-lg);
+  --space-xl: var(--spacing-xl);
+  
+  --color-background: var(--color-base);
+  --color-text-light: var(--color-text-secondary);
+  --color-text-muted: var(--color-text-tertiary);
+  --color-border: var(--glass-border);
+}
+
+
+/* Base styles */
+body {
+  color: var(--color-text);
+  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  line-height: 1.5;
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow: hidden;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+/* Typography styles */
+h1, h2, h3, h4, h5, h6 {
+  letter-spacing: 0.01em;
+  margin-top: 0;
+}
+
+h1 {
+  font-size: 1.75rem;
+  font-weight: 600;
+}
+
+h2 {
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+p {
+  font-size: 0.9375rem;
+  font-weight: 400;
+}
+
+small {
+  font-size: 0.8125rem;
+}
+
+/* Glassmorphism utility classes */
+.glass-card {
+  background: var(--glass-background);
+  /* Removed blur effects that were causing readability issues */
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--glass-shadow);
+  transition: transform var(--transition-standard), 
+              box-shadow var(--transition-standard);
+}
+
+.glass-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 28px -6px rgba(0, 0, 0, 0.35);
+}
+
+/* Maintain the existing glass class for compatibility */
+.glass {
+  background: var(--glass-background);
+  /* Removed blur effects that were causing readability issues */
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow);
+}
+
+/* App container - min height only since background is now handled by GradientBackground component */
+#app {
+  min-height: 100vh;
+}
+
+
+/* Monospace font for code elements */
+code, pre {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.9em;
+}
+
+/* Button styles */
+button {
+  cursor: pointer;
+  font-family: inherit;
+  font-weight: 500;
+  transition: all var(--transition-fast);
+}
+
+/* Global button styling refinements */
+.button, .btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-xs) var(--spacing-md); /* Reduced horizontal padding */
+  background-color: var(--glass-background);
+  color: var(--color-text);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 0.875rem; /* Slightly smaller text */
+  font-weight: 500;
+  outline: none;
+  transition: all var(--transition-fast);
+}
+
+.button:hover, .btn:hover {
+  background-color: rgba(255, 255, 255, 0.12);
+}
+
+.button-primary, .btn-primary {
+  background: linear-gradient(135deg, var(--color-primary-light), var(--color-primary));
+  color: white;
+  border: none;
+  box-shadow: 0 1px 3px rgba(255, 171, 88, 0.2); /* Reduced shadow */
+}
+
+.button-primary:hover:not(:disabled), .btn-primary:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(255, 171, 88, 0.25); /* Reduced shadow depth */
+}
+
+.button-secondary, .btn-outline {
+  background: rgba(255, 255, 255, 0.08); /* Lighter background */
+  border: 1px solid var(--glass-border);
+  color: var(--color-text);
+}
+
+.button-secondary:hover:not(:disabled), .btn-outline:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: var(--color-primary);
+  color: var(--color-primary-light);
+}
+
+.btn-circle {
+  border-radius: 50%;
+  width: 32px; /* Was 36px */
+  height: 32px; /* Was 36px */
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Consistent focus styles */
+:focus {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+/* Base form element styles */
+input, textarea, select {
+  font-family: inherit;
+  font-size: 0.9375rem;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  background: var(--glass-background);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-text);
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+  width: 100%;
+}
+
+input:focus, textarea:focus, select:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px rgba(255, 171, 88, 0.25);
+  outline: none;
+}
+
+/* Grid layout for template cards */
+.grid-layout {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: var(--spacing-md);
+}
+
+/* Card styles */
+.card {
+  background-color: var(--glass-background);
+  /* Removed blur effects that were causing readability issues */
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-md);
+  box-shadow: var(--glass-shadow);
+  transition: transform var(--transition-standard), 
+              box-shadow var(--transition-standard);
+}
+
+.card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 28px -6px rgba(0, 0, 0, 0.4);
+}
+
+/* Utility classes */
+.flex { display: flex; }
+.flex-col { flex-direction: column; }
+.items-center { align-items: center; }
+.justify-between { justify-content: space-between; }
+.gap-xs { gap: var(--spacing-xs); }
+.gap-sm { gap: var(--spacing-sm); }
+.gap-md { gap: var(--spacing-md); }
+.p-xs { padding: var(--spacing-xs); }
+.p-sm { padding: var(--spacing-sm); }
+.p-md { padding: var(--spacing-md); }
+.p-lg { padding: var(--spacing-lg); }
+.m-xs { margin: var(--spacing-xs); }
+.m-sm { margin: var(--spacing-sm); }
+.m-md { margin: var(--spacing-md); }
+.m-lg { margin: var(--spacing-lg); }
+
+/* Transitions */
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.3s;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+
+.slide-up-enter-active,
+.slide-up-leave-active {
+  transition: transform 0.3s, opacity 0.3s;
+}
+
+.slide-up-enter-from,
+.slide-up-leave-to {
+  transform: translateY(30px);
+  opacity: 0;
+}
+
+/* Light theme - will be applied with .theme-light class */
+.theme-light {
+  --color-base: #f8fafc;
+  --color-surface: #ffffff;
+  --color-text: #1e293b;
+  --color-text-secondary: #64748b;
+  --color-text-tertiary: #94a3b8;
+  --color-text-dark: #1e293b;
+  --glass-background: rgba(255, 255, 255, 0.7);
+  --glass-border: rgba(0, 0, 0, 0.1);
+  --glass-shadow: 0 4px 24px -8px rgba(0, 0, 0, 0.1);
+  
+  /* Background gradient for light theme */
+  --color-background-gradient-from: #f1f5f9;
+  --color-background-gradient-to: #e2e8f0;
+  
+  /* Maintain legacy variables for compatibility */
+  --color-background: var(--color-base);
+  --color-text-light: var(--color-text-secondary);
+  --color-text-muted: var(--color-text-tertiary);
+  --color-border: var(--glass-border);
+}
+
+/* For backwards compatibility with data-theme attribute */
+[data-theme="light"] {
+  --color-base: #f8fafc;
+  --color-surface: #ffffff;
+  --color-text: #1e293b;
+  --color-text-secondary: #64748b;
+  --color-text-tertiary: #94a3b8;
+  --color-text-dark: #1e293b;
+  --glass-background: rgba(255, 255, 255, 0.7);
+  --glass-border: rgba(0, 0, 0, 0.1);
+  --glass-shadow: 0 4px 24px -8px rgba(0, 0, 0, 0.1);
+}
+
+/* Responsive utilities */
+@media (max-width: 768px) {
+  .grid-layout {
+    grid-template-columns: 1fr;
+  }
+  
+  .hidden-mobile {
+    display: none;
+  }
+}
+
+/* Drag and drop customizations */
+.is-dragging .section-wrapper {
+  transition: transform 0.2s ease;
+}
+
+/* Ghost element (the placeholder where the dragged item will be dropped) */
+.section-ghost {
+  opacity: 0.5;
+  background: rgba(255, 171, 88, 0.1) !important;
+  border: 2px dashed var(--color-primary) !important;
+  box-shadow: inset 0 0 15px rgba(255, 171, 88, 0.1) !important;
+  border-radius: var(--radius-md);
+  position: relative;
+  margin: var(--spacing-md) 0;
+  min-height: 80px;
+}
+
+/* The element being dragged */
+.section-chosen {
+  background: rgba(255, 171, 88, 0.05) !important;
+  border-color: var(--color-primary) !important;
+  z-index: 100 !important;
+  transform: scale(1.02) !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2) !important;
+  opacity: 0.9 !important;
+}
+
+.being-dragged {
+  z-index: 100;
+}
+
+/* Style the container when dragging is happening */
+.is-dragging .sections-list {
+  padding-bottom: 100px; /* Extra space at the bottom for easier dragging */
+}
+
+/* Add a visual indicator for drag handles */
+.section-handle {
+  cursor: grab;
+  padding: 8px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: rgba(255, 255, 255, 0.03);
+  color: var(--color-text-secondary);
+}
+
+.section-handle:hover {
+  background-color: rgba(255, 171, 88, 0.15);
+  color: var(--color-primary);
+  transform: scale(1.1);
+}
+
+.section-handle:active, 
+.is-dragging .section-handle {
+  cursor: grabbing;
+  background-color: rgba(255, 171, 88, 0.25);
+  color: var(--color-primary);
+}
+
+/* Add visual cues during dragging */
+.is-dragging .section-wrapper:not(.section-chosen):hover {
+  transform: translateY(5px);
+  border-top: 2px solid var(--color-primary);
+  transition: transform 0.2s ease, border-top 0.2s ease;
+}
